@@ -1,0 +1,3 @@
+# Secret scanning uses gitleaks' default rules. A false positive goes to .gitleaksignore by fingerprint.
+[extend]
+useDefault = true

@@ -1,0 +1,16 @@
+# Build output
+/target/
+node_modules/
+.svelte-kit/
+/web/build/
+*.xcframework
+
+# Secrets and local data
+.env*
+*.env*
+!*.env.example
+*.pem
+*.key
+
+# Real statements never enter the repository
+/private-data/

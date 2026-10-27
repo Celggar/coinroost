@@ -1,0 +1,10 @@
+{
+  "$comment": "Code size and naming limits for this repository. Files over the limits, long functions, too many parameters and non-English names are rejected.",
+  "fileLines": 400,
+  "testFileLines": 600,
+  "functionLines": 60,
+  "cognitiveComplexity": 15,
+  "cyclomaticComplexity": 10,
+  "parameters": 5,
+  "exclude": ["target/**", "node_modules/**", "web/build/**", ".svelte-kit/**", "spec/fixtures/**", "**/locales/**"]
+}

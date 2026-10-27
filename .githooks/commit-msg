@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Repository policy on the commit message: no tool attribution trailers.
+set -e
+root=$(git rev-parse --show-toplevel)
+bash "$root/scripts/policy/check.sh" message "$1"
