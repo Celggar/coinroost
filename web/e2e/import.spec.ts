@@ -118,6 +118,49 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	expect((await listed.json()).items).toHaveLength(transactions);
 });
 
+test('a manual category survives applying the rules', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.goto('/rules');
+	for (const name of ['Groceries', 'Other']) {
+		await page.getByLabel('Category name').fill(name);
+		await page.getByRole('button', { name: 'Create category' }).click();
+		await expect(page.getByRole('status')).toHaveText(`Created ${name}.`);
+	}
+	await page.getByLabel('Rule name').fill('Market');
+	await page.getByLabel('Description has').fill('SUPERMERCADO');
+	await page.getByLabel('Money').selectOption('out');
+	await page.getByLabel('Sets category').selectOption({ label: 'Groceries' });
+	await page.getByRole('button', { name: 'Add rule' }).click();
+	await expect(page.getByRole('listitem').filter({ hasText: 'Market' })).toContainText(
+		'text has «SUPERMERCADO» · money out'
+	);
+
+	// Imported before the rule existed, so nothing is sorted yet: choose one by hand.
+	await page.getByRole('link', { name: 'Uncategorized' }).click();
+	await expect(page.getByText(`${transactions} without a category.`)).toBeVisible();
+	const market = page.getByRole('listitem').filter({ hasText: 'SUPERMERCADO' });
+	await expect(market).toHaveCount(2);
+	await market.first().getByLabel('Category').selectOption({ label: 'Other' });
+	await expect(page.getByText(`${transactions - 1} without a category.`)).toBeVisible();
+
+	await page.getByRole('link', { name: 'Rules' }).click();
+	await page.getByRole('button', { name: 'Check changes' }).click();
+	await expect(page.getByText('1 transaction would change:')).toBeVisible();
+	await expect(page.getByText('Category: — → Groceries')).toBeVisible();
+	await page.getByRole('button', { name: 'Apply 1 change' }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'Applied' })).toHaveText(
+		'Applied 1 change.'
+	);
+	await expect(page.getByText('Nothing would change.')).toBeVisible();
+
+	const listed = await page.request.get('/api/v1/transactions?limit=1000');
+	const sorted = (await listed.json()).items.filter((t: { description: string }) =>
+		t.description.includes('SUPERMERCADO')
+	);
+	const by = sorted.map((t: { category_set_by: string }) => t.category_set_by).sort();
+	expect(by).toEqual(['manual', 'rule']);
+});
+
 test('coverage shows what was imported', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/coverage');
@@ -134,7 +177,9 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		['/login', 'Coinroost'],
 		['/import', 'Import bank files'],
 		['/coverage', 'Coverage'],
-		['/accounts', 'Accounts']
+		['/accounts', 'Accounts'],
+		['/rules', 'Rules'],
+		['/uncategorized', 'Uncategorized']
 	];
 	for (const [path, heading] of pages) {
 		if (path !== '/login') await phone.addCookies(session.cookies);

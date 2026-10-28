@@ -9,6 +9,8 @@
 
 	const links = [
 		{ href: '/import', label: 'Import' },
+		{ href: '/uncategorized', label: 'Uncategorized' },
+		{ href: '/rules', label: 'Rules' },
 		{ href: '/coverage', label: 'Coverage' },
 		{ href: '/accounts', label: 'Accounts' }
 	];
