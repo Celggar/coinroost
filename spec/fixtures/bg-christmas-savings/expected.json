@@ -1,0 +1,98 @@
+{
+  "input": "input.pdf",
+  "namespace": "bg-christmas-savings",
+  "profile": "bg-christmas-savings",
+  "result": {
+    "ambiguities": 0,
+    "errors": [
+      {
+        "row": 13
+      },
+      {
+        "row": 14
+      }
+    ],
+    "fatal": null,
+    "rows": 13,
+    "structural": 0,
+    "transactions": [
+      {
+        "amount": "150.00",
+        "amount_minor": 15000,
+        "date": "2026-06-05",
+        "description": "DEPOSITO POR TRANSFERENCIA DESDE CUENTA 00-00-00-000001 REF 7001",
+        "external_id": "8ee2ee798cf863077f14cf763278f70a"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-06-20",
+        "description": "ABONO PROGRAMADO AHORRO NAVIDENO",
+        "external_id": "56a8d6224f22765bda732c8868bff66a"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-06-20",
+        "description": "ABONO PROGRAMADO AHORRO NAVIDENO",
+        "external_id": "577f8cd7c2c091e24024ca68622774cf"
+      },
+      {
+        "amount": "0.37",
+        "amount_minor": 37,
+        "date": "2026-07-05",
+        "description": "INTERESES GANADOS",
+        "external_id": "cf508efeeaa4eec00d81c20c9ba642dd"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-07-20",
+        "description": "ABONO PROGRAMADO AHORRO NAVIDENO",
+        "external_id": "0bf491c2f6a7dabc5262a18b7fda6a79"
+      },
+      {
+        "amount": "2500.00",
+        "amount_minor": 250000,
+        "date": "2026-08-02",
+        "description": "DEPOSITO EN EFECTIVO SUCURSAL EJEMPLO",
+        "external_id": "e00e83f738cdce009bb2e1ab2a80fb6a"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-08-20",
+        "description": "ABONO PROGRAMADO AHORRO NAVIDENO",
+        "external_id": "22ad07de27041a4edda719d9ad7a0122"
+      },
+      {
+        "amount": "1.12",
+        "amount_minor": 112,
+        "date": "2026-09-05",
+        "description": "INTERESES GANADOS",
+        "external_id": "71593328485bb33a9168b8d64d54cfe0"
+      },
+      {
+        "amount": "-2300.00",
+        "amount_minor": -230000,
+        "date": "2026-09-15",
+        "description": "RETIRO PARCIAL A CUENTA PROPIA 00-00-00-000001 SOLICITADO EN LINEA",
+        "external_id": "5f9c3e1df093671cb73c53d3b9853041"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-09-20",
+        "description": "ABONO PROGRAMADO AHORRO NAVIDENO",
+        "external_id": "f5f478b5ca01d7ad91665a5bd3a1939e"
+      },
+      {
+        "amount": "-1.50",
+        "amount_minor": -150,
+        "date": "2026-09-30",
+        "description": "CARGO POR SERVICIO",
+        "external_id": "cf92abaf659e5636bd3284a90f23a98e"
+      }
+    ]
+  }
+}

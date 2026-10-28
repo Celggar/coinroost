@@ -1,7 +1,14 @@
-//! Page text from positioned glyphs, with the word and line rules of pdfplumber's `extract_text` (default
-//! settings, no layout): glyphs are grouped into lines whose tops lie within 3 points of each other, sorted
-//! left to right, split into words at blank glyphs and at gaps wider than 3 points, and printed with one
-//! space between words and one newline between lines.
+//! Text from positioned glyphs, with the word and line rules of pdfplumber (default settings, no layout).
+//!
+//! Glyphs are taken in runs of the same orientation; each run is clustered into lines whose tops lie within
+//! 3 points of each other, each line sorted left to right and split into words at blank glyphs and at gaps
+//! wider than 3 points. The words are then grouped into lines again by their own tops (within 3 points)
+//! and printed with one space between words and one newline between lines. The two entry points differ in
+//! that grouping, as they do in pdfplumber: [`page_text`] (`Page.extract_text`) keeps the words in order
+//! and starts a line whenever the group changes, while [`cell_text`] (`utils.extract_text`, used for table
+//! cells) gathers every word of a group into one line, groups in top order.
+
+use std::cmp::Ordering;
 
 /// A glyph in page space with the y axis pointing down (`top` < `bottom`).
 #[derive(Clone, Debug, PartialEq)]
@@ -28,13 +35,49 @@ const LIGATURES: &[(&str, &str)] = &[
     ("ﬅ", "st"),
 ];
 
-struct Word<'a> {
-    glyphs: Vec<&'a Glyph>,
+struct Word {
+    text: String,
     top: f64,
+}
+
+/// Compares like Python's `<` on floats: `-0.0` and `0.0` are equal, so stable sorts keep their order.
+pub(crate) fn py_cmp(a: f64, b: f64) -> Ordering {
+    a.partial_cmp(&b).unwrap_or(Ordering::Equal)
 }
 
 /// The text of one page.
 pub fn page_text(glyphs: &[Glyph]) -> String {
+    let refs: Vec<&Glyph> = glyphs.iter().collect();
+    let words = words(&refs);
+    let ids = cluster_ids(&words.iter().map(|w| w.top).collect::<Vec<_>>(), Y_TOLERANCE);
+    let mut out = String::new();
+    let mut previous = None;
+    let mut line_has_text = false;
+    for (word, id) in words.iter().zip(ids) {
+        if previous.is_some() && previous != Some(id) {
+            out.push('\n');
+            line_has_text = false;
+        } else if line_has_text {
+            out.push(' ');
+        }
+        previous = Some(id);
+        line_has_text |= !word.text.is_empty();
+        out.push_str(&word.text);
+    }
+    out
+}
+
+/// The text of one table cell.
+pub fn cell_text(glyphs: &[&Glyph]) -> String {
+    cluster_lines(words(glyphs))
+        .iter()
+        .map(|line| line.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Words in the order found: runs of one orientation, lines within a run, left to right within a line.
+fn words(glyphs: &[&Glyph]) -> Vec<Word> {
     let mut words = Vec::new();
     let mut rest = glyphs;
     while let Some(first) = rest.first() {
@@ -45,15 +88,32 @@ pub fn page_text(glyphs: &[Glyph]) -> String {
         }
         rest = tail;
     }
-    print_lines(&words)
+    words
+}
+
+/// Words grouped by the cluster of their top, clusters in top order, words in their given order.
+fn cluster_lines(words: Vec<Word>) -> Vec<Vec<Word>> {
+    let ids = cluster_ids(&words.iter().map(|w| w.top).collect::<Vec<_>>(), Y_TOLERANCE);
+    let mut tagged: Vec<(usize, Word)> = ids.into_iter().zip(words).collect();
+    tagged.sort_by_key(|(id, _)| *id);
+    let mut lines: Vec<Vec<Word>> = Vec::new();
+    let mut last = None;
+    for (id, word) in tagged {
+        if last != Some(id) {
+            lines.push(Vec::new());
+            last = Some(id);
+        }
+        lines.last_mut().expect("pushed above").push(word);
+    }
+    lines
 }
 
 /// Glyphs clustered into lines (by top when upright, by x0 when rotated), each sorted along the line.
-fn group_lines(glyphs: &[Glyph], upright: bool) -> Vec<Vec<&Glyph>> {
+fn group_lines<'a>(glyphs: &[&'a Glyph], upright: bool) -> Vec<Vec<&'a Glyph>> {
     let key = |g: &Glyph| if upright { g.top } else { g.x0 };
     let tolerance = if upright { Y_TOLERANCE } else { X_TOLERANCE };
-    let ids = cluster_ids(&glyphs.iter().map(key).collect::<Vec<_>>(), tolerance);
-    let mut tagged: Vec<(usize, &Glyph)> = glyphs.iter().zip(ids).map(|(g, id)| (id, g)).collect();
+    let ids = cluster_ids(&glyphs.iter().map(|g| key(g)).collect::<Vec<_>>(), tolerance);
+    let mut tagged: Vec<(usize, &Glyph)> = glyphs.iter().zip(ids).map(|(g, id)| (id, *g)).collect();
     tagged.sort_by_key(|(id, _)| *id);
     let mut lines: Vec<Vec<&Glyph>> = Vec::new();
     let mut last = None;
@@ -66,20 +126,21 @@ fn group_lines(glyphs: &[Glyph], upright: bool) -> Vec<Vec<&Glyph>> {
     }
     for line in &mut lines {
         if upright {
-            line.sort_by(|a, b| a.x0.total_cmp(&b.x0));
+            line.sort_by(|a, b| py_cmp(a.x0, b.x0));
         } else {
-            line.sort_by(|a, b| a.top.total_cmp(&b.top).then(a.bottom.total_cmp(&b.bottom)));
+            line.sort_by(|a, b| py_cmp(a.top, b.top).then(py_cmp(a.bottom, b.bottom)));
         }
     }
     lines
 }
 
 /// For each value, the index of its cluster: distinct values sorted, a new cluster whenever a value is
-/// more than `tolerance` above the previous one.
-fn cluster_ids(values: &[f64], tolerance: f64) -> Vec<usize> {
+/// more than `tolerance` above the previous one. Equal values are equal exactly, as in the reference.
+#[allow(clippy::float_cmp)]
+pub(crate) fn cluster_ids(values: &[f64], tolerance: f64) -> Vec<usize> {
     let mut distinct = values.to_vec();
-    distinct.sort_by(f64::total_cmp);
-    distinct.dedup();
+    distinct.sort_by(|a, b| py_cmp(*a, *b));
+    distinct.dedup_by(|a, b| a == b);
     let mut bounds: Vec<(f64, usize)> = Vec::with_capacity(distinct.len());
     let mut cluster = 0;
     for (i, value) in distinct.iter().enumerate() {
@@ -91,15 +152,15 @@ fn cluster_ids(values: &[f64], tolerance: f64) -> Vec<usize> {
     values
         .iter()
         .map(|v| {
-            let at = bounds.partition_point(|(b, _)| b.total_cmp(v).is_lt());
+            let at = bounds.partition_point(|(b, _)| b < v);
             bounds[at].1
         })
         .collect()
 }
 
-fn split_words<'a>(line: &[&'a Glyph], upright: bool) -> Vec<Word<'a>> {
-    let mut words: Vec<Word<'a>> = Vec::new();
-    let mut current: Vec<&'a Glyph> = Vec::new();
+fn split_words(line: &[&Glyph], upright: bool) -> Vec<Word> {
+    let mut words: Vec<Word> = Vec::new();
+    let mut current: Vec<&Glyph> = Vec::new();
     for &glyph in line {
         if crate::text::strip(&glyph.text).is_empty() && !glyph.text.is_empty() {
             flush(&mut words, &mut current);
@@ -117,13 +178,22 @@ fn split_words<'a>(line: &[&'a Glyph], upright: bool) -> Vec<Word<'a>> {
     words
 }
 
-fn flush<'a>(words: &mut Vec<Word<'a>>, current: &mut Vec<&'a Glyph>) {
+fn flush(words: &mut Vec<Word>, current: &mut Vec<&Glyph>) {
     if current.is_empty() {
         return;
     }
     let glyphs = std::mem::take(current);
     let top = glyphs.iter().map(|g| g.top).fold(f64::INFINITY, f64::min);
-    words.push(Word { glyphs, top });
+    let text = glyphs
+        .iter()
+        .map(|glyph| {
+            LIGATURES
+                .iter()
+                .find(|(l, _)| *l == glyph.text)
+                .map_or(glyph.text.as_str(), |(_, e)| e)
+        })
+        .collect();
+    words.push(Word { text, top });
 }
 
 fn starts_new_word(prev: &Glyph, curr: &Glyph, upright: bool) -> bool {
@@ -153,32 +223,9 @@ fn starts_new_word(prev: &Glyph, curr: &Glyph, upright: bool) -> bool {
         || (across_curr - across_prev).abs() > drift
 }
 
-/// Words in order, a new line whenever the cluster of their top changes.
-fn print_lines(words: &[Word<'_>]) -> String {
-    let ids = cluster_ids(&words.iter().map(|w| w.top).collect::<Vec<_>>(), Y_TOLERANCE);
-    let mut out = String::new();
-    let mut previous = None;
-    for (word, id) in words.iter().zip(ids) {
-        match previous {
-            None => {}
-            Some(p) if p == id => out.push(' '),
-            Some(_) => out.push('\n'),
-        }
-        previous = Some(id);
-        for glyph in &word.glyphs {
-            let text = LIGATURES
-                .iter()
-                .find(|(l, _)| *l == glyph.text)
-                .map_or(glyph.text.as_str(), |(_, e)| e);
-            out.push_str(text);
-        }
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Glyph, page_text};
+    use super::{Glyph, cell_text, page_text};
 
     fn word(text: &str, x: f64, top: f64) -> Vec<Glyph> {
         text.chars()
@@ -211,5 +258,24 @@ mod tests {
         let mut glyphs = word("A", 40.0, 100.0);
         glyphs.extend(word("B", 48.1, 100.0));
         assert_eq!(page_text(&glyphs), "A B");
+    }
+
+    #[test]
+    fn page_lines_follow_word_order_and_cell_lines_gather_their_group() {
+        // A rotated glyph between "A" and "B" splits them into separate runs; their words share a group.
+        // Expected values are pdfplumber's `chars_to_textmap` and `utils.extract_text`.
+        let mut glyphs = word("A", 60.0, 100.0);
+        glyphs.push(Glyph {
+            text: "R".into(),
+            x0: 200.0,
+            x1: 208.0,
+            top: 300.0,
+            bottom: 305.0,
+            upright: false,
+        });
+        glyphs.extend(word("B", 40.0, 100.0));
+        assert_eq!(page_text(&glyphs), "A\nR\nB");
+        let refs: Vec<&Glyph> = glyphs.iter().collect();
+        assert_eq!(cell_text(&refs), "A B\nR");
     }
 }

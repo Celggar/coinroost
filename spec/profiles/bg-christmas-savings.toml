@@ -1,0 +1,30 @@
+# Banco General (Panama): Christmas savings account statement, PDF export (the only export it has).
+#
+# A table drawn with ruling lines: Fecha, Descripción, Monto, Saldo. A description takes several lines in its
+# cell, so rows come from the table cells rather than from text lines. Monto is signed and printed with a
+# dollar sign (-$2,300.00 for a withdrawal); dates use Spanish month abbreviations (20-jun-2026). The header
+# row repeats on every page; rows whose first cell is not a date (header, opening balance) are left out.
+id = "bg-christmas-savings"
+name = "Banco General Christmas savings statement (PDF)"
+format = "pdf"
+currency = "USD"
+
+[detect]
+all = ["ahorros navidad", "saldo total"]
+
+[pdf]
+strategy = "tables"
+header = "fecha"
+row_start = '\s*\d{1,2}[-/]\w'
+
+[columns]
+date = ["fecha"]
+description = ["descripcion", "detalle", "concepto"]
+amount = ["monto", "importe", "valor"]
+
+[amounts]
+decimal = "."
+thousands = ","
+
+[dates]
+formats = ["%d-%m-%Y"]

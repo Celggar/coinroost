@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::amount::Amount;
 use crate::date::{DateFormat, first_number, parse_date};
-use crate::profile::{FileFormat, Profile};
+use crate::profile::{FileFormat, Pdf, Profile};
 use crate::table::{Table, find_column};
 use crate::text::{fold, strip};
 use crate::{
@@ -36,11 +36,16 @@ fn read_table(bytes: &[u8], profile: &Profile) -> Result<Table, Error> {
                 ))
             })
         }
-        FileFormat::Pdf => {
-            let settings = profile.pdf.as_ref().ok_or_else(|| invalid("pdf"))?;
-            let lines = pdf::read_lines(bytes).map_err(Error::Unreadable)?;
-            pdf::lines_to_table(&lines, settings).map_err(Error::InvalidProfile)
-        }
+        FileFormat::Pdf => match profile.pdf.as_ref().ok_or_else(|| invalid("pdf"))? {
+            Pdf::Lines { row_start, row } => {
+                let lines = pdf::read_lines(bytes).map_err(Error::Unreadable)?;
+                pdf::lines_to_table(&lines, row_start, row).map_err(Error::InvalidProfile)
+            }
+            Pdf::Tables { header, row_start } => {
+                let tables = pdf::read_tables(bytes).map_err(Error::Unreadable)?;
+                pdf::tables_to_table(&tables, header, row_start).map_err(Error::InvalidProfile)
+            }
+        },
         FileFormat::Xlsx => crate::xlsx::read(bytes, profile).map_err(Error::Unreadable),
     }
 }
@@ -63,8 +68,10 @@ enum AmountColumns {
 impl Columns {
     fn resolve(table: &Table, profile: &Profile) -> Result<Columns, Error> {
         let wanted = &profile.columns;
+        // Line patterns name their groups after the fields; a profile only lists columns to override them.
+        let by_group_name = matches!(profile.pdf, Some(Pdf::Lines { .. }));
         let or_default = |list: &Vec<String>, name: &str| {
-            if list.is_empty() && profile.format == FileFormat::Pdf {
+            if list.is_empty() && by_group_name {
                 vec![name.to_owned()]
             } else {
                 list.clone()

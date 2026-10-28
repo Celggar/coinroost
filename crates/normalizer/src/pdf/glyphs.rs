@@ -11,6 +11,9 @@
 //! - a glyph box runs from the origin along the advance, and from `descent + rise` to one em above it;
 //! - `q`/`Q` save and restore the text state together with the graphics state;
 //! - form `XObject`s are drawn with a fresh text state and their own resources.
+//!
+//! Positions are then expressed the way pdfplumber does: `top = (height - y1) + mediabox_top`, with the
+//! page's `MediaBox` normalized for its rotation, and `x` shifted by the box's left side when it is not 0.
 
 // Matrices keep the `[a b c d e f]` names of ISO 32000-1 §8.3.4, so they read like the specification.
 #![allow(clippy::many_single_char_names)]
@@ -23,8 +26,10 @@ use pdf_oxide::fonts::FontInfo;
 use pdf_oxide::object::Object;
 
 use super::Glyph;
+use super::edges::{Shape, ShapeKind};
+use super::paths::Path;
 
-type Matrix = [f64; 6];
+pub(super) type Matrix = [f64; 6];
 
 const IDENTITY: Matrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
 /// Forms inside forms deeper than this are not drawn (guards against reference cycles).
@@ -49,7 +54,7 @@ fn translate(m: Matrix, x: f64, y: f64) -> Matrix {
     [a, b, c, d, x * a + y * c + e, x * b + y * d + f]
 }
 
-fn apply(m: Matrix, x: f64, y: f64) -> (f64, f64) {
+pub(super) fn apply(m: Matrix, x: f64, y: f64) -> (f64, f64) {
     let [a, b, c, d, e, f] = m;
     (a * x + c * y + e, b * x + d * y + f)
 }
@@ -89,17 +94,114 @@ impl TextState {
     }
 }
 
-/// Every glyph of one page, in content-stream order, with the y axis pointing down.
-pub fn page_glyphs(document: &PdfDocument, page: usize) -> Result<Vec<Glyph>, String> {
+/// What one page draws: glyphs and painted paths, each in content-stream order.
+pub struct PageContent {
+    pub glyphs: Vec<Glyph>,
+    pub shapes: Vec<Shape>,
+}
+
+/// Every glyph and painted path of one page, with the y axis pointing down.
+pub fn page_content(document: &PdfDocument, page: usize) -> Result<PageContent, String> {
     let data = document.get_page_content_data(page).map_err(|e| e.to_string())?;
     let page = document.get_page(page).map_err(|e| e.to_string())?;
     let resources = inherited(document, &page, "Resources").unwrap_or(Object::Null);
     let mut painter = Painter {
         document,
+        frame: Frame::of(document, &page),
         glyphs: Vec::new(),
+        shapes: Vec::new(),
     };
     painter.run(&data, &resources, page_matrix(document, &page), 0)?;
-    Ok(painter.glyphs)
+    Ok(PageContent {
+        glyphs: painter.glyphs,
+        shapes: painter.shapes,
+    })
+}
+
+/// Every glyph of one page, in content-stream order, with the y axis pointing down.
+pub fn page_glyphs(document: &PdfDocument, page: usize) -> Result<Vec<Glyph>, String> {
+    page_content(document, page).map(|content| content.glyphs)
+}
+
+/// pdfplumber's page space: its page height, and the top and left of its `MediaBox`.
+pub(super) struct Frame {
+    height: f64,
+    top: f64,
+    left: f64,
+}
+
+impl Frame {
+    fn of(document: &PdfDocument, page: &Object) -> Frame {
+        let media: Vec<f64> = inherited(document, page, "MediaBox")
+            .and_then(|o| o.as_array().map(|a| a.iter().filter_map(number).collect()))
+            .unwrap_or_default();
+        let [a, b, c, d] = <[f64; 4]>::try_from(media).unwrap_or([0.0, 0.0, 612.0, 792.0]);
+        let (x0, x1) = if c < a { (c, a) } else { (a, c) };
+        let (y0, y1) = if d < b { (d, b) } else { (b, d) };
+        let (x0, y0, y1) = if matches!(rotation(document, page), 90 | 270) {
+            (y0, x0, x1)
+        } else {
+            (x0, y0, y1)
+        };
+        let media_height = y1 - y0;
+        let (top, bottom) = (media_height - y1, media_height - y0);
+        Frame {
+            height: bottom - top,
+            top,
+            left: x0,
+        }
+    }
+
+    /// A box in pdfminer's space (y up, origin at the page's corner) as `(x0, x1, top, bottom)`.
+    fn flip(&self, (x0, y0, x1, y1): (f64, f64, f64, f64)) -> (f64, f64, f64, f64) {
+        let (x0, x1) = if self.left == 0.0 {
+            (x0, x1)
+        } else {
+            (x0 + self.left, x1 + self.left)
+        };
+        (
+            x0,
+            x1,
+            (self.height - y1) + self.top,
+            (self.height - y0) + self.top,
+        )
+    }
+
+    /// A painted path through `points` (pdfminer's space), as pdfplumber records it.
+    pub(super) fn shape(&self, kind: ShapeKind, points: &[(f64, f64)]) -> Shape {
+        let (x0, y0, x1, y1) = bound(points);
+        let (left, right, top, bottom) = self.flip((x0, y0, x1, y1));
+        Shape {
+            kind,
+            x0: left,
+            x1: right,
+            top,
+            bottom,
+            width: x1 - x0,
+            height: y1 - y0,
+            points: points
+                .iter()
+                .map(|&(x, y)| (self.left + x, self.top + self.height - y))
+                .collect(),
+        }
+    }
+}
+
+/// The smallest box holding every point, as pdfminer's `get_bound` computes it.
+fn bound(points: &[(f64, f64)]) -> (f64, f64, f64, f64) {
+    let low = |acc: f64, v: f64| if v < acc { v } else { acc };
+    let high = |acc: f64, v: f64| if v > acc { v } else { acc };
+    points.iter().fold(
+        (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
+        |(x0, y0, x1, y1), &(x, y)| (low(x0, x), low(y0, y), high(x1, x), high(y1, y)),
+    )
+}
+
+fn rotation(document: &PdfDocument, page: &Object) -> i64 {
+    inherited(document, page, "Rotate")
+        .and_then(|o| o.as_integer())
+        .unwrap_or(0)
+        .rem_euclid(360)
 }
 
 /// A page attribute, looked up through `/Parent` when the page does not set it (ISO 32000-1 §7.7.3.4).
@@ -122,10 +224,7 @@ fn number(object: &Object) -> Option<f64> {
 
 /// The page's base transformation for its `/Rotate` and `/MediaBox`.
 fn page_matrix(document: &PdfDocument, page: &Object) -> Matrix {
-    let rotate = inherited(document, page, "Rotate")
-        .and_then(|o| o.as_integer())
-        .unwrap_or(0)
-        .rem_euclid(360);
+    let rotate = rotation(document, page);
     let media: Vec<f64> = inherited(document, page, "MediaBox")
         .and_then(|o| o.as_array().map(|a| a.iter().filter_map(number).collect()))
         .unwrap_or_default();
@@ -140,7 +239,9 @@ fn page_matrix(document: &PdfDocument, page: &Object) -> Matrix {
 
 struct Painter<'a> {
     document: &'a PdfDocument,
+    frame: Frame,
     glyphs: Vec<Glyph>,
+    shapes: Vec<Shape>,
 }
 
 /// Fonts of one resource dictionary, loaded on first use.
@@ -153,6 +254,7 @@ impl Painter<'_> {
         let mut ctm = base;
         let mut text = TextState::new();
         let mut stack: Vec<(Matrix, TextState)> = Vec::new();
+        let mut path = Path::default();
         for operator in operators {
             match operator {
                 Operator::SaveState => stack.push((ctm, text.clone())),
@@ -164,7 +266,11 @@ impl Painter<'_> {
                 Operator::Cm { a, b, c, d, e, f } => ctm = multiply(widen([a, b, c, d, e, f]), ctm),
                 Operator::BeginText => (text.matrix, text.line) = (IDENTITY, (0.0, 0.0)),
                 Operator::Do { name } if depth < MAX_FORM_DEPTH => self.form(&name, resources, ctm, depth)?,
-                other => self.text_operator(other, &mut text, (resources, &mut fonts), ctm),
+                other => {
+                    if !path.operate(&other, ctm, &self.frame, &mut self.shapes) {
+                        self.text_operator(other, &mut text, (resources, &mut fonts), ctm);
+                    }
+                }
             }
         }
         Ok(())
@@ -247,7 +353,7 @@ impl Painter<'_> {
                         }
                         let (item, advance) = glyph(font, code, translate(matrix, x, y), text, scaling);
                         x += advance;
-                        glyphs.push(item);
+                        glyphs.push(self.frame.glyph(item));
                         if code == 32 && word_space != 0.0 {
                             x += word_space;
                         }
@@ -305,8 +411,29 @@ fn codes(bytes: &[u8], multibyte: bool) -> Vec<u32> {
     }
 }
 
+/// A glyph in pdfminer's space (y up).
+struct RawGlyph {
+    text: String,
+    bbox: (f64, f64, f64, f64),
+    upright: bool,
+}
+
+impl Frame {
+    fn glyph(&self, raw: RawGlyph) -> Glyph {
+        let (x0, x1, top, bottom) = self.flip(raw.bbox);
+        Glyph {
+            text: raw.text,
+            x0,
+            x1,
+            top,
+            bottom,
+            upright: raw.upright,
+        }
+    }
+}
+
 /// The glyph for one code, and its advance along the line.
-fn glyph(font: &FontInfo, code: u32, matrix: Matrix, text: &TextState, scaling: f64) -> (Glyph, f64) {
+fn glyph(font: &FontInfo, code: u32, matrix: Matrix, text: &TextState, scaling: f64) -> (RawGlyph, f64) {
     let width = f64::from(font.get_glyph_width(u16::try_from(code).unwrap_or(u16::MAX))) * 0.001;
     let advance = width * text.size * scaling;
     let descent = f64::from(font.descent) * text.size;
@@ -325,12 +452,9 @@ fn glyph(font: &FontInfo, code: u32, matrix: Matrix, text: &TextState, scaling: 
     let text_value = font
         .char_to_unicode(code)
         .unwrap_or_else(|| format!("(cid:{code})"));
-    let glyph = Glyph {
+    let glyph = RawGlyph {
         text: text_value,
-        x0,
-        x1,
-        top: -y1,
-        bottom: -y0,
+        bbox: (x0, y0, x1, y1),
         upright: a * d * scaling > 0.0 && b * c <= 0.0,
     };
     (glyph, advance)

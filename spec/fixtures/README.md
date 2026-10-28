@@ -9,7 +9,9 @@ One folder per case. Each holds:
 
 Every implementation of the normalizer must reproduce `result` exactly; `crates/normalizer/tests/fixtures.rs`
 checks the Rust one. Generated inputs keep their generator next to them (`coopeduc/make_input.py` writes
-both Coopeduc cases, `bg-account/make_input.py` both Banco General workbooks).
+both Coopeduc cases, `bg-account/make_input.py` both Banco General workbooks). `bg-christmas-savings/make_input.py`
+also draws the same statement in other ways (rules as rectangles, thin fills, one path, scaled, rotated, rules
+that stop short); every drawing must give the same table.
 
 | Folder | What it pins down |
 |---|---|
@@ -19,3 +21,4 @@ both Coopeduc cases, `bg-account/make_input.py` both Banco General workbooks).
 | `bac-card` | Card CSV with a header block and a summary block, a masked card number, purchases positive (sign inverted), rows without a date, quoted amounts, equal purchases on one day |
 | `bg-account` | XLSX with seven metadata rows above the header, one signed `Monto`, dates and numbers both as text and as cells, a blank row |
 | `bg-account-debit-credit` | The same account in the accounting layout: `Débito` already negative and `Crédito` |
+| `bg-christmas-savings` | PDF table drawn with ruling lines: descriptions over several lines in one cell, Spanish month dates, a signed `Monto` with a dollar sign, the header repeated on the second page, an opening balance with a merged cell, an impossible date and an empty amount |

@@ -1,5 +1,6 @@
 //! `coinroost normalize --profile <id> --namespace <account> <file>`: prints the normalization as JSON.
 //! `coinroost detect --accounts <rules.toml> <file>`: prints which account a file belongs to, as JSON.
+//! `coinroost tables <file.pdf>`: prints the ruled tables of a PDF, page by page, as JSON.
 //! `coinroost profiles`: lists the built-in profiles.
 
 use std::process::ExitCode;
@@ -8,8 +9,10 @@ use coinroost_normalizer::detect::{AccountRules, Detection, detect};
 use coinroost_normalizer::{Profile, normalize};
 use serde_json::{Value, json};
 
-const USAGE: &str =
-    "usage: coinroost normalize --profile <id> --namespace <account> <file>\n       coinroost profiles";
+const USAGE: &str = "usage: coinroost normalize --profile <id> --namespace <account> <file>
+       coinroost detect --accounts <rules.toml> <file>
+       coinroost tables <file.pdf>
+       coinroost profiles";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -20,7 +23,7 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
-        Some(command @ ("normalize" | "detect")) => match run(command, &args[1..]) {
+        Some(command @ ("normalize" | "detect" | "tables")) => match run(command, &args[1..]) {
             Ok(output) => {
                 println!("{output:#}");
                 ExitCode::SUCCESS
@@ -48,6 +51,16 @@ fn run(command: &str, args: &[String]) -> Result<Value, String> {
             _ if file.is_none() => file = Some(arg),
             _ => return Err(USAGE.to_owned()),
         }
+    }
+    if command == "tables" {
+        let (None, None, None, Some(file)) = (profile, namespace, accounts, file) else {
+            return Err(USAGE.to_owned());
+        };
+        let bytes = std::fs::read(file).map_err(|e| format!("{file}: {e}"))?;
+        return Ok(match coinroost_normalizer::pdf::read_tables(&bytes) {
+            Ok(tables) => json!(tables),
+            Err(error) => json!({ "fatal": error }),
+        });
     }
     if command == "detect" {
         let (Some(accounts), Some(file)) = (accounts, file) else {
