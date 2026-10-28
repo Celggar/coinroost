@@ -43,6 +43,19 @@ impl ApiError {
     }
 }
 
+/// For the console: the detail, or what the status means.
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApiError::Unauthorized => f.write_str("not authorized"),
+            ApiError::Invalid(detail) | ApiError::Conflict(detail) | ApiError::Internal(detail) => {
+                f.write_str(detail)
+            }
+            ApiError::NotFound => f.write_str("not found"),
+        }
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status = self.status();

@@ -133,12 +133,7 @@
           "content": {
             "application/octet-stream": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "int32",
-                  "minimum": 0
-                }
+                "$ref": "#/components/schemas/BankFile"
               }
             }
           },
@@ -278,6 +273,49 @@
         }
       }
     },
+    "/api/v1/coverage": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Up to when each account has data, what its imported files cover and where the holes are.",
+        "operationId": "coverage",
+        "parameters": [
+          {
+            "name": "today",
+            "in": "query",
+            "description": "The caller's date; the server's UTC date when absent.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coverage of every account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Coverage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -322,6 +360,89 @@
           },
           "401": {
             "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/imports/preview": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Shows what importing a bank file would do, without importing it: the account it belongs to (found from the\nfile unless named), every transaction read and whether the account already has it, and the rows that cannot\nbe read.",
+        "operationId": "preview_file",
+        "parameters": [
+          {
+            "name": "file_name",
+            "in": "query",
+            "description": "The file's name, as the bank gave it.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "description": "The account to read the file for; when absent, the account is found from the file.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The file as exported",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/BankFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "What the import would do",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The file cannot be read with the account's profile",
             "content": {
               "application/json": {
                 "schema": {
@@ -443,6 +564,37 @@
           },
           "422": {
             "description": "The name is empty or too long",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "The bank export formats the server can read, by name.",
+        "operationId": "list_profiles",
+        "responses": {
+          "200": {
+            "description": "The profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankProfiles"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
             "content": {
               "application/json": {
                 "schema": {
@@ -745,6 +897,7 @@
           "kind",
           "currency",
           "namespace",
+          "detection",
           "created_at"
         ],
         "properties": {
@@ -770,9 +923,64 @@
               "null"
             ]
           },
+          "detection": {
+            "$ref": "#/components/schemas/Detection"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "AccountCoverage": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "name",
+          "delay",
+          "ranges",
+          "gaps"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latest": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The date of its latest transaction, imported or not."
+          },
+          "days_since": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Days from `latest` to today."
+          },
+          "delay": {
+            "$ref": "#/components/schemas/Delay"
+          },
+          "ranges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DateRange"
+            },
+            "description": "What the imported files cover, oldest first; files less than 16 days apart count as one range."
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "description": "The holes between those ranges."
           }
         }
       },
@@ -785,6 +993,16 @@
           "cash",
           "loan",
           "investment"
+        ]
+      },
+      "AccountMatch": {
+        "type": "string",
+        "description": "How the preview chose the account.",
+        "enum": [
+          "chosen",
+          "found",
+          "ambiguous",
+          "not_found"
         ]
       },
       "Accounts": {
@@ -821,6 +1039,50 @@
           }
         },
         "additionalProperties": false
+      },
+      "BankFile": {
+        "type": "string",
+        "format": "binary",
+        "description": "A bank export, byte for byte as the bank gave it."
+      },
+      "BankProfile": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "format",
+          "currency"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "description": "`csv`, `xlsx` or `pdf`."
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217 code of the statements it reads."
+          }
+        }
+      },
+      "BankProfiles": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankProfile"
+            }
+          }
+        }
       },
       "Conditions": {
         "type": "object",
@@ -869,12 +1131,122 @@
         },
         "additionalProperties": false
       },
+      "Coverage": {
+        "type": "object",
+        "required": [
+          "today",
+          "items"
+        ],
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountCoverage"
+            },
+            "description": "Every account, the most behind first."
+          }
+        }
+      },
+      "DateRange": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "Delay": {
+        "type": "string",
+        "enum": [
+          "late",
+          "warning",
+          "no_data",
+          "up_to_date"
+        ]
+      },
+      "Detection": {
+        "type": "object",
+        "description": "How the account's exports are recognized when several files are dropped at once. A file belongs to the\naccount when its header has every detection text of the profile and every marker, and, when a label or a\nnumber hash is set, at least one of them. Cards that share a format are told apart by card prefix.",
+        "properties": {
+          "markers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Texts the header must also contain, such as the account name as the bank prints it."
+          },
+          "card_prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Card network prefixes (ISO/IEC 7812), such as `4` for Visa or `34` and `37` for American Express."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The account type as the bank prints it in the header."
+          },
+          "number_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "First 16 hex digits of the SHA-256 of the account number printed in the header."
+          }
+        },
+        "additionalProperties": false
+      },
       "Direction": {
         "type": "string",
         "enum": [
           "in",
           "out"
         ]
+      },
+      "Gap": {
+        "type": "object",
+        "description": "Days with no imported file between two imported ranges.",
+        "required": [
+          "from",
+          "to",
+          "days",
+          "delay"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "First day without data."
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "Last day without data."
+          },
+          "days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "delay": {
+            "$ref": "#/components/schemas/Delay"
+          }
+        }
       },
       "Health": {
         "type": "object",
@@ -941,6 +1313,21 @@
             "type": "integer",
             "format": "int32"
           },
+          "first_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The first and last date among the rows read, duplicates included; empty when no row could be read."
+          },
+          "last_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -958,6 +1345,53 @@
             "items": {
               "$ref": "#/components/schemas/ImportBatch"
             }
+          }
+        }
+      },
+      "ImportPreview": {
+        "type": "object",
+        "required": [
+          "file_name",
+          "file_sha256",
+          "detection",
+          "candidates"
+        ],
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "file_sha256": {
+            "type": "string",
+            "description": "SHA-256 of the file, hexadecimal."
+          },
+          "detection": {
+            "$ref": "#/components/schemas/AccountMatch"
+          },
+          "account_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The accounts the file fits, when it fits several."
+          },
+          "reading": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Reading",
+                "description": "Empty until the account is known."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -1135,7 +1569,10 @@
               "string",
               "null"
             ],
-            "description": "Id of the bank profile its exports are read with (`coinroost profiles` lists them)."
+            "description": "Id of the bank profile its exports are read with (`GET /api/v1/profiles` lists them)."
+          },
+          "detection": {
+            "$ref": "#/components/schemas/Detection"
           }
         },
         "additionalProperties": false
@@ -1269,6 +1706,37 @@
         },
         "additionalProperties": false
       },
+      "PreviewRow": {
+        "type": "object",
+        "required": [
+          "date",
+          "description",
+          "amount_minor",
+          "external_id",
+          "duplicate"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed minor units in the account's currency: negative is money leaving the account."
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "duplicate": {
+            "type": "boolean",
+            "description": "The account already has it: the import skips it."
+          }
+        }
+      },
       "Problem": {
         "type": "object",
         "description": "An error response. `title` is fixed per status; `detail` says what to fix, without internals.",
@@ -1295,6 +1763,66 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "Reading": {
+        "type": "object",
+        "description": "What importing the file into the account would do.",
+        "required": [
+          "rows",
+          "row_errors",
+          "rows_read",
+          "new",
+          "duplicates",
+          "errors"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewRow"
+            },
+            "description": "The transactions read, in file order."
+          },
+          "row_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowFailure"
+            },
+            "description": "Rows that cannot be read; the import leaves them out."
+          },
+          "rows_read": {
+            "type": "integer",
+            "description": "Data rows in the file, the header excluded.",
+            "minimum": 0
+          },
+          "new": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicates": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "first_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The first and last date among the rows read, duplicates included."
+          },
+          "last_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
           }
         }
       },

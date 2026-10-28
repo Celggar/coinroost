@@ -1,0 +1,7 @@
+package-lock.json
+/.svelte-kit
+/build
+/test-results
+/playwright-report
+/e2e-server.log
+src/lib/api/schema.d.ts

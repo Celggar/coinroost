@@ -19,7 +19,7 @@ use axum::http::{HeaderMap, header};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use sha2::{Digest, Sha256};
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -103,7 +103,7 @@ pub fn hash_password(password: &str) -> ApiResult<String> {
 }
 
 /// A household with nobody in it yet.
-pub async fn create_household(db: &PgPool, name: &str) -> ApiResult<Uuid> {
+pub async fn create_household(db: impl PgExecutor<'_>, name: &str) -> ApiResult<Uuid> {
     let (id,): (Uuid,) = sqlx::query_as("insert into households (name) values ($1) returning id")
         .bind(name.trim())
         .fetch_one(db)
@@ -113,7 +113,7 @@ pub async fn create_household(db: &PgPool, name: &str) -> ApiResult<Uuid> {
 
 /// Adds a user to a household and returns their id and the TOTP secret to enroll in an authenticator app.
 pub async fn create_user(
-    db: &PgPool,
+    db: impl PgExecutor<'_>,
     household_id: Uuid,
     email: &str,
     password: &str,
@@ -130,6 +130,39 @@ pub async fn create_user(
     .fetch_one(db)
     .await?;
     Ok((id, secret.to_vec()))
+}
+
+/// A user added from the console, and what their authenticator app needs.
+pub struct Enrollment {
+    pub household_id: Uuid,
+    pub user_id: Uuid,
+    /// The `otpauth://` URI an authenticator app enrolls from.
+    pub uri: String,
+    /// The same secret in base32, for apps where it is typed in.
+    pub secret_base32: String,
+}
+
+/// Adds a user to a household, or to a new one when none is given; both or neither are created.
+pub async fn enroll(
+    db: &PgPool,
+    email: &str,
+    password: &str,
+    household: Option<Uuid>,
+) -> ApiResult<Enrollment> {
+    let mut tx = db.begin().await?;
+    let household_id = match household {
+        Some(id) => id,
+        None => create_household(&mut *tx, "Household").await?,
+    };
+    let (user_id, secret) = create_user(&mut *tx, household_id, email, password).await?;
+    tx.commit().await?;
+    let account = email.trim().to_lowercase();
+    Ok(Enrollment {
+        household_id,
+        user_id,
+        uri: enrollment_uri(&account, &secret)?,
+        secret_base32: totp(&secret, &account)?.secret().to_base32(),
+    })
 }
 
 /// The `otpauth://` URI an authenticator app enrolls from.

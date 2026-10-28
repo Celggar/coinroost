@@ -1,17 +1,29 @@
 //! The Coinroost API server: one household's accounts, transactions, imports and the rules that sort them, on
 //! PostgreSQL. The API is the only place where validation and permissions live; every route but the health check
-//! and the login needs a session, and every query is scoped to the caller's household.
+//! and the login needs a session, and every query is scoped to the caller's household. The same server can serve
+//! the web app, a static build, from a directory.
 
 pub mod auth;
 pub mod error;
+mod import;
 mod routes;
 mod validate;
 
+use std::path::Path;
+
 use axum::Router;
+use axum::http::{HeaderValue, header};
+use axum::routing::any;
 use sqlx::PgPool;
+use tower::Layer;
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
 use utoipa::OpenApi;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa_axum::router::OpenApiRouter;
+
+/// The page the static web build serves for every route of the app (the adapter's single-page fallback).
+pub const SHELL: &str = "200.html";
 
 /// The schema, embedded at build time from `migrations/`.
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
@@ -54,11 +66,51 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::rules::router())
         .merge(routes::transactions::router())
         .merge(routes::imports::router())
+        .merge(routes::coverage::router())
 }
 
-/// The HTTP application.
+/// The HTTP API. A path under `/api/` that is not in the contract answers a problem+json 404.
 pub fn router(state: AppState) -> Router {
-    api().with_state(state).split_for_parts().0
+    api()
+        .with_state(state)
+        .split_for_parts()
+        .0
+        .route("/api/{*rest}", any(|| async { error::ApiError::NotFound }))
+}
+
+/// The API, and the web app built into `web` when given: its files, and the app shell ([`SHELL`]) for any other
+/// path so the app's own routes load. Fingerprinted assets (`_app/immutable/`) are cached for good; the rest is revalidated.
+pub fn app(state: AppState, web: Option<&Path>) -> Router {
+    let app = router(state);
+    let app = match web {
+        Some(dir) => {
+            let immutable = SetResponseHeaderLayer::overriding(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000, immutable"),
+            )
+            .layer(ServeDir::new(dir.join("_app/immutable")));
+            let pages = SetResponseHeaderLayer::if_not_present(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            )
+            .layer(ServeDir::new(dir).fallback(ServeFile::new(dir.join(SHELL))));
+            app.nest_service("/_app/immutable", immutable)
+                .fallback_service(pages)
+        }
+        None => app,
+    };
+    app.layer(SetResponseHeaderLayer::overriding(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    ))
+    .layer(SetResponseHeaderLayer::overriding(
+        header::X_FRAME_OPTIONS,
+        HeaderValue::from_static("DENY"),
+    ))
+    .layer(SetResponseHeaderLayer::overriding(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("no-referrer"),
+    ))
 }
 
 /// The API contract (`OpenAPI` 3.1) of [`router`], generated from the same route table.

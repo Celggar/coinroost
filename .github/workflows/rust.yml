@@ -43,3 +43,29 @@ jobs:
         run: |
           cargo check -p coinroost-normalizer --target aarch64-apple-ios --locked
           cargo check -p coinroost-normalizer --target wasm32-unknown-unknown --locked
+      - name: Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Web install
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Web format
+        working-directory: web
+        run: npx prettier --check .
+      - name: Web API types match the contract
+        working-directory: web
+        run: npm run -s api-types:check
+      - name: Web types
+        working-directory: web
+        run: npm run -s check
+      - name: Web build
+        working-directory: web
+        run: npm run -s build
+      - name: Browser for the end-to-end test
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Web end to end
+        run: bash web/e2e/run.sh

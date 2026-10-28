@@ -1,0 +1,47 @@
+{
+	"name": "coinroost-web",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"api-types": "openapi-typescript ../spec/openapi.json --output src/lib/api/schema.d.ts",
+		"e2e": "playwright test",
+		"api-types:check": "openapi-typescript ../spec/openapi.json --output src/lib/api/schema.d.ts --check"
+	},
+	"dependencies": {
+		"openapi-fetch": "0.17.0"
+	},
+	"devDependencies": {
+		"@playwright/test": "1.64.1",
+		"@sveltejs/adapter-static": "4.0.0",
+		"@sveltejs/kit": "3.1.0",
+		"@sveltejs/vite-plugin-svelte": "7.3.1",
+		"@types/node": "24.19.2",
+		"openapi-typescript": "7.13.0",
+		"prettier": "3.9.10",
+		"prettier-plugin-svelte": "4.1.1",
+		"svelte": "5.57.3",
+		"svelte-check": "4.7.7",
+		"typescript": "6.0.3",
+		"vite": "8.3.5"
+	},
+	"overrides": {
+		"openapi-typescript": {
+			"typescript": "$typescript"
+		}
+	},
+	"engines": {
+		"node": ">=22.17"
+	},
+	"imports": {
+		"#lib": "./src/lib/index.ts",
+		"#lib/*": "./src/lib/*"
+	}
+}
