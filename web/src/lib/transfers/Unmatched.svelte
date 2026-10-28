@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 
 	let {
 		preview,
@@ -35,12 +36,18 @@
 		} = await api.POST('/api/v1/transfers', { body: { transaction_ids: [a, b] } });
 		busy = false;
 		if (!data) {
-			error = problem(failure, response?.status, 'The two could not be paired');
+			error = problem(failure, response?.status, t('unmatched.failed'));
 			return;
 		}
-		done = 'Paired.';
+		done = t('unmatched.paired');
 		first = second = '';
 		onchanged();
+	}
+
+	// A new choice makes the last answer stale.
+	function clear() {
+		error = '';
+		done = '';
 	}
 
 	function submit(event: SubmitEvent) {
@@ -50,11 +57,11 @@
 </script>
 
 <section class="card" aria-labelledby="unmatched-title">
-	<h2 id="unmatched-title">Legs without a pair</h2>
+	<h2 id="unmatched-title">{t('unmatched.title')}</h2>
 	{#if preview.unmatched.length === 0}
-		<p>Every transfer leg has its other side.</p>
+		<p>{t('unmatched.nothing')}</p>
 	{:else}
-		<ul class="legs" aria-label="Legs without a pair">
+		<ul class="legs" aria-label={t('unmatched.title')}>
 			{#each preview.unmatched as item (item.leg.transaction_id)}
 				<li>
 					<div class="what">{legText(item.leg, names)}</div>
@@ -64,7 +71,7 @@
 							class="secondary"
 							disabled={busy}
 							onclick={() => pair(item.leg.transaction_id, candidate.transaction_id)}
-							>Pair with {legText(candidate, names)}</button
+							>{t('unmatched.pair_with', { leg: legText(candidate, names) })}</button
 						>
 					{/each}
 				</li>
@@ -72,25 +79,23 @@
 		</ul>
 	{/if}
 
-	<form onsubmit={submit} aria-label="Pair by hand">
-		<h3>Pair by hand</h3>
-		<p class="hint">
-			For a transfer that took longer than usual. The lists hold the transfer legs still waiting.
-		</p>
+	<form onsubmit={submit} onchange={clear} aria-label={t('unmatched.by_hand')}>
+		<h3>{t('unmatched.by_hand')}</h3>
+		<p class="hint">{t('unmatched.by_hand_hint')}</p>
 		<div class="fields">
 			<label>
-				One side
+				{t('unmatched.one_side')}
 				<select bind:value={first} required>
-					<option value="" disabled>Choose a leg</option>
+					<option value="" disabled>{t('unmatched.choose')}</option>
 					{#each choices as leg (leg.transaction_id)}
 						<option value={leg.transaction_id}>{legText(leg, names)}</option>
 					{/each}
 				</select>
 			</label>
 			<label>
-				The other side
+				{t('unmatched.other_side')}
 				<select bind:value={second} required>
-					<option value="" disabled>Choose a leg</option>
+					<option value="" disabled>{t('unmatched.choose')}</option>
 					{#each choices as leg (leg.transaction_id)}
 						<option value={leg.transaction_id}>{legText(leg, names)}</option>
 					{/each}
@@ -99,7 +104,10 @@
 		</div>
 		{#if error}<p class="alert" role="alert">{error}</p>{/if}
 		{#if done}<p class="notice" role="status">{done}</p>{/if}
-		<div><button type="submit" disabled={busy || choices.length < 2}>Pair them</button></div>
+		<div>
+			<button type="submit" disabled={busy || choices.length < 2}>{t('unmatched.pair_them')}</button
+			>
+		</div>
 	</form>
 </section>
 

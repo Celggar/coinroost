@@ -1,6 +1,7 @@
 // How transfer legs read on screen.
 import type { Schemas } from '#lib/api/client.ts';
-import { money } from '#lib/format.ts';
+import { day, money } from '#lib/format.ts';
+import { t } from '#lib/i18n.svelte.ts';
 
 export type AccountNames = Map<string, string>;
 
@@ -9,13 +10,13 @@ export function accountNames(accounts: Schemas['Account'][]): AccountNames {
 }
 
 export function accountName(id: string, names: AccountNames): string {
-	return names.get(id) ?? 'an account';
+	return names.get(id) ?? t('legs.an_account');
 }
 
-/** "2026-05-15 · Checking · -$500.00 · TRANSFER TO SAVINGS" */
+/** "May 15, 2026 · Checking · -$500.00 · TRANSFER TO SAVINGS" */
 export function legText(leg: Schemas['TransferLeg'], names: AccountNames): string {
 	return [
-		leg.date,
+		day(leg.date),
 		accountName(leg.account_id, names),
 		money(leg.amount_minor, leg.currency),
 		leg.description
@@ -25,16 +26,14 @@ export function legText(leg: Schemas['TransferLeg'], names: AccountNames): strin
 export function passLabel(pass: number): string {
 	switch (pass) {
 		case 1:
-			return 'the only match within two days';
+			return t('legs.pass_1');
 		case 2:
-			return 'the text names the account';
+			return t('legs.pass_2');
 		default:
-			return 'sent on a Friday, arrived on Monday';
+			return t('legs.pass_3');
 	}
 }
 
 export function reasonLabel(reason: Schemas['Reason']): string {
-	return reason === 'no_counterpart'
-		? 'No other side within two days: its statement may not be imported yet.'
-		: 'Several legs could be its other side: choose one.';
+	return reason === 'no_counterpart' ? t('legs.no_counterpart') : t('legs.ambiguous');
 }

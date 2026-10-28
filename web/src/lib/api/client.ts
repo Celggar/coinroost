@@ -1,6 +1,7 @@
 // The API client, typed from the contract (src/lib/api/schema.d.ts is generated from spec/openapi.json).
 // Same origin as the app, so the session cookie goes with every request.
 import createClient from 'openapi-fetch';
+import { t } from '#lib/i18n.svelte.ts';
 import type { components, paths } from './schema';
 
 export type Schemas = components['schemas'];
@@ -13,9 +14,9 @@ export function problem(error: unknown, status: number | undefined, what: string
 		return error.detail;
 	}
 	if (status === undefined) {
-		return `${what}: the server did not answer.`;
+		return t('error.no_answer', { what });
 	}
-	return `${what}: the server answered ${status}.`;
+	return t('error.status', { what, status });
 }
 
 const octets = {

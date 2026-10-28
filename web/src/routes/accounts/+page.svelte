@@ -1,20 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { t, type Key } from '#lib/i18n.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
 	let profiles = $state<Schemas['BankProfile'][]>([]);
 	let loadError = $state('');
 	let loaded = $state(false);
 
-	const kinds: { value: Schemas['AccountKind']; label: string }[] = [
-		{ value: 'checking', label: 'Checking' },
-		{ value: 'savings', label: 'Savings' },
-		{ value: 'credit_card', label: 'Credit card' },
-		{ value: 'cash', label: 'Cash' },
-		{ value: 'loan', label: 'Loan' },
-		{ value: 'investment', label: 'Investment' }
-	];
+	// A new kind in the contract fails the type check until it has a name here.
+	const kindKeys = {
+		checking: 'kind.checking',
+		savings: 'kind.savings',
+		credit_card: 'kind.credit_card',
+		cash: 'kind.cash',
+		loan: 'kind.loan',
+		investment: 'kind.investment'
+	} satisfies Record<Schemas['AccountKind'], Key>;
+	const kinds = Object.keys(kindKeys) as Schemas['AccountKind'][];
+	const kindName = (kind: Schemas['AccountKind']) => t(kindKeys[kind]);
 
 	let name = $state('');
 	let kind = $state<Schemas['AccountKind']>('checking');
@@ -46,11 +50,7 @@
 		]);
 		if (!list.data || !formats.data) {
 			const failed = list.data ? formats : list;
-			loadError = problem(
-				failed.error,
-				failed.response?.status,
-				'The accounts could not be loaded'
-			);
+			loadError = problem(failed.error, failed.response?.status, t('import.accounts_failed'));
 			return;
 		}
 		accounts = list.data.items;
@@ -86,7 +86,7 @@
 		});
 		busy = false;
 		if (!data) {
-			formError = problem(error, response?.status, 'The account could not be created');
+			formError = problem(error, response?.status, t('accounts.create_failed'));
 			return;
 		}
 		created = data.name;
@@ -106,14 +106,14 @@
 </script>
 
 <svelte:head>
-	<title>Accounts · Coinroost</title>
+	<title>{t('app.title', { page: t('accounts.title') })}</title>
 </svelte:head>
 
-<h1>Accounts</h1>
+<h1>{t('accounts.title')}</h1>
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>Try again</button>
+		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">
@@ -122,18 +122,18 @@
 				<table>
 					<thead>
 						<tr>
-							<th>Name</th>
-							<th>Kind</th>
-							<th>Currency</th>
-							<th>Bank file</th>
-							<th>Key</th>
+							<th>{t('accounts.name')}</th>
+							<th>{t('accounts.kind')}</th>
+							<th>{t('accounts.currency')}</th>
+							<th>{t('accounts.bank_file')}</th>
+							<th>{t('accounts.key')}</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each accounts as account (account.id)}
 							<tr>
 								<td>{account.name}</td>
-								<td>{kinds.find((k) => k.value === account.kind)?.label}</td>
+								<td>{kindName(account.kind)}</td>
 								<td>{account.currency}</td>
 								<td>{profileName(account.profile)}</td>
 								<td><code>{account.namespace}</code></td>
@@ -143,43 +143,41 @@
 				</table>
 			</div>
 		{:else}
-			<p>No accounts yet.</p>
+			<p>{t('accounts.none_yet')}</p>
 		{/if}
 
 		<form class="card" onsubmit={submit}>
-			<h2>New account</h2>
+			<h2>{t('accounts.new')}</h2>
 			<div class="fields">
 				<label>
-					Name
+					{t('accounts.name')}
 					<input required maxlength="200" bind:value={name} />
 				</label>
 				<label>
-					Kind
+					{t('accounts.kind')}
 					<select bind:value={kind}>
-						{#each kinds as option (option.value)}
-							<option value={option.value}>{option.label}</option>
+						{#each kinds as option (option)}
+							<option value={option}>{kindName(option)}</option>
 						{/each}
 					</select>
 				</label>
 				<label>
-					Bank file
-					<span class="hint">How its statements are read; none for cash.</span>
+					{t('accounts.bank_file')}
+					<span class="hint">{t('accounts.bank_file_hint')}</span>
 					<select bind:value={profile} onchange={pickProfile}>
-						<option value="">None</option>
+						<option value="">{t('accounts.no_profile')}</option>
 						{#each profiles as option (option.id)}
 							<option value={option.id}>{option.name} ({option.format.toUpperCase()})</option>
 						{/each}
 					</select>
 				</label>
 				<label>
-					Currency
+					{t('accounts.currency')}
 					<input required maxlength="3" bind:value={currency} />
 				</label>
 				<label>
-					Key
-					<span class="hint"
-						>Goes into every imported transaction's id; it cannot change later.</span
-					>
+					{t('accounts.key')}
+					<span class="hint">{t('accounts.key_hint')}</span>
 					<input
 						required
 						maxlength="64"
@@ -191,25 +189,25 @@
 					/>
 				</label>
 				<label>
-					Header texts
-					<span class="hint">Optional, comma separated: texts its files always contain.</span>
+					{t('accounts.markers')}
+					<span class="hint">{t('accounts.markers_hint')}</span>
 					<input bind:value={markers} />
 				</label>
 				<label>
-					Card prefixes
-					<span class="hint"
-						>Optional, for cards that share a format: 4 for Visa, 34, 37 for Amex.</span
-					>
+					{t('accounts.prefixes')}
+					<span class="hint">{t('accounts.prefixes_hint')}</span>
 					<input inputmode="numeric" bind:value={cardPrefixes} />
 				</label>
 			</div>
 			{#if formError}<p class="alert" role="alert">{formError}</p>{/if}
-			{#if created}<p class="notice" role="status">Created {created}.</p>{/if}
-			<div><button type="submit" disabled={busy}>Create account</button></div>
+			{#if created}<p class="notice" role="status">
+					{t('accounts.created', { name: created })}
+				</p>{/if}
+			<div><button type="submit" disabled={busy}>{t('accounts.create')}</button></div>
 		</form>
 	</div>
 {:else}
-	<p class="hint">Loading…</p>
+	<p class="hint">{t('app.loading')}</p>
 {/if}
 
 <style>

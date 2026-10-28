@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, problem } from '#lib/api/client.ts';
+	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import { t } from '#lib/i18n.svelte.ts';
 	import { refresh } from '#lib/session.svelte.ts';
 
 	let email = $state('');
@@ -21,35 +23,38 @@
 		if (failure || !response.ok) {
 			error =
 				response?.status === 401
-					? 'The email, password or code is not right. Codes change every 30 seconds.'
-					: problem(failure, response?.status, 'Logging in failed');
+					? t('login.wrong')
+					: problem(failure, response?.status, t('login.failed'));
 			code = '';
 			return;
 		}
 		await refresh();
 		const next = page.url.searchParams.get('next');
-		await goto(next?.startsWith('/') && !next.startsWith('//') ? next : '/import');
+		await goto(next?.startsWith('/') && !next.startsWith('//') ? next : '/');
 	}
 </script>
 
 <svelte:head>
-	<title>Log in · Coinroost</title>
+	<title>{t('app.title', { page: t('login.title') })}</title>
 </svelte:head>
 
 <section class="login card">
-	<h1>Coinroost</h1>
+	<div class="heading">
+		<h1>{t('app.name')}</h1>
+		<LanguageSwitch />
+	</div>
 	<form class="stack" onsubmit={submit}>
 		<label>
-			Email
+			{t('login.email')}
 			<input type="email" autocomplete="username" required bind:value={email} />
 		</label>
 		<label>
-			Password
+			{t('login.password')}
 			<input type="password" autocomplete="current-password" required bind:value={password} />
 		</label>
 		<label>
-			Code
-			<span class="hint">The 6 digits your authenticator app shows now.</span>
+			{t('login.code')}
+			<span class="hint">{t('login.code_hint')}</span>
 			<input
 				inputmode="numeric"
 				autocomplete="one-time-code"
@@ -60,7 +65,7 @@
 			/>
 		</label>
 		{#if error}<p class="alert" role="alert">{error}</p>{/if}
-		<button type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
+		<button type="submit" disabled={busy}>{busy ? t('login.busy') : t('login.title')}</button>
 	</form>
 </section>
 
@@ -68,6 +73,12 @@
 	.login {
 		max-width: 420px;
 		margin: 10vh auto 0;
+	}
+	.heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
 	}
 	h1 {
 		margin: 0;

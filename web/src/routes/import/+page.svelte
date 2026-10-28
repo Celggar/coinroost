@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 	import FileCard from '#lib/import/FileCard.svelte';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -13,7 +14,7 @@
 		error = '';
 		const { data, error: failure, response } = await api.GET('/api/v1/accounts');
 		if (!data) {
-			error = problem(failure, response?.status, 'The accounts could not be loaded');
+			error = problem(failure, response?.status, t('import.accounts_failed'));
 			return;
 		}
 		accounts = data.items;
@@ -41,23 +42,20 @@
 </script>
 
 <svelte:head>
-	<title>Import · Coinroost</title>
+	<title>{t('app.title', { page: t('nav.import') })}</title>
 </svelte:head>
 
-<h1>Import bank files</h1>
+<h1>{t('import.title')}</h1>
 
 {#if error}
 	<p class="alert" role="alert">
-		{error} <button class="secondary" onclick={load}>Try again</button>
+		{error} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">
 		<label class="drop" ondragover={(event) => event.preventDefault()} ondrop={drop}>
-			Choose files
-			<span class="hint">
-				Statements as the bank exports them (CSV, Excel or PDF), one or many at once. Nothing is
-				imported until you confirm each file.
-			</span>
+			{t('import.choose')}
+			<span class="hint">{t('import.choose_hint')}</span>
 			<input type="file" multiple accept=".csv,.xls,.xlsx,.pdf" onchange={choose} />
 		</label>
 
@@ -70,7 +68,7 @@
 		{/each}
 	</div>
 {:else}
-	<p class="hint">Loading…</p>
+	<p class="hint">{t('app.loading')}</p>
 {/if}
 
 <style>

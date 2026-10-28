@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { toMinor } from '#lib/rules/describe.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 
 	let {
 		categories,
@@ -39,7 +40,7 @@
 		const amountMin = toMinor(min);
 		const amountMax = toMinor(max);
 		if (Number.isNaN(amountMin) || Number.isNaN(amountMax)) {
-			error = 'Amounts are numbers with up to two decimals, such as 25 or 25.50.';
+			error = t('ruleform.bad_amount');
 			return;
 		}
 		busy = true;
@@ -67,71 +68,68 @@
 		});
 		busy = false;
 		if (!data) {
-			error = problem(failure, response?.status, 'The rule could not be created');
+			error = problem(failure, response?.status, t('ruleform.failed'));
 			return;
 		}
-		done = `Added «${data.name}» at position ${data.position}.`;
+		done = t('ruleform.added', { name: data.name, position: data.position });
 		name = text = min = max = category = payee = account = '';
 		direction = '';
 		oncreated(data);
 	}
 </script>
 
-<form class="card" onsubmit={submit} oninput={clear} aria-label="New rule">
-	<h2>New rule</h2>
-	<p class="hint">
-		It goes last. It sorts files imported from now on; existing transactions change only when you
-		check and apply below.
-	</p>
+<form class="card" onsubmit={submit} oninput={clear} aria-label={t('ruleform.title')}>
+	<h2>{t('ruleform.title')}</h2>
+	<p class="hint">{t('ruleform.hint')}</p>
 	<div class="fields">
 		<label>
-			Rule name
+			{t('ruleform.name')}
 			<input required maxlength="200" bind:value={name} />
 		</label>
 		<label>
-			Description has
-			<span class="hint">Upper or lower case alike; accents and spaces count.</span>
+			{t('ruleform.text')}
+			<span class="hint">{t('ruleform.text_hint')}</span>
 			<input maxlength="200" bind:value={text} />
 		</label>
 		<label>
-			Money
+			{t('ruleform.money')}
 			<select bind:value={direction}>
-				<option value="">In or out</option>
-				<option value="out">Out (spending)</option>
-				<option value="in">In (income)</option>
+				<option value="">{t('ruleform.either')}</option>
+				<option value="out">{t('ruleform.out')}</option>
+				<option value="in">{t('ruleform.in')}</option>
 			</select>
 		</label>
 		<label>
-			Account
+			{t('column.account')}
 			<select bind:value={account}>
-				<option value="">Any account</option>
+				<option value="">{t('ruleform.any_account')}</option>
 				{#each accounts as option (option.id)}
 					<option value={option.id}>{option.name}</option>
 				{/each}
 			</select>
 		</label>
 		<label>
-			Amount from
+			{t('ruleform.min')}
 			<input inputmode="decimal" placeholder="0.00" bind:value={min} />
 		</label>
 		<label>
-			Amount up to
+			{t('ruleform.max')}
 			<input inputmode="decimal" placeholder="0.00" bind:value={max} />
 		</label>
 		<label>
-			Sets category
+			{t('ruleform.category')}
 			<select bind:value={category}>
-				<option value="">No category</option>
+				<option value="">{t('ruleform.no_category')}</option>
 				{#each categories as option (option.id)}
 					<option value={option.id}>{option.name}</option>
 				{/each}
 			</select>
 		</label>
 		<label>
-			Sets payee
+			{t('ruleform.payee')}
 			<select bind:value={payee}>
-				<option value="">No payee</option>
-				<option value="text">The name after the text (a payment channel)</option>
+				<option value="">{t('ruleform.no_payee')}</option>
+				<option value="text">{t('ruleform.payee_from_text')}</option>
 				{#each payees as option (option.id)}
 					<option value={option.id}>{option.name}</option>
 				{/each}
@@ -140,7 +138,7 @@
 	</div>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if done}<p class="notice" role="status">{done}</p>{/if}
-	<div><button type="submit" disabled={busy}>Add rule</button></div>
+	<div><button type="submit" disabled={busy}>{t('ruleform.add')}</button></div>
 </form>
 
 <style>

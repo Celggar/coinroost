@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
-	import { money, span } from '#lib/format.ts';
+	import { day, money, span } from '#lib/format.ts';
+	import { plural, t } from '#lib/i18n.svelte.ts';
 
 	let {
 		file,
@@ -27,13 +28,11 @@
 	const note = $derived.by(() => {
 		switch (preview?.detection) {
 			case 'found':
-				return 'Found from the file.';
+				return t('file.found');
 			case 'ambiguous':
-				return 'The file fits several accounts: choose one.';
+				return t('file.ambiguous');
 			case 'not_found':
-				return importable.length
-					? 'No account recognizes this file: choose one.'
-					: 'Create an account with a bank profile first.';
+				return importable.length ? t('file.not_found') : t('file.no_profile');
 			default:
 				return '';
 		}
@@ -49,7 +48,7 @@
 			// Keep the choice open: another account may read it.
 			preview = preview ? { ...preview, reading: null } : null;
 			accountId = chosen ?? '';
-			error = problem(failure, response?.status, 'The file cannot be read');
+			error = problem(failure, response?.status, t('file.unreadable'));
 			return;
 		}
 		preview = data;
@@ -63,7 +62,7 @@
 		const { data, error: failure, response } = await importFile(file, accountId);
 		busy = false;
 		if (!data) {
-			error = problem(failure, response?.status, 'The import failed');
+			error = problem(failure, response?.status, t('file.import_failed'));
 			return;
 		}
 		report = data;
@@ -79,62 +78,69 @@
 <article class="card" aria-label={file.name} aria-busy={busy}>
 	<header class="head">
 		<h2>{file.name}</h2>
-		<button class="secondary" onclick={onremove} aria-label={`Remove ${file.name}`}>Remove</button>
+		<button
+			class="secondary"
+			onclick={onremove}
+			aria-label={t('file.remove_named', { name: file.name })}>{t('file.remove')}</button
+		>
 	</header>
 
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 
 	{#if answered}
 		<label>
-			Account
+			{t('file.account')}
 			<select
 				bind:value={accountId}
 				onchange={() => read(accountId || undefined)}
 				disabled={busy || report !== null}
 			>
-				<option value="" disabled>Choose the account</option>
+				<option value="" disabled>{t('file.choose_account')}</option>
 				{#each choices as choice (choice.id)}
 					<option value={choice.id}>{choice.name}</option>
 				{/each}
 			</select>
 			{#if note}<span class="hint"
 					>{note}
-					{#if !importable.length}<a href="/accounts">Open Accounts</a>{/if}</span
+					{#if !importable.length}<a class="target" href="/accounts">{t('file.open_accounts')}</a
+						>{/if}</span
 				>{/if}
 		</label>
 	{:else if busy}
-		<p class="hint">Reading…</p>
+		<p class="hint">{t('file.reading')}</p>
 	{/if}
 
 	{#if reading && account}
 		<dl class="counts">
 			<div>
-				<dt>Rows read</dt>
+				<dt>{t('file.rows_read')}</dt>
 				<dd>{reading.rows_read}</dd>
 			</div>
 			<div>
-				<dt>New</dt>
+				<dt>{t('file.new')}</dt>
 				<dd>{reading.new}</dd>
 			</div>
 			<div>
-				<dt>Already imported</dt>
+				<dt>{t('file.already')}</dt>
 				<dd>{reading.duplicates}</dd>
 			</div>
 			<div>
-				<dt>Unreadable</dt>
+				<dt>{t('file.unreadable_rows')}</dt>
 				<dd>{reading.errors}</dd>
 			</div>
 		</dl>
 		{#if reading.first_date && reading.last_date}
-			<p class="hint">Dates in the file: {span(reading.first_date, reading.last_date)}</p>
+			<p class="hint">
+				{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
+			</p>
 		{/if}
 
 		{#if reading.row_errors.length}
-			<section aria-label="Rows that cannot be read">
-				<h3>Rows that cannot be read</h3>
+			<section aria-label={t('file.bad_rows')}>
+				<h3>{t('file.bad_rows')}</h3>
 				<ul class="errors">
 					{#each reading.row_errors as failure (failure.row)}
-						<li>Row {failure.row}: {failure.reason}</li>
+						<li>{t('file.bad_row', { row: failure.row, reason: failure.reason })}</li>
 					{/each}
 				</ul>
 			</section>
@@ -142,24 +148,24 @@
 
 		{#if reading.rows.length}
 			<details>
-				<summary>Show the {reading.rows.length} transactions</summary>
+				<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
 				<div class="table-wrap">
 					<table>
 						<thead>
 							<tr>
-								<th>Date</th>
-								<th>Description</th>
-								<th class="number">Amount</th>
-								<th>Status</th>
+								<th>{t('column.date')}</th>
+								<th>{t('column.description')}</th>
+								<th class="number">{t('column.amount')}</th>
+								<th>{t('column.status')}</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each reading.rows as row (row.external_id)}
 								<tr>
-									<td>{row.date}</td>
+									<td>{day(row.date)}</td>
 									<td>{row.description}</td>
 									<td class="number">{money(row.amount_minor, account.currency)}</td>
-									<td>{row.duplicate ? 'Already imported' : 'New'}</td>
+									<td>{row.duplicate ? t('file.row_already') : t('file.row_new')}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -170,15 +176,15 @@
 
 		{#if report}
 			<p class="notice" role="status">
-				Added {report.batch.added}; skipped {report.batch.duplicates} already imported.
+				{t('file.added', { added: report.batch.added, duplicates: report.batch.duplicates })}
 			</p>
 		{:else}
 			{#if reading.new === 0}
-				<p class="notice" role="status">Every row is already imported: there is nothing to add.</p>
+				<p class="notice" role="status">{t('file.nothing_new')}</p>
 			{/if}
 			<div>
 				<button onclick={commit} disabled={busy || reading.new === 0}>
-					Import {reading.new} new
+					{plural(reading.new, 'file.import_one', 'file.import_other')}
 				</button>
 			</div>
 		{/if}
@@ -224,6 +230,12 @@
 		margin: 0;
 		padding-left: 20px;
 		color: var(--bad);
+	}
+	/* A 24 px target at least (WCAG 2.5.8), though it sits in a hint. */
+	.target {
+		display: inline-block;
+		padding: 4px 0;
+		min-height: 24px;
 	}
 	summary {
 		cursor: pointer;

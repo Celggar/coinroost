@@ -1,8 +1,11 @@
-// The import flow through the browser, against a real server (see run.sh): log in, create an account, preview
-// and import a statement, import it again, and read the coverage.
+// The app through the browser in Spanish, against a real server (see run.sh): log in, create an account, preview
+// and import a statement, import it again, sort, pair transfers, read the coverage and the dashboard, and switch
+// to English.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
+import { english, say } from './messages.ts';
 import { totp } from './totp.ts';
 
 const fixture = (name: string) =>
@@ -22,6 +25,8 @@ const secret = process.env.E2E_SECRET ?? '';
 
 // A TOTP code is accepted once, so the run logs in once and the later tests reuse that session.
 test.describe.configure({ mode: 'serial' });
+// Panama's Spanish, as the person's browser asks for it.
+test.use({ locale: 'es-PA' });
 let session: Awaited<ReturnType<BrowserContext['storageState']>>;
 
 async function loggedIn(context: BrowserContext): Promise<Page> {
@@ -46,73 +51,78 @@ test('logs in with the password and a current code', async ({ page, context }) =
 	await page.goto('/import');
 	await expect(page).toHaveURL(/\/login\?next=%2Fimport$/);
 
-	await page.getByLabel('Email').fill(email);
-	await page.getByLabel('Password').fill(password);
+	await page.getByLabel(say('login.email')).fill(email);
+	await page.getByLabel(say('login.password')).fill(password);
 	const right = totp(secret);
 	const wrong = String((Number(right) + 500_000) % 1_000_000).padStart(6, '0');
-	await page.getByLabel('Code').fill(wrong);
-	await page.getByRole('button', { name: 'Log in' }).click();
-	await expect(page.getByRole('alert')).toContainText('not right');
+	await page.getByLabel(say('login.code')).fill(wrong);
+	await page.getByRole('button', { name: say('login.title') }).click();
+	await expect(page.getByRole('alert')).toHaveText(say('login.wrong'));
 
-	await page.getByLabel('Code').fill(right);
-	await page.getByRole('button', { name: 'Log in' }).click();
+	await page.getByLabel(say('login.code')).fill(right);
+	await page.getByRole('button', { name: say('login.title') }).click();
 	await expect(page).toHaveURL(/\/import$/);
-	await expect(page.getByRole('heading', { name: 'Import bank files' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('import.title') })).toBeVisible();
 
 	// The session cookie (Secure, HttpOnly) survives a reload over http://127.0.0.1.
 	await page.reload();
-	await expect(page.getByRole('heading', { name: 'Import bank files' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('import.title') })).toBeVisible();
 	session = await context.storageState();
 });
 
 test('previews, imports, and re-importing adds nothing', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');
-	await page.getByLabel('Name').fill('Checking');
-	await page.getByLabel('Bank file').selectOption('bac-account');
-	await page.getByLabel('Key').fill('bac');
-	await page.getByRole('button', { name: 'Create account' }).click();
-	await expect(page.getByRole('status')).toHaveText('Created Checking.');
+	await page.getByLabel(say('accounts.name')).fill('Checking');
+	await page.getByLabel(say('accounts.bank_file')).selectOption('bac-account');
+	await page.getByLabel(say('accounts.key')).fill('bac');
+	await page.getByRole('button', { name: say('accounts.create') }).click();
+	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Checking' }));
 
-	await page.getByRole('link', { name: 'Import' }).click();
+	await page.getByRole('link', { name: say('nav.import'), exact: true }).click();
 	await page
-		.getByLabel('Choose files')
+		.getByLabel(say('import.choose'))
 		.setInputFiles([
 			statement,
 			{ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('just, some\nwords') }
 		]);
 
 	const card = page.getByRole('article', { name: 'input.csv' });
-	await expect(card.getByLabel('Account').locator('option:checked')).toHaveText('Checking');
-	await expect(card.getByText('Found from the file.')).toBeVisible();
-	await expect(count(card, 'New')).toHaveText(String(transactions));
-	await expect(count(card, 'Already imported')).toHaveText('0');
-	await expect(count(card, 'Unreadable')).toHaveText(String(unreadable.length));
+	await expect(card.getByLabel(say('file.account')).locator('option:checked')).toHaveText(
+		'Checking'
+	);
+	await expect(card.getByText(say('file.found'))).toBeVisible();
+	await expect(count(card, say('file.new'))).toHaveText(String(transactions));
+	await expect(count(card, say('file.already'))).toHaveText('0');
+	await expect(count(card, say('file.unreadable_rows'))).toHaveText(String(unreadable.length));
 	for (const failure of unreadable) {
-		await expect(card.getByText(`Row ${failure.row}:`)).toBeVisible();
+		const row = say('file.bad_row', { row: failure.row, reason: '' }).trim();
+		await expect(card.getByText(row)).toBeVisible();
 	}
 
 	// A file no account recognizes asks for the account, and the server says why it cannot read it.
 	const other = page.getByRole('article', { name: 'notes.txt' });
-	await expect(other.getByText('No account recognizes this file: choose one.')).toBeVisible();
-	await other.getByLabel('Account').selectOption({ label: 'Checking' });
+	await expect(other.getByText(say('file.not_found'))).toBeVisible();
+	await other.getByLabel(say('file.account')).selectOption({ label: 'Checking' });
 	await expect(other.getByRole('alert')).not.toBeEmpty();
 
-	await card.getByRole('button', { name: `Import ${transactions} new` }).click();
+	await card
+		.getByRole('button', { name: say('file.import_other', { count: transactions }) })
+		.click();
 	await expect(card.getByRole('status')).toHaveText(
-		`Added ${transactions}; skipped 0 already imported.`
+		say('file.added', { added: transactions, duplicates: 0 })
 	);
-	await expect(count(card, 'New')).toHaveText('0');
+	await expect(count(card, say('file.new'))).toHaveText('0');
 
 	// The same file again: everything is already there, and the import button stays off.
-	await page.getByLabel('Choose files').setInputFiles(statement);
+	await page.getByLabel(say('import.choose')).setInputFiles(statement);
 	const again = page.getByRole('article', { name: 'input.csv' }).nth(1);
-	await expect(count(again, 'New')).toHaveText('0');
-	await expect(count(again, 'Already imported')).toHaveText(String(transactions));
-	await expect(again.getByRole('status')).toHaveText(
-		'Every row is already imported: there is nothing to add.'
-	);
-	await expect(again.getByRole('button', { name: 'Import 0 new' })).toBeDisabled();
+	await expect(count(again, say('file.new'))).toHaveText('0');
+	await expect(count(again, say('file.already'))).toHaveText(String(transactions));
+	await expect(again.getByRole('status')).toHaveText(say('file.nothing_new'));
+	await expect(
+		again.getByRole('button', { name: say('file.import_other', { count: 0 }) })
+	).toBeDisabled();
 
 	const listed = await page.request.get('/api/v1/transactions?limit=1000');
 	expect((await listed.json()).items).toHaveLength(transactions);
@@ -122,36 +132,41 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/rules');
 	for (const name of ['Groceries', 'Other']) {
-		await page.getByLabel('Category name').fill(name);
-		await page.getByRole('button', { name: 'Create category' }).click();
-		await expect(page.getByRole('status')).toHaveText(`Created ${name}.`);
+		await page.getByLabel(say('categoryform.name')).fill(name);
+		await page.getByRole('button', { name: say('categoryform.create') }).click();
+		await expect(page.getByRole('status')).toHaveText(say('categoryform.created', { name }));
 	}
-	await page.getByLabel('Rule name').fill('Market');
-	await page.getByLabel('Description has').fill('SUPERMERCADO');
-	await page.getByLabel('Money').selectOption('out');
-	await page.getByLabel('Sets category').selectOption({ label: 'Groceries' });
-	await page.getByRole('button', { name: 'Add rule' }).click();
+	await page.getByLabel(say('ruleform.name')).fill('Market');
+	await page.getByLabel(say('ruleform.text')).fill('SUPERMERCADO');
+	await page.getByLabel(say('ruleform.money')).selectOption('out');
+	await page.getByLabel(say('ruleform.category')).selectOption({ label: 'Groceries' });
+	await page.getByRole('button', { name: say('ruleform.add') }).click();
 	await expect(page.getByRole('listitem').filter({ hasText: 'Market' })).toContainText(
-		'text has «SUPERMERCADO» · money out'
+		`${say('when.text', { text: 'SUPERMERCADO' })} · ${say('when.out')}`
 	);
 
 	// Imported before the rule existed, so nothing is sorted yet: choose one by hand.
-	await page.getByRole('link', { name: 'Uncategorized' }).click();
-	await expect(page.getByText(`${transactions} without a category.`)).toBeVisible();
+	await page.getByRole('link', { name: say('nav.uncategorized'), exact: true }).click();
+	await expect(
+		page.getByText(say('uncategorized.count_other', { count: transactions }))
+	).toBeVisible();
 	const market = page.getByRole('listitem').filter({ hasText: 'SUPERMERCADO' });
 	await expect(market).toHaveCount(2);
-	await market.first().getByLabel('Category').selectOption({ label: 'Other' });
-	await expect(page.getByText(`${transactions - 1} without a category.`)).toBeVisible();
+	await market.first().getByLabel(say('column.category')).selectOption({ label: 'Other' });
+	await expect(
+		page.getByText(say('uncategorized.count_other', { count: transactions - 1 }))
+	).toBeVisible();
 
-	await page.getByRole('link', { name: 'Rules' }).click();
-	await page.getByRole('button', { name: 'Check changes' }).click();
-	await expect(page.getByText('1 transaction would change:')).toBeVisible();
-	await expect(page.getByText('Category: — → Groceries')).toBeVisible();
-	await page.getByRole('button', { name: 'Apply 1 change' }).click();
-	await expect(page.getByRole('status').filter({ hasText: 'Applied' })).toHaveText(
-		'Applied 1 change.'
-	);
-	await expect(page.getByText('Nothing would change.')).toBeVisible();
+	await page.getByRole('link', { name: say('nav.rules'), exact: true }).click();
+	await page.getByRole('button', { name: say('changes.check') }).click();
+	await expect(page.getByText(say('changes.would_one'))).toBeVisible();
+	await expect(
+		page.getByText(say('changes.category', { from: '—', to: 'Groceries' }))
+	).toBeVisible();
+	await page.getByRole('button', { name: say('changes.apply_one') }).click();
+	const applied = say('changes.applied_one');
+	await expect(page.getByRole('status').filter({ hasText: applied })).toHaveText(applied);
+	await expect(page.getByText(say('changes.nothing'))).toBeVisible();
 
 	const listed = await page.request.get('/api/v1/transactions?limit=1000');
 	const sorted = (await listed.json()).items.filter((t: { description: string }) =>
@@ -187,42 +202,50 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await page
 		.getByRole('listitem')
 		.filter({ hasText: 'TRANSF A CUENTA PROPIA' })
-		.getByLabel('Category')
+		.getByLabel(say('column.category'))
 		.selectOption({ label: 'Own transfers' });
-	await expect(page.getByRole('status')).toHaveText('TRANSF A CUENTA PROPIA: Own transfers.');
+	await expect(page.getByRole('status')).toHaveText(
+		say('uncategorized.done', { description: 'TRANSF A CUENTA PROPIA', category: 'Own transfers' })
+	);
 
-	await page.getByRole('link', { name: 'Transfers' }).click();
-	const waiting = page.getByRole('list', { name: 'Pairs waiting' });
+	await page.getByRole('link', { name: say('nav.transfers'), exact: true }).click();
+	const waiting = page.getByRole('list', { name: say('waiting.title') });
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
-	await expect(waiting).toContainText('Checking (2026-05-15) → Savings (2026-05-15)');
-	await page.getByLabel('From', { exact: true }).fill('2026-05-01');
-	await page.getByLabel('To', { exact: true }).fill('2026-05-31');
+	// Dates as Panama reads them: day, short month, year.
+	await expect(waiting).toContainText('Checking (15 may 2026) → Savings (15 may 2026)');
+	await page.getByLabel(say('period.from'), { exact: true }).fill('2026-05-01');
+	await page.getByLabel(say('period.to'), { exact: true }).fill('2026-05-31');
 	const unpaired = page.getByRole('definition').nth(2);
 	await expect(unpaired).toHaveText('$500.00');
-	await page.getByRole('button', { name: 'Pair 1' }).click();
-	await expect(page.getByRole('status').filter({ hasText: 'Paired' })).toHaveText('Paired 1.');
-	const made = page.getByRole('list', { name: 'Transfers made' });
+	await page.getByRole('button', { name: say('waiting.pair_one') }).click();
+	const paired = say('waiting.paired_one');
+	await expect(page.getByRole('status').filter({ hasText: paired })).toHaveText(paired);
+	const made = page.getByRole('list', { name: say('made.title') });
 	await expect(made.getByRole('listitem')).toHaveCount(1);
 	await expect(unpaired).toHaveText('$0.00');
 
 	// Split: the two transactions come back, and the pair waits again.
-	await page.getByRole('button', { name: 'Split TRANSF A CUENTA PROPIA' }).click();
-	await page.getByRole('button', { name: 'Split it' }).click();
-	await expect(page.getByText('No transfers yet.')).toBeVisible();
+	await page
+		.getByRole('button', {
+			name: say('made.split_named', { description: 'TRANSF A CUENTA PROPIA' })
+		})
+		.click();
+	await page.getByRole('button', { name: say('made.split_it') }).click();
+	await expect(page.getByText(say('made.none'))).toBeVisible();
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
 
-	// By hand: the same leg twice is refused with the API's reason; the right two pair.
-	const form = page.getByRole('form', { name: 'Pair by hand' });
-	const outflow = '2026-05-15 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
-	await form.getByLabel('One side').selectOption({ label: outflow });
-	await form.getByLabel('The other side').selectOption({ label: outflow });
-	await form.getByRole('button', { name: 'Pair them' }).click();
+	// By hand: the same leg twice is refused with the API's reason, which a new choice clears; the right two pair.
+	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
+	const outflow = '15 may 2026 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
+	const other = form.getByLabel(say('unmatched.other_side'));
+	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
+	await other.selectOption({ label: outflow });
+	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(form.getByRole('alert')).toHaveText('choose two different transactions');
-	await form
-		.getByLabel('The other side')
-		.selectOption({ label: '2026-05-15 · Savings · $500.00 · FROM CHECKING' });
-	await form.getByRole('button', { name: 'Pair them' }).click();
-	await expect(form.getByRole('status')).toHaveText('Paired.');
+	await other.selectOption({ label: '15 may 2026 · Savings · $500.00 · FROM CHECKING' });
+	await expect(form.getByRole('alert')).toHaveCount(0);
+	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
+	await expect(form.getByRole('status')).toHaveText(say('unmatched.paired'));
 	await expect(made.getByRole('listitem')).toHaveCount(1);
 });
 
@@ -230,22 +253,52 @@ test('coverage shows what was imported', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/coverage');
 	const row = page.getByRole('row', { name: /Checking/ });
-	await expect(row).toContainText('2026-05-31');
-	await expect(row).toContainText('2026-05-02 – 2026-05-31');
+	await expect(row).toContainText('31 may 2026');
+	await expect(row).toContainText('2 may 2026 – 31 may 2026');
 	// Months behind any real today: shown as late, in words.
-	await expect(row.locator('.chip')).toHaveText('Late');
+	await expect(row.locator('.chip')).toHaveText(say('delay.late'));
+});
+
+test('the dashboard matches the API and words what employers owe', async ({ context }) => {
+	const page = await loggedIn(context);
+	await loadEmployers(page, test.info().outputPath('employers.json'));
+	await page.goto('/');
+	await expect(
+		page.getByRole('heading', { name: say('dashboard.title'), exact: true })
+	).toBeVisible();
+	await checkPayroll(page);
+	await checkDashboard(page);
+});
+
+test('switches to English and remembers it after a reload', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.goto('/accounts');
+	await page.getByLabel(say('language.label')).selectOption('en');
+	const heading = page.getByRole('heading', { name: english('accounts.title'), exact: true });
+	await expect(heading).toBeVisible();
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+	await page.reload();
+	await expect(heading).toBeVisible();
+	await expect(page.getByRole('link', { name: english('nav.summary'), exact: true })).toBeVisible();
+	// Dates follow the language.
+	await page.getByRole('link', { name: english('nav.coverage'), exact: true }).click();
+	await expect(page.getByRole('row', { name: /Checking/ })).toContainText('May 31, 2026');
 });
 
 test('every page fits a 390 px screen', async ({ browser }) => {
-	const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	const phone = await browser.newContext({
+		viewport: { width: 390, height: 844 },
+		locale: 'es-PA'
+	});
 	const pages: [string, string][] = [
-		['/login', 'Coinroost'],
-		['/import', 'Import bank files'],
-		['/coverage', 'Coverage'],
-		['/accounts', 'Accounts'],
-		['/rules', 'Rules'],
-		['/uncategorized', 'Uncategorized'],
-		['/transfers', 'Transfers']
+		['/login', say('app.name')],
+		['/', say('dashboard.title')],
+		['/import', say('import.title')],
+		['/coverage', say('coverage.title')],
+		['/accounts', say('accounts.title')],
+		['/rules', say('rules.title')],
+		['/uncategorized', say('uncategorized.title')],
+		['/transfers', say('transfers.title')]
 	];
 	for (const [path, heading] of pages) {
 		if (path !== '/login') await phone.addCookies(session.cookies);
@@ -256,9 +309,9 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		if (path === '/import') {
 			// With a card open and its transactions table expanded (the account made in the import test reads
 			// it), the table scrolls in its own box.
-			await page.getByLabel('Choose files').setInputFiles(statement);
+			await page.getByLabel(say('import.choose')).setInputFiles(statement);
 			const card = page.getByRole('article', { name: 'input.csv' });
-			await card.getByText(/^Show the \d+ transactions$/).click();
+			await card.getByText(say('file.show_other', { count: transactions })).click();
 			await expect(card.getByRole('table')).toBeVisible();
 			expect(await overflow(page), 'import with a table open').toBeLessThanOrEqual(0);
 		}

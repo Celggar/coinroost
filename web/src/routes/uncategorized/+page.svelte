@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { money } from '#lib/format.ts';
+	import { day, money } from '#lib/format.ts';
+	import { plural, t } from '#lib/i18n.svelte.ts';
 
 	let transactions = $state<Schemas['Transaction'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -19,11 +20,7 @@
 		]);
 		if (!list.data || !kinds.data) {
 			const failed = list.data ? kinds : list;
-			loadError = problem(
-				failed.error,
-				failed.response?.status,
-				'The transactions could not be loaded'
-			);
+			loadError = problem(failed.error, failed.response?.status, t('uncategorized.failed'));
 			return;
 		}
 		transactions = list.data.items;
@@ -46,58 +43,59 @@
 		});
 		busy = null;
 		if (!data) {
-			error = problem(failure, response?.status, 'The category could not be set');
+			error = problem(failure, response?.status, t('uncategorized.set_failed'));
 			return;
 		}
 		const name = categories.find((c) => c.id === categoryId)?.name;
-		done = `${transaction.description}: ${name}.`;
-		transactions = transactions.filter((t) => t.id !== transaction.id);
+		done = t('uncategorized.done', { description: transaction.description, category: name ?? '' });
+		transactions = transactions.filter((x) => x.id !== transaction.id);
 	}
 
 	onMount(load);
 </script>
 
 <svelte:head>
-	<title>Uncategorized · Coinroost</title>
+	<title>{t('app.title', { page: t('uncategorized.title') })}</title>
 </svelte:head>
 
-<h1>Uncategorized</h1>
-<p class="hint">
-	Transactions no rule sorted. A category you choose here stays: rules never change it.
-</p>
+<h1>{t('uncategorized.title')}</h1>
+<p class="hint">{t('uncategorized.hint')}</p>
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>Try again</button>
+		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">
 		{#if error}<p class="alert" role="alert">{error}</p>{/if}
 		{#if done}<p class="notice" role="status">{done}</p>{/if}
 		{#if transactions.length === 0}
-			<p>Every transaction has a category.</p>
+			<p>{t('uncategorized.all_done')}</p>
 		{:else}
-			<p>{transactions.length} without a category.</p>
+			<p>{plural(transactions.length, 'uncategorized.count_one', 'uncategorized.count_other')}</p>
 			{#if categories.length === 0}
-				<p class="hint">Create categories on the <a href="/rules">Rules</a> page first.</p>
+				<p class="hint">
+					{t('uncategorized.no_categories')}
+					<a href="/rules">{t('nav.rules')}</a>
+				</p>
 			{/if}
-			<ul class="queue" aria-label="Transactions without a category">
+			<ul class="queue" aria-label={t('uncategorized.list')}>
 				{#each transactions as transaction (transaction.id)}
 					{@const leg = transaction.legs[0]}
 					<li class="card">
 						<div class="what">
-							<span>{transaction.date}</span>
+							<span>{day(transaction.date)}</span>
 							<span class="description">{transaction.description}</span>
 							{#if leg}<span class="amount">{money(leg.amount_minor, leg.currency)}</span>{/if}
 						</div>
 						<label>
-							Category
+							{t('column.category')}
 							<select
 								value=""
 								disabled={busy !== null || categories.length === 0}
 								onchange={(event) => choose(transaction, event.currentTarget.value)}
 							>
-								<option value="" disabled>Choose a category</option>
+								<option value="" disabled>{t('uncategorized.choose')}</option>
 								{#each categories as category (category.id)}
 									<option value={category.id}>{category.name}</option>
 								{/each}
@@ -109,7 +107,7 @@
 		{/if}
 	</div>
 {:else}
-	<p class="hint">Loading…</p>
+	<p class="hint">{t('app.loading')}</p>
 {/if}
 
 <style>

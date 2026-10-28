@@ -5,6 +5,7 @@
 	import Changes from '#lib/rules/Changes.svelte';
 	import RuleForm from '#lib/rules/RuleForm.svelte';
 	import { actions, conditions, names as nameMaps } from '#lib/rules/describe.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -28,7 +29,7 @@
 		]);
 		const failed = [r, c, p, a].find((x) => !x.data);
 		if (failed || !r.data || !c.data || !p.data || !a.data) {
-			loadError = problem(failed?.error, failed?.response?.status, 'The rules could not be loaded');
+			loadError = problem(failed?.error, failed?.response?.status, t('rules.failed'));
 			return;
 		}
 		rules = r.data.items;
@@ -47,7 +48,7 @@
 		});
 		busy = false;
 		if (!response.ok) {
-			actionError = problem(error, response.status, 'The rule could not be moved');
+			actionError = problem(error, response.status, t('rules.move_failed'));
 		}
 		await load();
 	}
@@ -61,7 +62,7 @@
 		busy = false;
 		confirming = null;
 		if (!response.ok) {
-			actionError = problem(error, response.status, 'The rule could not be deleted');
+			actionError = problem(error, response.status, t('rules.delete_failed'));
 		}
 		await load();
 	}
@@ -70,54 +71,54 @@
 </script>
 
 <svelte:head>
-	<title>Rules · Coinroost</title>
+	<title>{t('app.title', { page: t('rules.title') })}</title>
 </svelte:head>
 
-<h1>Rules</h1>
-<p class="hint">
-	The first rule, from the top, that matches a transaction sets its category and payee; the rules
-	below it are not looked at.
-</p>
+<h1>{t('rules.title')}</h1>
+<p class="hint">{t('rules.hint')}</p>
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>Try again</button>
+		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">
 		{#if actionError}<p class="alert" role="alert">{actionError}</p>{/if}
 		{#if rules.length}
-			<ol class="rules" aria-label="Rules in order">
+			<ol class="rules" aria-label={t('rules.list')}>
 				{#each rules as rule, index (rule.id)}
 					<li class="card rule">
 						<div class="head">
 							<span class="position" aria-hidden="true">{rule.position}</span>
 							<h2>{rule.name}</h2>
-							{#if !rule.enabled}<span class="chip none">Off</span>{/if}
+							{#if !rule.enabled}<span class="chip none">{t('rules.off')}</span>{/if}
 						</div>
-						<p><strong>When</strong> {conditions(rule, names).join(' · ')}</p>
-						<p><strong>Sets</strong> {actions(rule, names).join(' · ')}</p>
+						<p><strong>{t('rules.when')}</strong> {conditions(rule, names).join(' · ')}</p>
+						<p><strong>{t('rules.sets')}</strong> {actions(rule, names).join(' · ')}</p>
 						<div class="buttons">
 							<button
 								class="secondary"
 								onclick={() => move(rule, rule.position - 1)}
 								disabled={busy || index === 0}
-								aria-label={`Move ${rule.name} up`}>Up</button
+								aria-label={t('rules.up_named', { name: rule.name })}>{t('rules.up')}</button
 							>
 							<button
 								class="secondary"
 								onclick={() => move(rule, rule.position + 1)}
 								disabled={busy || index === rules.length - 1}
-								aria-label={`Move ${rule.name} down`}>Down</button
+								aria-label={t('rules.down_named', { name: rule.name })}>{t('rules.down')}</button
 							>
 							{#if confirming === rule.id}
-								<button onclick={() => remove(rule)} disabled={busy}>Delete it</button>
-								<button class="secondary" onclick={() => (confirming = null)}>Keep it</button>
+								<button onclick={() => remove(rule)} disabled={busy}>{t('rules.delete_it')}</button>
+								<button class="secondary" onclick={() => (confirming = null)}
+									>{t('rules.keep_it')}</button
+								>
 							{:else}
 								<button
 									class="secondary"
 									onclick={() => (confirming = rule.id)}
-									aria-label={`Delete ${rule.name}`}>Delete</button
+									aria-label={t('rules.delete_named', { name: rule.name })}
+									>{t('rules.delete')}</button
 								>
 							{/if}
 						</div>
@@ -125,7 +126,7 @@
 				{/each}
 			</ol>
 		{:else}
-			<p>No rules yet.</p>
+			<p>{t('rules.none_yet')}</p>
 		{/if}
 
 		<RuleForm {categories} {payees} {accounts} oncreated={load} />
@@ -133,7 +134,7 @@
 		<Changes {names} onapplied={load} />
 	</div>
 {:else}
-	<p class="hint">Loading…</p>
+	<p class="hint">{t('app.loading')}</p>
 {/if}
 
 <style>

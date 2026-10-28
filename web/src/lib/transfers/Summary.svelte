@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { money, today } from '#lib/format.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 
 	// Reloads whenever `version` changes: pairing and splitting move money between the columns.
 	let { version }: { version: number } = $props();
@@ -20,7 +21,7 @@
 		} = await api.GET('/api/v1/summary', { params: { query: { from, to } } });
 		if (!data) {
 			summary = null;
-			error = problem(failure, response?.status, 'The summary could not be loaded');
+			error = problem(failure, response?.status, t('summary.failed'));
 			return;
 		}
 		summary = data;
@@ -35,37 +36,34 @@
 </script>
 
 <section class="card" aria-labelledby="summary-title">
-	<h2 id="summary-title">Money in and out</h2>
-	<p class="hint">
-		Transfers between your accounts count in neither. Legs still waiting for their other side are
-		shown apart.
-	</p>
+	<h2 id="summary-title">{t('summary.title')}</h2>
+	<p class="hint">{t('summary.hint')}</p>
 	<div class="period">
-		<label>From <input type="date" bind:value={from} /></label>
-		<label>To <input type="date" bind:value={to} /></label>
+		<label>{t('period.from')} <input type="date" bind:value={from} /></label>
+		<label>{t('period.to')} <input type="date" bind:value={to} /></label>
 	</div>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if summary}
 		{#if summary.totals.length === 0}
-			<p>No money moved in this period.</p>
+			<p>{t('summary.nothing')}</p>
 		{:else}
 			<div class="totals">
 				{#each summary.totals as totals (totals.currency)}
-					<dl aria-label={`Totals in ${totals.currency}`}>
+					<dl aria-label={t('summary.totals_in', { currency: totals.currency })}>
 						<div>
-							<dt>Spending</dt>
+							<dt>{t('summary.spending')}</dt>
 							<dd>{money(totals.spending, totals.currency)}</dd>
 						</div>
 						<div>
-							<dt>Income</dt>
+							<dt>{t('summary.income')}</dt>
 							<dd>{money(totals.income, totals.currency)}</dd>
 						</div>
 						<div>
-							<dt>Transfers out, unpaired</dt>
+							<dt>{t('summary.unpaired_out')}</dt>
 							<dd>{money(totals.unpaired_transfer_out, totals.currency)}</dd>
 						</div>
 						<div>
-							<dt>Transfers in, unpaired</dt>
+							<dt>{t('summary.unpaired_in')}</dt>
 							<dd>{money(totals.unpaired_transfer_in, totals.currency)}</dd>
 						</div>
 					</dl>

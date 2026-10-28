@@ -1,18 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { span, today } from '#lib/format.ts';
+	import { day, span, today } from '#lib/format.ts';
+	import { plural, t, type Key } from '#lib/i18n.svelte.ts';
+	import Rich from '#lib/Rich.svelte';
 
 	let coverage = $state<Schemas['Coverage'] | null>(null);
 	let error = $state('');
 	let busy = $state(false);
 
-	const delays: Record<Schemas['Delay'], { label: string; tone: string }> = {
-		late: { label: 'Late', tone: 'bad' },
-		warning: { label: 'Check', tone: 'warn' },
-		no_data: { label: 'No data', tone: 'none' },
-		up_to_date: { label: 'Up to date', tone: 'ok' }
+	const tones: Record<Schemas['Delay'], string> = {
+		late: 'bad',
+		warning: 'warn',
+		no_data: 'none',
+		up_to_date: 'ok'
 	};
+	const delayKeys = {
+		late: 'delay.late',
+		warning: 'delay.warning',
+		no_data: 'delay.no_data',
+		up_to_date: 'delay.up_to_date'
+	} satisfies Record<Schemas['Delay'], Key>;
+	const delayName = (delay: Schemas['Delay']) => t(delayKeys[delay]);
 
 	async function load() {
 		busy = true;
@@ -28,7 +37,7 @@
 		if (!data) {
 			// Never an empty table: it would read as «everything is up to date».
 			coverage = null;
-			error = problem(failure, response?.status, 'Coverage could not be loaded');
+			error = problem(failure, response?.status, t('coverage.failed'));
 			return;
 		}
 		coverage = data;
@@ -38,37 +47,35 @@
 </script>
 
 <svelte:head>
-	<title>Coverage · Coinroost</title>
+	<title>{t('app.title', { page: t('coverage.title') })}</title>
 </svelte:head>
 
 <div class="title">
-	<h1>Coverage</h1>
+	<h1>{t('coverage.title')}</h1>
 	<button class="secondary" onclick={load} disabled={busy}
-		>{busy ? 'Refreshing…' : 'Refresh'}</button
+		>{busy ? t('coverage.refreshing') : t('coverage.refresh')}</button
 	>
 </div>
 <p class="hint">
-	Up to when each account has data, and what the imported files cover. Status <strong>Check</strong
-	>: more than 15 days without data; <strong>Late</strong>: more than 40. A statement cycle is about
-	30 days, but a quiet account can be still on purpose.
+	<Rich text={t('coverage.hint', { check: t('delay.warning'), late: t('delay.late') })} />
 </p>
 
 {#if error}
 	<p class="alert" role="alert">{error}</p>
 {:else if coverage}
 	{#if coverage.items.length === 0}
-		<p>There are no accounts yet. <a href="/accounts">Create one</a>.</p>
+		<p>{t('coverage.no_accounts')} <a href="/accounts">{t('coverage.create_one')}</a></p>
 	{:else}
 		<div class="table-wrap">
 			<table>
 				<thead>
 					<tr>
-						<th>Account</th>
-						<th>Status</th>
-						<th>Latest</th>
-						<th class="number">Days since</th>
-						<th>Imported</th>
-						<th>Gaps</th>
+						<th>{t('column.account')}</th>
+						<th>{t('column.status')}</th>
+						<th>{t('coverage.latest')}</th>
+						<th class="number">{t('coverage.days_since')}</th>
+						<th>{t('coverage.imported')}</th>
+						<th>{t('coverage.gaps')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -76,25 +83,27 @@
 						<tr>
 							<td>{item.name}</td>
 							<td>
-								<span class="chip {delays[item.delay].tone}">{delays[item.delay].label}</span>
+								<span class="chip {tones[item.delay]}">{delayName(item.delay)}</span>
 							</td>
-							<td>{item.latest ?? '—'}</td>
+							<td>{item.latest ? day(item.latest) : '—'}</td>
 							<td class="number">{item.days_since ?? '—'}</td>
 							<td>
 								{#each item.ranges as range (range.from)}
 									<div>{span(range.from, range.to)}</div>
 								{:else}
-									<span class="hint">No imports</span>
+									<span class="hint">{t('coverage.no_imports')}</span>
 								{/each}
 							</td>
 							<td>
 								{#each item.gaps as gap (gap.from)}
 									<div>
-										<span class="chip {delays[gap.delay].tone}">{gap.days} days</span>
+										<span class="chip {tones[gap.delay]}"
+											>{plural(gap.days, 'coverage.days_one', 'coverage.days_other')}</span
+										>
 										{span(gap.from, gap.to)}
 									</div>
 								{:else}
-									<span class="hint">None</span>
+									<span class="hint">{t('coverage.no_gaps')}</span>
 								{/each}
 							</td>
 						</tr>
@@ -104,7 +113,7 @@
 		</div>
 	{/if}
 {:else}
-	<p class="hint">Loading…</p>
+	<p class="hint">{t('app.loading')}</p>
 {/if}
 
 <style>

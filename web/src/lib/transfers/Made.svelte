@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { money } from '#lib/format.ts';
+	import { day, money } from '#lib/format.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 
 	let {
@@ -34,27 +35,27 @@
 		busy = false;
 		confirming = null;
 		if (!data) {
-			error = problem(failure, response?.status, 'The transfer could not be split');
+			error = problem(failure, response?.status, t('made.failed'));
 			return;
 		}
-		done = `Split «${transfer.description}» into its two transactions.`;
+		done = t('made.split_done', { description: transfer.description });
 		onchanged();
 	}
 </script>
 
 <section class="card" aria-labelledby="made-title">
-	<h2 id="made-title">Transfers made</h2>
+	<h2 id="made-title">{t('made.title')}</h2>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if done}<p class="notice" role="status">{done}</p>{/if}
 	{#if transfers.length === 0}
-		<p>No transfers yet.</p>
+		<p>{t('made.none')}</p>
 	{:else}
-		<ul class="made" aria-label="Transfers made">
+		<ul class="made" aria-label={t('made.title')}>
 			{#each transfers as transfer (transfer.id)}
 				{@const { out, inn } = sides(transfer)}
 				<li>
 					<div class="line">
-						<span>{transfer.date}</span>
+						<span>{day(transfer.date)}</span>
 						{#if out}<strong>{money(-out.amount_minor, out.currency)}</strong>{/if}
 						{#if out && inn}
 							<span
@@ -65,13 +66,16 @@
 					<div class="hint">{transfer.description}</div>
 					<div class="buttons">
 						{#if confirming === transfer.id}
-							<button onclick={() => split(transfer)} disabled={busy}>Split it</button>
-							<button class="secondary" onclick={() => (confirming = null)}>Keep it</button>
+							<button onclick={() => split(transfer)} disabled={busy}>{t('made.split_it')}</button>
+							<button class="secondary" onclick={() => (confirming = null)}
+								>{t('made.keep_it')}</button
+							>
 						{:else}
 							<button
 								class="secondary"
 								onclick={() => (confirming = transfer.id)}
-								aria-label={`Split ${transfer.description}`}>Split</button
+								aria-label={t('made.split_named', { description: transfer.description })}
+								>{t('made.split')}</button
 							>
 						{/if}
 					</div>
