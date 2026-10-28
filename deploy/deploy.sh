@@ -7,7 +7,7 @@ set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 env_file=${1:-$HOME/.config/coinroost/prod.env}
-compose=(docker compose -f "$here/compose.prod.yml" --env-file "$env_file")
+compose=(docker compose -f "$here/compose.prod.yml")
 
 if [[ ! -e $env_file ]]; then
   mkdir -p "$(dirname "$env_file")"
@@ -20,6 +20,16 @@ if [[ $mode != 600 ]]; then
   echo "$env_file is mode $mode: run chmod 600 on it" >&2
   exit 1
 fi
+# A reverse proxy in its own compose project reaches the app over its network (deploy/compose.proxy.yml).
+proxy=$(sed -n 's/^COINROOST_PROXY_NETWORK=//p' "$env_file")
+if [[ -n $proxy ]]; then
+  if ! docker network inspect "$proxy" >/dev/null 2>&1; then
+    echo "no network $proxy: the reverse proxy's compose project creates it" >&2
+    exit 1
+  fi
+  compose+=(-f "$here/compose.proxy.yml")
+fi
+compose+=(--env-file "$env_file")
 if ! docker volume inspect coinroost-pgdata >/dev/null 2>&1; then
   echo "no volume coinroost-pgdata: create it once with docker volume create coinroost-pgdata" >&2
   exit 1

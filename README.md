@@ -72,6 +72,10 @@ docker compose -f deploy/compose.prod.yml --env-file ~/.config/coinroost/prod.en
 
 - `deploy.sh` reads `~/.config/coinroost/prod.env` (see `deploy/prod.env.example`) and refuses it unless only its
   owner can read it. When it does not exist, it creates one with a random database password nobody has to type.
+- A reverse proxy running in its own compose project can reach the app by name instead: set
+  `COINROOST_PROXY_NETWORK` to a network that project creates, and `deploy.sh` joins the app to it
+  (`deploy/compose.proxy.yml`) as `coinroost-app-1:8080`. The database never joins it. Add the proxy's host names
+  to `COINROOST_MCP_HOSTS` if MCP clients come through it.
 - The app gets 256 MB and the database 512 MB. The app runs as an unprivileged user on a read-only filesystem.
 - `docker compose down -v` cannot delete your data: the volume is declared external.
 - To move a Firefly III ledger in, fetch it on the host first (see [Migrating from Firefly III](#migrating-from-firefly-iii)).
