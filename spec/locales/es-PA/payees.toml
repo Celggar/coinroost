@@ -1,0 +1,14 @@
+# How a payee's name is read from the text after a payment channel (a mobile wallet, online banking, an ACH
+# transfer) in Panamanian bank statements: the channel says how the money moved, the name after it says to whom.
+#
+# Steps, in order, on the upper-cased description: the matched channel text is removed (first occurrence), then a
+# leading word from `leading`, then the bank names, then every run of digits (account numbers), then everything
+# from a word in `cut_from` on (a free-text concept follows it), then every character outside `letters` and the
+# space. Words of one letter are dropped and the first `max_words` are kept: banks truncate names to the field
+# width, so a fourth word is often cut and would split one person into two payees.
+
+letters = "A-ZÁÉÍÓÚÑ"
+leading = ["PAGO"]
+cut_from = ["POR"]
+banks = ["BANCO GENERAL", "GLOBAL BANK", "BAC INTERNATIONAL", "BANCO NACIONAL", "CAJA DE AHORROS"]
+max_words = 3

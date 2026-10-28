@@ -2,6 +2,7 @@
 //! entry in the API contract, so a route cannot exist without being in the contract.
 
 pub mod accounts;
+pub mod apply;
 pub mod catalog;
 pub mod coverage;
 pub mod imports;

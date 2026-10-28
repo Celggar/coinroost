@@ -1,0 +1,7 @@
+[
+  { "description": "BANCA EN LINEA TRANSFERENCIA A 0400444555666 MARIA DEL PILAR R", "channel": "BANCA EN LINEA TRANSFERENCIA A", "payee": "MARIA DEL PILAR" },
+  { "description": "PAGO YAPPY A OPTICAPING", "channel": "YAPPY A", "payee": "OPTICAPING" },
+  { "description": "ACH A BANCO GENERAL 04-11-22-333 JUAN PEREZ POR ABONO MUEBLE", "channel": "ACH", "payee": "JUAN PEREZ" },
+  { "description": "YAPPY A 6000-1234", "channel": "YAPPY A", "payee": null },
+  { "description": "yappy a josé núñez", "channel": "YAPPY A", "payee": "JOSÉ NÚÑEZ" }
+]

@@ -4,18 +4,21 @@
 //! `coinroost-server user add <email> [--household <id>]`: adds a user, to a new household unless one is given.
 //! The password is read from the terminal (or from the first line of standard input when it is not a terminal),
 //! never from the command line, where other users could see it.
+//! `coinroost-server rules load <set.json> --household <id>`: loads a rule set (categories, payees and rules by
+//! name) into a household; loading it again changes nothing.
 //! `coinroost-server openapi`: prints the API contract (`OpenAPI` 3.1, JSON).
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, openapi};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
-const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>] | openapi";
+const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
+       | rules load <set.json> --household <id> | openapi";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -28,6 +31,10 @@ async fn main() -> ExitCode {
         ["user", "add", email] => add_user(email, None).await,
         ["user", "add", email, "--household", id] => match Uuid::parse_str(id) {
             Ok(id) => add_user(email, Some(id)).await,
+            Err(e) => Err(format!("--household: {e}")),
+        },
+        ["rules", "load", file, "--household", id] => match Uuid::parse_str(id) {
+            Ok(id) => load_rules(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
         _ => Err(USAGE.to_owned()),
@@ -105,6 +112,22 @@ async fn add_user(email: &str, household: Option<Uuid>) -> Result<(), String> {
     println!("Enroll this in an authenticator app; its 6-digit codes are the second step of every login:");
     println!("{}", enrolled.uri);
     println!("secret {}", enrolled.secret_base32);
+    Ok(())
+}
+
+async fn load_rules(file: &str, household: Uuid) -> Result<(), String> {
+    let text = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+    let set = coinroost_rules::RuleSet::from_json(&text).map_err(|e| format!("{file}: {e}"))?;
+    let db = connect().await?;
+    let report = rule_set::load(&db, household, &set).await?;
+    println!(
+        "categories added {}, changed {}; payees added {}; rules added {}, changed {}",
+        report.categories_added,
+        report.categories_changed,
+        report.payees_added,
+        report.rules_added,
+        report.rules_changed
+    );
     Ok(())
 }
 

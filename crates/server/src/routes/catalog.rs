@@ -1,4 +1,5 @@
-//! Categories and payees: the names transactions are sorted under. Both are a household's list of unique names.
+//! Categories and payees: the names transactions are sorted under. Both are a household's list of unique names;
+//! a category also says what it holds.
 
 use axum::Json;
 use axum::extract::State;
@@ -21,15 +22,48 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_payees, create_payee))
 }
 
+/// What a category holds: spending, income, or money moved between the household's own accounts.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
+pub enum CategoryKind {
+    #[default]
+    Expense,
+    Income,
+    Transfer,
+}
+
+#[derive(Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NewCategory {
+    name: String,
+    /// `expense` when absent.
+    #[serde(default)]
+    kind: CategoryKind,
+}
+
+#[derive(Serialize, ToSchema, sqlx::FromRow)]
+pub struct Category {
+    id: Uuid,
+    name: String,
+    kind: CategoryKind,
+    #[serde(with = "time::serde::rfc3339")]
+    created_at: OffsetDateTime,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct Categories {
+    items: Vec<Category>,
+}
+
 #[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct NewName {
     name: String,
 }
 
-/// A category or a payee.
 #[derive(Serialize, ToSchema, sqlx::FromRow)]
-pub struct Named {
+pub struct Payee {
     id: Uuid,
     name: String,
     #[serde(with = "time::serde::rfc3339")]
@@ -37,106 +71,68 @@ pub struct Named {
 }
 
 #[derive(Serialize, ToSchema)]
-pub struct NamedList {
-    items: Vec<Named>,
-}
-
-/// The two tables this module serves; every statement is a fixed string.
-#[derive(Clone, Copy)]
-enum Table {
-    Categories,
-    Payees,
-}
-
-impl Table {
-    fn select(self) -> &'static str {
-        match self {
-            Table::Categories => {
-                "select id, name, created_at from categories where household_id = $1 order by name"
-            }
-            Table::Payees => "select id, name, created_at from payees where household_id = $1 order by name",
-        }
-    }
-
-    fn insert(self) -> &'static str {
-        match self {
-            Table::Categories => {
-                "insert into categories (household_id, name) values ($1, $2) returning id, name, created_at"
-            }
-            Table::Payees => {
-                "insert into payees (household_id, name) values ($1, $2) returning id, name, created_at"
-            }
-        }
-    }
-
-    fn max_length(self) -> usize {
-        match self {
-            Table::Categories => 100,
-            Table::Payees => 200,
-        }
-    }
-}
-
-async fn list(state: &AppState, session: Session, table: Table) -> ApiResult<Json<NamedList>> {
-    let items = sqlx::query_as(table.select())
-        .bind(session.household_id)
-        .fetch_all(&state.db)
-        .await?;
-    Ok(Json(NamedList { items }))
-}
-
-async fn create(
-    state: &AppState,
-    session: Session,
-    table: Table,
-    body: NewName,
-) -> ApiResult<(StatusCode, Json<Named>)> {
-    let name = validate::text("name", &body.name, table.max_length())?;
-    let row = sqlx::query_as(table.insert())
-        .bind(session.household_id)
-        .bind(name)
-        .fetch_one(&state.db)
-        .await?;
-    Ok((StatusCode::CREATED, Json(row)))
+pub struct Payees {
+    items: Vec<Payee>,
 }
 
 /// The household's categories, by name.
 #[utoipa::path(get, path = "/api/v1/categories", tag = "categories",
     responses(
-        (status = OK, description = "The categories", body = NamedList),
+        (status = OK, description = "The categories", body = Categories),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
-async fn list_categories(State(state): State<AppState>, session: Session) -> ApiResult<Json<NamedList>> {
-    list(&state, session, Table::Categories).await
+async fn list_categories(State(state): State<AppState>, session: Session) -> ApiResult<Json<Categories>> {
+    let items = sqlx::query_as(
+        "select id, name, kind, created_at from categories where household_id = $1 order by name",
+    )
+    .bind(session.household_id)
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Json(Categories { items }))
 }
 
 /// Adds a category.
-#[utoipa::path(post, path = "/api/v1/categories", tag = "categories", request_body = NewName,
+#[utoipa::path(post, path = "/api/v1/categories", tag = "categories", request_body = NewCategory,
     responses(
-        (status = CREATED, description = "The new category", body = Named),
+        (status = CREATED, description = "The new category", body = Category),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),
         (status = CONFLICT, description = "The name is taken", body = Problem),
         (status = UNPROCESSABLE_ENTITY, description = "The name is empty or too long", body = Problem)))]
 async fn create_category(
     State(state): State<AppState>,
     session: Session,
-    Json(body): Json<NewName>,
-) -> ApiResult<(StatusCode, Json<Named>)> {
-    create(&state, session, Table::Categories, body).await
+    Json(body): Json<NewCategory>,
+) -> ApiResult<(StatusCode, Json<Category>)> {
+    let name = validate::text("name", &body.name, 100)?;
+    let row = sqlx::query_as(
+        "insert into categories (household_id, name, kind) values ($1, $2, $3)
+         returning id, name, kind, created_at",
+    )
+    .bind(session.household_id)
+    .bind(name)
+    .bind(body.kind)
+    .fetch_one(&state.db)
+    .await?;
+    Ok((StatusCode::CREATED, Json(row)))
 }
 
 /// The household's payees, by name.
 #[utoipa::path(get, path = "/api/v1/payees", tag = "payees",
     responses(
-        (status = OK, description = "The payees", body = NamedList),
+        (status = OK, description = "The payees", body = Payees),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
-async fn list_payees(State(state): State<AppState>, session: Session) -> ApiResult<Json<NamedList>> {
-    list(&state, session, Table::Payees).await
+async fn list_payees(State(state): State<AppState>, session: Session) -> ApiResult<Json<Payees>> {
+    let items =
+        sqlx::query_as("select id, name, created_at from payees where household_id = $1 order by name")
+            .bind(session.household_id)
+            .fetch_all(&state.db)
+            .await?;
+    Ok(Json(Payees { items }))
 }
 
 /// Adds a payee.
 #[utoipa::path(post, path = "/api/v1/payees", tag = "payees", request_body = NewName,
     responses(
-        (status = CREATED, description = "The new payee", body = Named),
+        (status = CREATED, description = "The new payee", body = Payee),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),
         (status = CONFLICT, description = "The name is taken", body = Problem),
         (status = UNPROCESSABLE_ENTITY, description = "The name is empty or too long", body = Problem)))]
@@ -144,6 +140,14 @@ async fn create_payee(
     State(state): State<AppState>,
     session: Session,
     Json(body): Json<NewName>,
-) -> ApiResult<(StatusCode, Json<Named>)> {
-    create(&state, session, Table::Payees, body).await
+) -> ApiResult<(StatusCode, Json<Payee>)> {
+    let name = validate::text("name", &body.name, 200)?;
+    let row = sqlx::query_as(
+        "insert into payees (household_id, name) values ($1, $2) returning id, name, created_at",
+    )
+    .bind(session.household_id)
+    .bind(name)
+    .fetch_one(&state.db)
+    .await?;
+    Ok((StatusCode::CREATED, Json(row)))
 }

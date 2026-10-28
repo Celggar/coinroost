@@ -451,6 +451,8 @@ name = "coinroost-cli"
 version = "0.1.0"
 dependencies = [
  "coinroost-normalizer",
+ "coinroost-rules",
+ "serde",
  "serde_json",
 ]
 
@@ -469,6 +471,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coinroost-rules"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "coinroost-server"
 version = "0.1.0"
 dependencies = [
@@ -476,6 +488,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "coinroost-normalizer",
+ "coinroost-rules",
  "http-body-util",
  "iso_currency",
  "rand",

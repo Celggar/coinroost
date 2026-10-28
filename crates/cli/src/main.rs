@@ -2,6 +2,9 @@
 //! `coinroost detect --accounts <rules.toml> <file>`: prints which account a file belongs to, as JSON.
 //! `coinroost tables <file.pdf>`: prints the ruled tables of a PDF, page by page, as JSON.
 //! `coinroost profiles`: lists the built-in profiles.
+//! `coinroost categorize --rules <set.json> [--payee-text <locale.toml>]`: sorts transactions read as JSON lines.
+
+mod categorize;
 
 use std::process::ExitCode;
 
@@ -9,10 +12,11 @@ use coinroost_normalizer::detect::{AccountRules, Detection, detect};
 use coinroost_normalizer::{Profile, normalize};
 use serde_json::{Value, json};
 
-const USAGE: &str = "usage: coinroost normalize --profile <id> --namespace <account> <file>
+pub(crate) const USAGE: &str = "usage: coinroost normalize --profile <id> --namespace <account> <file>
        coinroost detect --accounts <rules.toml> <file>
        coinroost tables <file.pdf>
-       coinroost profiles";
+       coinroost profiles
+       coinroost categorize --rules <set.json> [--payee-text <locale.toml>] < transactions.jsonl";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -23,6 +27,13 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
+        Some("categorize") => match categorize::run(&args[1..]) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
         Some(command @ ("normalize" | "detect" | "tables")) => match run(command, &args[1..]) {
             Ok(output) => {
                 println!("{output:#}");

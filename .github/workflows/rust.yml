@@ -29,7 +29,7 @@ jobs:
     env:
       DATABASE_URL: postgres://coinroost:coinroost@localhost:5432/coinroost
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # rust-toolchain.toml pins the version, components and targets; rustup installs them on first use.
       - name: Toolchain
         run: rustup show active-toolchain
@@ -44,7 +44,7 @@ jobs:
           cargo check -p coinroost-normalizer --target aarch64-apple-ios --locked
           cargo check -p coinroost-normalizer --target wasm32-unknown-unknown --locked
       - name: Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
           cache: npm

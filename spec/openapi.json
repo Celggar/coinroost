@@ -196,7 +196,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NamedList"
+                  "$ref": "#/components/schemas/Categories"
                 }
               }
             }
@@ -223,7 +223,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewName"
+                "$ref": "#/components/schemas/NewCategory"
               }
             }
           },
@@ -235,7 +235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Named"
+                  "$ref": "#/components/schemas/Category"
                 }
               }
             }
@@ -498,7 +498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NamedList"
+                  "$ref": "#/components/schemas/Payees"
                 }
               }
             }
@@ -537,7 +537,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Named"
+                  "$ref": "#/components/schemas/Payee"
                 }
               }
             }
@@ -611,7 +611,7 @@
         "tags": [
           "rules"
         ],
-        "summary": "The household's rules, in the order they are tried.",
+        "summary": "The household's rules, first one first.",
         "operationId": "list_rules",
         "responses": {
           "200": {
@@ -640,7 +640,7 @@
         "tags": [
           "rules"
         ],
-        "summary": "Adds a rule at a position.",
+        "summary": "Adds a rule at a position. Transactions already there keep their category and payee.",
         "operationId": "create_rule",
         "requestBody": {
           "content": {
@@ -665,6 +665,224 @@
           },
           "401": {
             "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A value is not valid or refers to nothing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rules/apply": {
+      "post": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Applies the rules again: writes exactly the changes of the preview whose tag comes in `If-Match`.",
+        "operationId": "apply_rules",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "The `ETag` of the preview being applied",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many transactions changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulesApplied"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The changes are not the previewed ones any more",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "No `If-Match`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rules/preview": {
+      "post": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "What applying the rules again would change. Writes nothing.",
+        "operationId": "preview_rules",
+        "responses": {
+          "200": {
+            "description": "The changes, tagged with `ETag`",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Tag of this list of changes"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulePreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rules/{rule_id}": {
+      "delete": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Deletes a rule; the ones after it move up. Transactions it sorted keep their category and payee.",
+        "operationId": "delete_rule",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "description": "The rule",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Changes a rule, or moves it. Transactions already there keep their category and payee.",
+        "operationId": "update_rule",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "description": "The rule",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The rule as it is now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rule"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such rule",
             "content": {
               "application/json": {
                 "schema": {
@@ -793,6 +1011,15 @@
             }
           },
           {
+            "name": "uncategorized",
+            "in": "query",
+            "description": "Only transactions without a category.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "description": "At most this many, newest first (default 100, at most 1000).",
@@ -875,6 +1102,79 @@
           },
           "422": {
             "description": "The legs or a reference are not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/{transaction_id}": {
+      "patch": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Sets a transaction's category or payee by hand.",
+        "operationId": "update_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "description": "The transaction",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The transaction as it is now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The category or payee does not exist",
             "content": {
               "application/json": {
                 "schema": {
@@ -1021,7 +1321,6 @@
       },
       "Actions": {
         "type": "object",
-        "description": "What a matching rule sets; at least one.",
         "properties": {
           "category_id": {
             "type": [
@@ -1036,6 +1335,10 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "payee_from_text": {
+            "type": "boolean",
+            "description": "The matched text is a payment channel: the payee is the name that follows it in the description."
           }
         },
         "additionalProperties": false
@@ -1084,21 +1387,69 @@
           }
         }
       },
+      "Categories": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CategoryKind"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CategoryKind": {
+        "type": "string",
+        "description": "What a category holds: spending, income, or money moved between the household's own accounts.",
+        "enum": [
+          "expense",
+          "income",
+          "transfer"
+        ]
+      },
       "Conditions": {
         "type": "object",
-        "description": "Conditions; every one that is set must hold, and at least one must be set.",
         "properties": {
           "description_contains": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Case-insensitive text the description must contain."
+            "description": "Text the description contains, compared in upper case; kept exactly as written, spaces included."
           },
           "direction": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/Direction"
+                "$ref": "#/components/schemas/Direction",
+                "description": "`out` when the amount is below zero, `in` otherwise."
               },
               {
                 "type": "null"
@@ -1118,15 +1469,14 @@
               "null"
             ],
             "format": "int64",
-            "description": "Smallest magnitude, in minor units, included."
+            "description": "Magnitude in minor units, both ends included."
           },
           "amount_max": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int64",
-            "description": "Largest magnitude, in minor units, included."
+            "format": "int64"
           }
         },
         "additionalProperties": false
@@ -1505,42 +1855,6 @@
           }
         }
       },
-      "Named": {
-        "type": "object",
-        "description": "A category or a payee.",
-        "required": [
-          "id",
-          "name",
-          "created_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "NamedList": {
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Named"
-            }
-          }
-        }
-      },
       "NewAccount": {
         "type": "object",
         "required": [
@@ -1573,6 +1887,22 @@
           },
           "detection": {
             "$ref": "#/components/schemas/Detection"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewCategory": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CategoryKind",
+            "description": "`expense` when absent."
           }
         },
         "additionalProperties": false
@@ -1636,7 +1966,7 @@
               "null"
             ],
             "format": "int32",
-            "description": "Where it goes, 1 being first; the rules from there on move down one. Last when absent."
+            "description": "Where it goes, 1 being first; last when absent."
           },
           "enabled": {
             "type": "boolean"
@@ -1705,6 +2035,41 @@
           }
         },
         "additionalProperties": false
+      },
+      "Payee": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Payees": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payee"
+            }
+          }
+        }
       },
       "PreviewRow": {
         "type": "object",
@@ -1881,6 +2246,112 @@
           }
         }
       },
+      "RuleChange": {
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "date",
+          "description",
+          "amount_minor",
+          "currency",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed minor units in `currency`."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "before": {
+            "$ref": "#/components/schemas/Sorting"
+          },
+          "after": {
+            "$ref": "#/components/schemas/Sorting"
+          }
+        }
+      },
+      "RulePreview": {
+        "type": "object",
+        "required": [
+          "changes",
+          "tag"
+        ],
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleChange"
+            },
+            "description": "Every transaction applying the rules would change, oldest first."
+          },
+          "tag": {
+            "type": "string",
+            "description": "The same tag as the `ETag` header: send it back in `If-Match` to apply."
+          }
+        }
+      },
+      "RuleUpdate": {
+        "type": "object",
+        "description": "The fields to change; the others stay.",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Moves the rule there; the rules in between shift by one."
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "when": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Conditions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Actions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "Rules": {
         "type": "object",
         "required": [
@@ -1892,6 +2363,60 @@
             "items": {
               "$ref": "#/components/schemas/Rule"
             }
+          }
+        }
+      },
+      "RulesApplied": {
+        "type": "object",
+        "required": [
+          "applied"
+        ],
+        "properties": {
+          "applied": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "SetBy": {
+        "type": "string",
+        "description": "Who set a category or a payee.",
+        "enum": [
+          "rule",
+          "manual"
+        ]
+      },
+      "Sorting": {
+        "type": "object",
+        "description": "A transaction's category and payee, and the rule that set them.",
+        "properties": {
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "new_payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A payee read from the text that the household does not have yet; applying creates it."
+          },
+          "rule_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -1923,12 +2448,40 @@
             ],
             "format": "uuid"
           },
+          "payee_set_by": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SetBy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "category_id": {
             "type": [
               "string",
               "null"
             ],
             "format": "uuid"
+          },
+          "category_set_by": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SetBy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rule_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The rule that set the category or payee, while it exists."
           },
           "created_at": {
             "type": "string",
@@ -1941,6 +2494,29 @@
             }
           }
         }
+      },
+      "TransactionUpdate": {
+        "type": "object",
+        "description": "The fields to change; the others stay. What a person sets here, rules never change.",
+        "properties": {
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A category; `null` leaves the transaction without one, and rules may sort it again."
+          },
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A payee; `null` leaves the transaction without one, and rules may name it again."
+          }
+        },
+        "additionalProperties": false
       },
       "Transactions": {
         "type": "object",

@@ -3,9 +3,11 @@
 
 #![allow(dead_code)]
 
+pub mod sorting;
+
 use axum::Router;
 use axum::body::Body;
-use axum::http::{Request, StatusCode, header};
+use axum::http::{HeaderMap, Request, StatusCode, header};
 use coinroost_server::{AppState, auth, router};
 use http_body_util::BodyExt;
 use serde_json::Value;
@@ -83,8 +85,66 @@ impl Api {
     }
 
     pub async fn send(&self, request: Request<Body>) -> (StatusCode, Value) {
+        let (status, _, json) = self.send_full(request).await;
+        (status, json)
+    }
+
+    /// A JSON request with extra headers; returns the status, the headers and the JSON body (or null).
+    pub async fn exchange(
+        &self,
+        method: &str,
+        uri: &str,
+        token: &str,
+        headers: &[(&str, &str)],
+        body: Option<Value>,
+    ) -> (StatusCode, HeaderMap, Value) {
+        let mut request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header(header::AUTHORIZATION, format!("Bearer {token}"));
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let request = match body {
+            Some(body) => request
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string())),
+            None => request.body(Body::empty()),
+        }
+        .unwrap();
+        self.send_full(request).await
+    }
+
+    /// Opens a checking account read with the synthetic BAC fixture's profile and imports the fixture.
+    pub async fn import_bac(&self, user: &User) -> String {
+        let expected: Value = serde_json::from_str(include_str!(
+            "../../../../spec/fixtures/bac-account/expected.json"
+        ))
+        .unwrap();
+        let body = serde_json::json!({ "name": "BAC", "kind": "checking", "currency": "USD",
+                                       "namespace": expected["namespace"], "profile": expected["profile"] });
+        let (status, account) = self
+            .call("POST", "/api/v1/accounts", Some(&user.token), Some(body))
+            .await;
+        assert_eq!(status, StatusCode::CREATED, "{account}");
+        let id = account["id"].as_str().unwrap().to_owned();
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/api/v1/accounts/{id}/imports?file_name=statement.csv"))
+            .header(header::AUTHORIZATION, format!("Bearer {}", user.token))
+            .body(Body::from(
+                include_bytes!("../../../../spec/fixtures/bac-account/input.csv").to_vec(),
+            ))
+            .unwrap();
+        let (status, report) = self.send(request).await;
+        assert_eq!(status, StatusCode::CREATED, "{report}");
+        id
+    }
+
+    pub async fn send_full(&self, request: Request<Body>) -> (StatusCode, HeaderMap, Value) {
         let response = self.app.clone().oneshot(request).await.unwrap();
         let status = response.status();
+        let headers = response.headers().clone();
         let bytes = response.into_body().collect().await.unwrap().to_bytes();
         let json = if bytes.is_empty() {
             Value::Null
@@ -92,6 +152,6 @@ impl Api {
             serde_json::from_slice(&bytes)
                 .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&bytes).into()))
         };
-        (status, json)
+        (status, headers, json)
     }
 }
