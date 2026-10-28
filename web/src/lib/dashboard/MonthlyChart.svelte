@@ -214,9 +214,12 @@
 </figure>
 
 <style>
+	/* One column that may shrink below its content: a wide table scrolls in its own box, and the plot measures
+	   the card's width, not the table's. */
 	.chart {
 		margin: 0;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 8px;
 	}
 	figcaption {

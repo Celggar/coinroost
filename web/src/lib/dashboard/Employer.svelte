@@ -43,11 +43,16 @@
 			</p>
 		{/if}
 		<p class="hint">
-			{plural(employer.paid, 'payroll.paid_one', 'payroll.paid_other')}{#if employer.next_due}
-				· {t('payroll.next_due', {
-					fortnight: fortnightName(employer.next_due),
-					date: day(employer.next_due.due_on)
-				})}{/if}
+			{[
+				plural(employer.paid, 'payroll.paid_one', 'payroll.paid_other'),
+				employer.next_due &&
+					t('payroll.next_due', {
+						fortnight: fortnightName(employer.next_due),
+						date: day(employer.next_due.due_on)
+					})
+			]
+				.filter(Boolean)
+				.join(' · ')}
 		</p>
 		{#if employer.history.length}
 			<details>
@@ -93,6 +98,7 @@
 <style>
 	.employer {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 6px;
 		border-top: 1px solid var(--border);
 		padding-top: 10px;

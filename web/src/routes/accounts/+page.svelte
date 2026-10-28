@@ -167,7 +167,7 @@
 					<select bind:value={profile} onchange={pickProfile}>
 						<option value="">{t('accounts.no_profile')}</option>
 						{#each profiles as option (option.id)}
-							<option value={option.id}>{option.name} ({option.format.toUpperCase()})</option>
+							<option value={option.id}>{option.name}</option>
 						{/each}
 					</select>
 				</label>
