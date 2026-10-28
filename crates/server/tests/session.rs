@@ -153,3 +153,44 @@ async fn health_answers_without_a_session(db: PgPool) {
     let (status, body) = api.call("GET", "/api/v1/health", None, None).await;
     assert_eq!((status, body), (StatusCode::OK, json!({ "status": "ok" })));
 }
+
+/// The console enrollment gives a working login: the password, and codes from the URI it prints.
+#[sqlx::test]
+async fn user_add_enrolls_a_user(db: PgPool) {
+    let api = Api::new(db.clone());
+    let enrolled = auth::enroll(&db, " New@Example.com ", PASSWORD, None)
+        .await
+        .unwrap();
+    assert!(enrolled.uri.starts_with("otpauth://totp/"), "{}", enrolled.uri);
+    let totp = totp_rs::Totp::from_url(&enrolled.uri).unwrap();
+    assert_eq!(totp.secret().to_base32(), enrolled.secret_base32);
+    let code = auth::current_code(totp.secret().as_bytes()).unwrap();
+    let login = json!({ "email": "new@example.com", "password": PASSWORD, "code": code });
+    let (status, body) = api.call("POST", "/api/v1/sessions", None, Some(login)).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+
+    // A second user joins the same household; a taken email adds nobody.
+    let second = auth::enroll(&db, "second@example.com", PASSWORD, Some(enrolled.household_id))
+        .await
+        .unwrap();
+    assert_eq!(second.household_id, enrolled.household_id);
+    let households: (i64,) = sqlx::query_as("select count(*) from households")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert!(
+        auth::enroll(&db, "new@example.com", PASSWORD, None)
+            .await
+            .is_err()
+    );
+    let after: (i64,) = sqlx::query_as("select count(*) from households")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(after, households);
+    assert!(
+        auth::enroll(&db, "short@example.com", "too short", None)
+            .await
+            .is_err()
+    );
+}
