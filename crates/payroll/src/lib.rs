@@ -240,15 +240,16 @@ pub fn due(start: Fortnight, as_of: Date) -> Vec<Fortnight> {
     found
 }
 
+/// How `fortnight` stands; `paid` is the deposit that settled it, with its position in the input.
 fn settle<A>(
     fortnight: Fortnight,
-    deposit: Option<usize>,
-    deposits: &[Deposit<A>],
+    paid: Option<(usize, &Deposit<A>)>,
     as_of: Date,
     data_until: Date,
     labels: &Labels,
 ) -> Settlement {
-    let Some(i) = deposit else {
+    let deposit = paid.map(|(i, _)| i);
+    let Some((_, d)) = paid else {
         let (status, days) = if fortnight.due_on() > data_until {
             (Status::NoData, None)
         } else {
@@ -262,7 +263,6 @@ fn settle<A>(
             label: None,
         };
     };
-    let d = &deposits[i];
     let days = (d.on - fortnight.due_on()).whole_days();
     let status = if fortnight.due_on() > as_of {
         Status::Ahead
@@ -301,7 +301,10 @@ pub fn report<A: Eq>(
         .collect();
     let history: Vec<Settlement> = fortnights
         .into_iter()
-        .map(|f| settle(f, covered.get(&f).copied(), deposits, as_of, cutoff, labels))
+        .map(|f| {
+            let paid = covered.get(&f).map(|&i| (i, &deposits[i]));
+            settle(f, paid, as_of, cutoff, labels)
+        })
         .collect();
     let with = |status: Status| {
         history

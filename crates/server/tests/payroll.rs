@@ -16,7 +16,8 @@ async fn account(api: &Api, user: &User, name: &str) -> String {
     id(&post(api, user, "/api/v1/accounts", body).await).to_owned()
 }
 
-async fn money(api: &Api, user: &User, date: &str, account: &str, cents: i64, description: &str) {
+/// Who acts is one argument: the API and the user.
+async fn money((api, user): (&Api, &User), date: &str, account: &str, cents: i64, description: &str) {
     let body = json!({ "date": date, "description": description,
                        "legs": [{ "account_id": account, "amount_minor": cents }] });
     post(api, user, "/api/v1/transactions", body).await;
@@ -38,11 +39,18 @@ const EMPLOYERS: &str = r#"{ "employers": [
 async fn acme(api: &Api, user: &User) -> String {
     let checking = account(api, user, "Checking").await;
     let savings = account(api, user, "Savings").await;
-    money(api, user, "2026-01-15", &checking, 80000, "ACME PLANILLA").await;
-    money(api, user, "2026-02-02", &checking, 80000, "ACME II QNA DE ENERO").await;
-    money(api, user, "2026-02-20", &checking, 56000, "ACME XIII MES").await;
-    money(api, user, "2026-02-16", &savings, 80000, "ACME PAGO").await;
-    money(api, user, "2026-03-03", &checking, 80000, "ACME PAGO").await;
+    money((api, user), "2026-01-15", &checking, 80000, "ACME PLANILLA").await;
+    money(
+        (api, user),
+        "2026-02-02",
+        &checking,
+        80000,
+        "ACME II QNA DE ENERO",
+    )
+    .await;
+    money((api, user), "2026-02-20", &checking, 56000, "ACME XIII MES").await;
+    money((api, user), "2026-02-16", &savings, 80000, "ACME PAGO").await;
+    money((api, user), "2026-03-03", &checking, 80000, "ACME PAGO").await;
     employers::load(
         &api.db,
         household(api, user).await,
@@ -79,7 +87,7 @@ async fn payroll_reports_what_each_employer_owes(db: PgPool) {
     let api = Api::new(db);
     let user = api.household("Owed").await;
     let checking = acme(&api, &user).await;
-    money(&api, &user, "2026-03-20", &checking, -1000, "COFFEE").await;
+    money((&api, &user), "2026-03-20", &checking, -1000, "COFFEE").await;
     let found = payroll(&api, &user, "2026-04-10").await;
     let acme = found.iter().find(|e| e["name"] == "Acme").unwrap();
     // Worked by hand. Due by 10 April: Jan I, Jan II, Feb I, Feb II, Mar I, Mar II; the account's last data is
@@ -162,7 +170,7 @@ async fn payroll_waits_for_data_it_does_not_have(db: PgPool) {
     assert_eq!(fortnights(&acme["owed"]), ["2026-02-1"]);
     assert_eq!(fortnights(&acme["unknown"]), ["2026-03-1", "2026-03-2"]);
     // A later statement arrives with no payment in it: now Mar I is owed.
-    money(&api, &user, "2026-03-20", &checking, -1000, "COFFEE").await;
+    money((&api, &user), "2026-03-20", &checking, -1000, "COFFEE").await;
     let after = payroll(&api, &user, "2026-04-10").await;
     let acme = after.iter().find(|e| e["name"] == "Acme").unwrap();
     assert_eq!(fortnights(&acme["owed"]), ["2026-02-1", "2026-03-1"]);

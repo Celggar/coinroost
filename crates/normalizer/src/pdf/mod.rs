@@ -3,6 +3,7 @@
 //! descriptions span several lines.
 
 mod edges;
+mod geometry;
 #[cfg(feature = "pdf")]
 mod glyphs;
 mod layout;

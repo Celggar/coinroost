@@ -56,14 +56,8 @@ struct Maps {
     payees: HashMap<String, Uuid>,
 }
 
-/// Adds the rule, or updates the one with its name where it differs.
-async fn load_rule(
-    db: &mut PgConnection,
-    household_id: Uuid,
-    rule: &NewRule,
-    maps: &Maps,
-    report: &mut LoadReport,
-) -> Result<(), sqlx::Error> {
+/// The rule as it should be stored, its names resolved.
+fn wanted(rule: &NewRule, maps: &Maps) -> Result<Stored, sqlx::Error> {
     let Maps {
         categories,
         accounts,
@@ -79,7 +73,7 @@ async fn load_rule(
         })?),
         None => None,
     };
-    let wanted = Stored {
+    Ok(Stored {
         description_contains: when.contains.clone(),
         direction: when.direction.map(|d| match d {
             Direction::In => "in".to_owned(),
@@ -99,7 +93,18 @@ async fn load_rule(
             .as_ref()
             .and_then(|p| payees.get(p.trim()).copied()),
         payee_from_text: rule.then.payee_from_text,
-    };
+    })
+}
+
+/// Adds the rule, or updates the one with its name where it differs.
+async fn load_rule(
+    db: &mut PgConnection,
+    household_id: Uuid,
+    rule: &NewRule,
+    maps: &Maps,
+    report: &mut LoadReport,
+) -> Result<(), sqlx::Error> {
+    let wanted = wanted(rule, maps)?;
     let existing: Option<Existing> = sqlx::query_as(
         "select id, description_contains, direction, account_id, amount_min, amount_max, category_id,
                 payee_id, payee_from_text
@@ -148,16 +153,13 @@ async fn load_rule(
     Ok(())
 }
 
-async fn load_in(
+/// Adds the set's categories, or changes the kind of one that has the name.
+async fn load_categories(
     db: &mut PgConnection,
     household_id: Uuid,
     set: &RuleSet,
-) -> Result<LoadReport, sqlx::Error> {
-    let mut report = LoadReport::default();
-    sqlx::query("select id from households where id = $1 for update")
-        .bind(household_id)
-        .execute(&mut *db)
-        .await?;
+    report: &mut LoadReport,
+) -> Result<(), sqlx::Error> {
     for category in &set.categories {
         let kind = match category.kind {
             coinroost_rules::CategoryKind::Expense => "expense",
@@ -181,47 +183,65 @@ async fn load_in(
             None => {}
         }
     }
-    let categories = ids(
-        db,
-        "select name, id from categories where household_id = $1",
-        household_id,
-    )
-    .await?;
-    let accounts = ids(
-        db,
-        "select namespace, id from accounts where household_id = $1",
-        household_id,
-    )
-    .await?;
-    let mut payees = HashMap::new();
+    Ok(())
+}
+
+/// Adds the payees the set's rules name and the household does not have.
+async fn load_payees(
+    db: &mut PgConnection,
+    household_id: Uuid,
+    set: &RuleSet,
+    report: &mut LoadReport,
+) -> Result<(), sqlx::Error> {
     for name in set.rules.iter().filter_map(|r| r.then.payee.as_deref()) {
-        let name = name.trim();
         let added: Option<(Uuid,)> = sqlx::query_as(
             "insert into payees (household_id, name) values ($1, $2) on conflict (household_id, name) do nothing
              returning id",
         )
         .bind(household_id)
-        .bind(name)
+        .bind(name.trim())
         .fetch_optional(&mut *db)
         .await?;
         report.payees_added += usize::from(added.is_some());
     }
-    payees.extend(
-        ids(
+    Ok(())
+}
+
+async fn load_in(
+    db: &mut PgConnection,
+    household_id: Uuid,
+    set: &RuleSet,
+) -> Result<LoadReport, sqlx::Error> {
+    let mut report = LoadReport::default();
+    sqlx::query("select id from households where id = $1 for update")
+        .bind(household_id)
+        .execute(&mut *db)
+        .await?;
+    load_categories(db, household_id, set, &mut report).await?;
+    load_payees(db, household_id, set, &mut report).await?;
+    let maps = Maps {
+        categories: ids(
+            db,
+            "select name, id from categories where household_id = $1",
+            household_id,
+        )
+        .await?,
+        accounts: ids(
+            db,
+            "select namespace, id from accounts where household_id = $1",
+            household_id,
+        )
+        .await?,
+        payees: ids(
             db,
             "select name, id from payees where household_id = $1",
             household_id,
         )
         .await?,
-    );
+    };
     sqlx::query("set constraints all deferred")
         .execute(&mut *db)
         .await?;
-    let maps = Maps {
-        categories,
-        accounts,
-        payees,
-    };
     for rule in &set.rules {
         load_rule(db, household_id, rule, &maps, &mut report).await?;
     }

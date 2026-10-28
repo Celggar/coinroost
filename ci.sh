@@ -26,7 +26,11 @@ step "format"
 cargo fmt --all --check
 
 step "lints"
+# clippy.toml holds the function length and parameter limits of code-standards.json.
 cargo clippy --workspace --all-targets --locked -- -D warnings
+
+step "file sizes"
+bash scripts/policy/check.sh sizes
 
 step "database"
 if [ -z "${DATABASE_URL:-}" ] && [ -f "$HOME/.config/coinroost/dev.env" ]; then

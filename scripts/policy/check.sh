@@ -6,6 +6,7 @@
 #   check.sh language <base> <head> added lines must be written in English
 #   check.sh language --staged     same, for the staged diff (pre-commit)
 #   check.sh message <file>        one commit message file (commit-msg hook)
+#   check.sh sizes                 tracked code files must stay within code-standards.json's line limits
 #
 # What it does NOT watch: text inside binary files, wording quality, or English that is merely poor.
 # Language detection is a heuristic: a line fails when it holds two or more distinct words from
@@ -74,10 +75,34 @@ for row in sys.stdin:
 $bad"
 }
 
+# Line limits for tracked code files, from code-standards.json (fileLines, testFileLines, exclude). Test files are
+# those under a tests/ or e2e/ folder, or named *.test.* or *.spec.*. Function length and parameter count are
+# checked by clippy (clippy.toml).
+check_sizes() {
+  local bad
+  bad=$(git ls-files -z | python3 -c '
+import fnmatch, json, re, sys
+rules = json.load(open(sys.argv[1], encoding="utf-8"))
+code = re.compile(r"\.(rs|ts|js|mjs|cjs|svelte|py|sh)$")
+test = re.compile(r"(^|/)(tests|e2e)/|\.(test|spec)\.[a-z]+$")
+for path in sys.stdin.read().split("\0"):
+    if not code.search(path) or any(fnmatch.fnmatch(path, g) for g in rules["exclude"]):
+        continue
+    limit = rules["testFileLines"] if test.search(path) else rules["fileLines"]
+    with open(path, encoding="utf-8", errors="replace") as f:
+        lines = sum(1 for _ in f)
+    if lines > limit:
+        print(f"{path}: {lines} lines (limit {limit})")
+' "$HERE/../../code-standards.json")
+  [ -z "$bad" ] || fail "files over the size limits of code-standards.json (split them):
+$bad"
+}
+
 case "${1:-}" in
   files)    check_files ;;
+  sizes)    check_sizes ;;
   commits)  check_commits "$2" "$3" ;;
   language) shift; check_language "$@" ;;
   message)  check_message_text < "$2" ;;
-  *)        fail "usage: check.sh files | commits <base> <head> | language <base> <head> | language --staged | message <file>" ;;
+  *)        fail "usage: check.sh files | sizes | commits <base> <head> | language <base> <head> | language --staged | message <file>" ;;
 esac

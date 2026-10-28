@@ -52,6 +52,39 @@ fn start_month(text: &str) -> Option<Date> {
     Date::from_calendar_date(year.parse().ok()?, month, 1).ok()
 }
 
+/// What an employer stores: its match text, account, minimum, fortnight amount and start month.
+type Row<'a> = (&'a str, Uuid, i64, i64, Date);
+
+/// Checks one entry of the file and finds its account by namespace.
+async fn resolve<'a>(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    household_id: Uuid,
+    e: &'a NewEmployer,
+) -> Result<Row<'a>, String> {
+    let name = e.name.trim();
+    if name.is_empty() || e.match_text.trim().is_empty() || e.min_amount_minor <= 0 || e.amount_minor <= 0 {
+        return Err(format!(
+            "employer {name:?}: a name, a match text and positive amounts are needed"
+        ));
+    }
+    let start = start_month(&e.start).ok_or_else(|| format!("employer {name:?}: start is YYYY-MM"))?;
+    let account: Option<(Uuid,)> =
+        sqlx::query_as("select id from accounts where household_id = $1 and namespace = $2")
+            .bind(household_id)
+            .bind(&e.account)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    let (account_id,) = account.ok_or_else(|| format!("employer {name:?}: no account {:?}", e.account))?;
+    Ok((
+        e.match_text.trim(),
+        account_id,
+        e.min_amount_minor,
+        e.amount_minor,
+        start,
+    ))
+}
+
 /// Adds the employers the household does not have and updates the others, by name. Loading the same file again
 /// changes nothing.
 pub async fn load(db: &PgPool, household_id: Uuid, file: &EmployersFile) -> Result<LoadReport, String> {
@@ -59,29 +92,7 @@ pub async fn load(db: &PgPool, household_id: Uuid, file: &EmployersFile) -> Resu
     let mut report = LoadReport::default();
     for e in &file.employers {
         let name = e.name.trim();
-        if name.is_empty() || e.match_text.trim().is_empty() || e.min_amount_minor <= 0 || e.amount_minor <= 0
-        {
-            return Err(format!(
-                "employer {name:?}: a name, a match text and positive amounts are needed"
-            ));
-        }
-        let start = start_month(&e.start).ok_or_else(|| format!("employer {name:?}: start is YYYY-MM"))?;
-        let account: Option<(Uuid,)> =
-            sqlx::query_as("select id from accounts where household_id = $1 and namespace = $2")
-                .bind(household_id)
-                .bind(&e.account)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(|e| e.to_string())?;
-        let (account_id,) =
-            account.ok_or_else(|| format!("employer {name:?}: no account {:?}", e.account))?;
-        let row = (
-            e.match_text.trim(),
-            account_id,
-            e.min_amount_minor,
-            e.amount_minor,
-            start,
-        );
+        let row = resolve(&mut tx, household_id, e).await?;
         let existing: Option<(Uuid, String, Uuid, i64, i64, Date)> = sqlx::query_as(
             "select id, match_text, account_id, min_amount_minor, amount_minor, start_month
              from employers where household_id = $1 and name = $2",
