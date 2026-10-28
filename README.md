@@ -59,6 +59,20 @@ COINROOST_WEB_DIR=web/build cargo run -p coinroost-server -- serve
 ```
 
 The server listens on `127.0.0.1:8080` (`COINROOST_BIND` changes it) and creates the database if it is missing.
+
+Rules live on the Rules page: the first rule from the top that matches sets the category and payee of each
+imported transaction, and the Uncategorized page lists what no rule sorted. A category or payee you set by hand
+is never changed by a rule. A whole rule set can also be loaded from a file; loading it again changes nothing:
+
+```sh
+cat > rules.json <<'EOF'
+{ "categories": [{ "name": "Groceries", "kind": "expense" }],
+  "rules": [{ "name": "market", "when": { "contains": "SUPERMARKET", "direction": "out" },
+              "then": { "category": "Groceries", "payee": "Market" } }] }
+EOF
+cargo run -p coinroost-server -- rules load rules.json --household <household id>
+cargo run -p coinroost-cli -- categorize --rules rules.json < transactions.jsonl   # try a set without a server
+```
 After a route changes, `cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract and
 `npm run api-types` in `web/` refreshes the app's types from it.
 
