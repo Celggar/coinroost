@@ -25,6 +25,12 @@ if ! docker volume inspect coinroost-pgdata >/dev/null 2>&1; then
   exit 1
 fi
 
+# The image is built from the working tree: deploy a commit, so the version printed below is what runs.
+if [[ -n $(git -C "$here/.." status --porcelain) ]]; then
+  echo "the working tree has uncommitted changes: commit or stash them first" >&2
+  exit 1
+fi
+
 "${compose[@]}" up -d --build --wait --wait-timeout 180
 
 port=$(sed -n 's/^COINROOST_PORT=//p' "$env_file")
