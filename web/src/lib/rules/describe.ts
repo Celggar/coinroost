@@ -1,5 +1,6 @@
 // How rules, and what they change, are put into words.
 import type { Schemas } from '#lib/api/client.ts';
+import { t } from '#lib/i18n.svelte.ts';
 
 export type Names = {
 	categories: Map<string, string>;
@@ -35,16 +36,18 @@ export function toMinor(text: string): number | null {
 export function conditions(rule: Schemas['Rule'], names: Names): string[] {
 	const when = rule.when;
 	const parts: string[] = [];
-	if (when.description_contains != null) parts.push(`text has «${when.description_contains}»`);
-	if (when.direction === 'out') parts.push('money out');
-	if (when.direction === 'in') parts.push('money in');
-	if (when.account_id) parts.push(`account ${names.accounts.get(when.account_id) ?? '?'}`);
+	if (when.description_contains != null)
+		parts.push(t('when.text', { text: when.description_contains }));
+	if (when.direction === 'out') parts.push(t('when.out'));
+	if (when.direction === 'in') parts.push(t('when.in'));
+	if (when.account_id)
+		parts.push(t('when.account', { name: names.accounts.get(when.account_id) ?? '?' }));
 	if (when.amount_min != null && when.amount_max != null) {
-		parts.push(`amount ${plain(when.amount_min)} to ${plain(when.amount_max)}`);
+		parts.push(t('when.between', { min: plain(when.amount_min), max: plain(when.amount_max) }));
 	} else if (when.amount_min != null) {
-		parts.push(`amount ${plain(when.amount_min)} or more`);
+		parts.push(t('when.min', { min: plain(when.amount_min) }));
 	} else if (when.amount_max != null) {
-		parts.push(`amount up to ${plain(when.amount_max)}`);
+		parts.push(t('when.max', { max: plain(when.amount_max) }));
 	}
 	return parts;
 }
@@ -52,9 +55,10 @@ export function conditions(rule: Schemas['Rule'], names: Names): string[] {
 export function actions(rule: Schemas['Rule'], names: Names): string[] {
 	const then = rule.then;
 	const parts: string[] = [];
-	if (then.category_id) parts.push(`category ${names.categories.get(then.category_id) ?? '?'}`);
-	if (then.payee_id) parts.push(`payee ${names.payees.get(then.payee_id) ?? '?'}`);
-	if (then.payee_from_text) parts.push('payee: the name after the text');
+	if (then.category_id)
+		parts.push(t('then.category', { name: names.categories.get(then.category_id) ?? '?' }));
+	if (then.payee_id) parts.push(t('then.payee', { name: names.payees.get(then.payee_id) ?? '?' }));
+	if (then.payee_from_text) parts.push(t('then.payee_from_text'));
 	return parts;
 }
 
@@ -63,6 +67,6 @@ export function categoryName(id: string | null | undefined, names: Names): strin
 }
 
 export function payeeName(sorting: Schemas['Sorting'], names: Names): string {
-	if (sorting.new_payee) return `${sorting.new_payee} (new)`;
+	if (sorting.new_payee) return t('payee.new', { name: sorting.new_payee });
 	return sorting.payee_id ? (names.payees.get(sorting.payee_id) ?? '?') : '—';
 }

@@ -14,6 +14,11 @@
 	--bad: #9b1c1c;
 	--bad-bg: #fde4e4;
 	--radius: 8px;
+	/* Charts: income and spending are categorical slots 1 and 2, checked for color blindness against --surface. */
+	--chart-income: #2a78d6;
+	--chart-spending: #eb6834;
+	--chart-grid: #e8e6df;
+	--chart-axis: #b9b6aa;
 	color-scheme: light dark;
 	font-family:
 		system-ui,
@@ -40,6 +45,10 @@
 		--warn-bg: #3a2c0d;
 		--bad: #f4a3a3;
 		--bad-bg: #3d1717;
+		--chart-income: #3987e5;
+		--chart-spending: #d95926;
+		--chart-grid: #2e2d26;
+		--chart-axis: #4a483d;
 	}
 }
 
@@ -79,6 +88,13 @@ a {
 }
 
 :focus-visible {
+	outline: 3px solid var(--focus);
+	outline-offset: 2px;
+}
+
+/* Chromium focuses the parts of a date input one by one, and its picker button shows no ring of its own: the
+   whole input shows it while any part has the focus. */
+input[type='date']:focus-within {
 	outline: 3px solid var(--focus);
 	outline-offset: 2px;
 }

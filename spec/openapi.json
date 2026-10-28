@@ -2166,6 +2166,7 @@
           "account_id",
           "currency",
           "amount_minor",
+          "start",
           "owed",
           "owed_total_minor",
           "ahead",
@@ -2193,12 +2194,17 @@
             "format": "int64",
             "description": "What a fortnight is worth today."
           },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "description": "The first day of the first fortnight the employer pays."
+          },
           "error": {
             "type": [
               "string",
               "null"
             ],
-            "description": "When the deposits could not be read (no deposit counted), why; the other fields then stay empty."
+            "description": "When the deposits could not be read (no deposit counted since `start`), why; the other fields then stay\nempty."
           },
           "owed": {
             "type": "array",

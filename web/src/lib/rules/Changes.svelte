@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { money } from '#lib/format.ts';
+	import { day, money } from '#lib/format.ts';
+	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
 
 	let { names, onapplied }: { names: Names; onapplied: () => void } = $props();
@@ -15,10 +16,11 @@
 		const parts: string[] = [];
 		const fromCategory = categoryName(change.before.category_id, names);
 		const toCategory = categoryName(change.after.category_id, names);
-		if (fromCategory !== toCategory) parts.push(`Category: ${fromCategory} → ${toCategory}`);
+		if (fromCategory !== toCategory)
+			parts.push(t('changes.category', { from: fromCategory, to: toCategory }));
 		const [fromPayee, toPayee] = [payeeName(change.before, names), payeeName(change.after, names)];
-		if (fromPayee !== toPayee) parts.push(`Payee: ${fromPayee} → ${toPayee}`);
-		if (parts.length === 0) parts.push('Only the rule that set it changes');
+		if (fromPayee !== toPayee) parts.push(t('changes.payee', { from: fromPayee, to: toPayee }));
+		if (parts.length === 0) parts.push(t('changes.only_rule'));
 		return parts;
 	}
 
@@ -29,7 +31,7 @@
 		busy = false;
 		if (!data) {
 			preview = null;
-			error = problem(failure, response?.status, 'The changes could not be checked');
+			error = problem(failure, response?.status, t('changes.check_failed'));
 			return;
 		}
 		preview = data;
@@ -51,21 +53,19 @@
 		if (!data) {
 			error =
 				response?.status === 412
-					? 'The changes are not the ones you checked any more: check again.'
-					: problem(failure, response?.status, 'The rules could not be applied');
+					? t('changes.stale')
+					: problem(failure, response?.status, t('changes.apply_failed'));
 			return;
 		}
-		done = `Applied ${data.applied} ${data.applied === 1 ? 'change' : 'changes'}.`;
+		done = plural(data.applied, 'changes.applied_one', 'changes.applied_other');
 		onapplied();
 		await check();
 	}
 </script>
 
 <section class="card" aria-labelledby="changes-title">
-	<h2 id="changes-title">Apply the rules to existing transactions</h2>
-	<p class="hint">
-		See first what would change. A category or payee you chose by hand is never changed.
-	</p>
+	<h2 id="changes-title">{t('changes.title')}</h2>
+	<p class="hint">{t('changes.hint')}</p>
 	<div>
 		<button
 			class="secondary"
@@ -73,24 +73,21 @@
 				done = '';
 				check();
 			}}
-			disabled={busy}>Check changes</button
+			disabled={busy}>{t('changes.check')}</button
 		>
 	</div>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if done}<p class="notice" role="status">{done}</p>{/if}
 	{#if preview}
 		{#if preview.changes.length === 0}
-			<p>Nothing would change.</p>
+			<p>{t('changes.nothing')}</p>
 		{:else}
-			<p>
-				{preview.changes.length}
-				{preview.changes.length === 1 ? 'transaction' : 'transactions'} would change:
-			</p>
+			<p>{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}</p>
 			<ul class="changes">
 				{#each preview.changes as change (change.transaction_id)}
 					<li>
 						<div class="what">
-							<span>{change.date}</span>
+							<span>{day(change.date)}</span>
 							<span class="description">{change.description}</span>
 							<span class="amount">{money(change.amount_minor, change.currency)}</span>
 						</div>
@@ -100,8 +97,7 @@
 			</ul>
 			<div>
 				<button onclick={apply} disabled={busy}>
-					Apply {preview.changes.length}
-					{preview.changes.length === 1 ? 'change' : 'changes'}
+					{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
 				</button>
 			</div>
 		{/if}

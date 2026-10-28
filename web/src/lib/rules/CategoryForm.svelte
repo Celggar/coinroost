@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 
 	let { oncreated }: { oncreated: (category: Schemas['Category']) => void } = $props();
 
@@ -28,34 +29,34 @@
 		});
 		busy = false;
 		if (!data) {
-			error = problem(failure, response?.status, 'The category could not be created');
+			error = problem(failure, response?.status, t('categoryform.failed'));
 			return;
 		}
-		done = `Created ${data.name}.`;
+		done = t('categoryform.created', { name: data.name });
 		name = '';
 		oncreated(data);
 	}
 </script>
 
-<form class="card" onsubmit={submit} oninput={clear} aria-label="New category">
-	<h2>New category</h2>
+<form class="card" onsubmit={submit} oninput={clear} aria-label={t('categoryform.title')}>
+	<h2>{t('categoryform.title')}</h2>
 	<div class="fields">
 		<label>
-			Category name
+			{t('categoryform.name')}
 			<input required maxlength="100" bind:value={name} />
 		</label>
 		<label>
-			Holds
+			{t('categoryform.holds')}
 			<select bind:value={kind}>
-				<option value="expense">Spending</option>
-				<option value="income">Income</option>
-				<option value="transfer">Moves between my accounts</option>
+				<option value="expense">{t('categoryform.expense')}</option>
+				<option value="income">{t('categoryform.income')}</option>
+				<option value="transfer">{t('categoryform.transfer')}</option>
 			</select>
 		</label>
 	</div>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if done}<p class="notice" role="status">{done}</p>{/if}
-	<div><button type="submit" disabled={busy}>Create category</button></div>
+	<div><button type="submit" disabled={busy}>{t('categoryform.create')}</button></div>
 </form>
 
 <style>
