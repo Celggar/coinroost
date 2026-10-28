@@ -452,8 +452,10 @@ version = "0.1.0"
 dependencies = [
  "coinroost-normalizer",
  "coinroost-rules",
+ "coinroost-transfers",
  "serde",
  "serde_json",
+ "time",
 ]
 
 [[package]]
@@ -505,6 +507,14 @@ dependencies = [
  "utoipa",
  "utoipa-axum",
  "uuid",
+]
+
+[[package]]
+name = "coinroost-transfers"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "time",
 ]
 
 [[package]]

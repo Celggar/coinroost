@@ -3,8 +3,10 @@
 //! `coinroost tables <file.pdf>`: prints the ruled tables of a PDF, page by page, as JSON.
 //! `coinroost profiles`: lists the built-in profiles.
 //! `coinroost categorize --rules <set.json> [--payee-text <locale.toml>]`: sorts transactions read as JSON lines.
+//! `coinroost pair [--evidence <transfers.jsonl>]`: pairs the two legs of transfers read as JSON lines.
 
 mod categorize;
+mod pair;
 
 use std::process::ExitCode;
 
@@ -16,7 +18,8 @@ pub(crate) const USAGE: &str = "usage: coinroost normalize --profile <id> --name
        coinroost detect --accounts <rules.toml> <file>
        coinroost tables <file.pdf>
        coinroost profiles
-       coinroost categorize --rules <set.json> [--payee-text <locale.toml>] < transactions.jsonl";
+       coinroost categorize --rules <set.json> [--payee-text <locale.toml>] < transactions.jsonl
+       coinroost pair [--evidence <transfers.jsonl>] < legs.jsonl";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -27,7 +30,11 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
-        Some("categorize") => match categorize::run(&args[1..]) {
+        Some(command @ ("categorize" | "pair")) => match if command == "pair" {
+            pair::run(&args[1..])
+        } else {
+            categorize::run(&args[1..])
+        } {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {
                 eprintln!("{message}");
