@@ -1,0 +1,45 @@
+[
+ {
+  "type": "rules",
+  "id": "1",
+  "attributes": {
+   "title": "Groceries",
+   "description": null,
+   "rule_group_id": "1",
+   "rule_group_title": "Default rules",
+   "order": 1,
+   "active": true,
+   "strict": true,
+   "stop_processing": false,
+   "trigger": "store-journal",
+   "triggers": [
+    {
+     "id": "1",
+     "type": "description_contains",
+     "value": "SUPERMERCADO",
+     "prohibited": false,
+     "order": 1,
+     "active": true,
+     "stop_processing": false
+    }
+   ],
+   "actions": [
+    {
+     "id": "1",
+     "type": "set_category",
+     "value": "Groceries",
+     "order": 1,
+     "active": true,
+     "stop_processing": false
+    }
+   ]
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/rules/1",
+   "0": {
+    "rel": "self",
+    "uri": "/rules/1"
+   }
+  }
+ }
+]

@@ -1,0 +1,19 @@
+[
+ {
+  "type": "link_types",
+  "id": "1",
+  "attributes": {
+   "name": "Related",
+   "inward": "relates to",
+   "outward": "relates to",
+   "editable": false
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/link-types/1",
+   "0": {
+    "rel": "self",
+    "uri": "/link-types/1"
+   }
+  }
+ }
+]

@@ -1,0 +1,59 @@
+[
+ {
+  "type": "tags",
+  "id": "1",
+  "attributes": {
+   "tag": "food",
+   "date": null,
+   "description": null,
+   "latitude": null,
+   "longitude": null,
+   "zoom_level": null
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/tags/1",
+   "0": {
+    "rel": "self",
+    "uri": "/tags/1"
+   }
+  }
+ },
+ {
+  "type": "tags",
+  "id": "2",
+  "attributes": {
+   "tag": "hub",
+   "date": null,
+   "description": null,
+   "latitude": null,
+   "longitude": null,
+   "zoom_level": null
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/tags/2",
+   "0": {
+    "rel": "self",
+    "uri": "/tags/2"
+   }
+  }
+ },
+ {
+  "type": "tags",
+  "id": "3",
+  "attributes": {
+   "tag": "migration-transfer",
+   "date": null,
+   "description": null,
+   "latitude": null,
+   "longitude": null,
+   "zoom_level": null
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/tags/3",
+   "0": {
+    "rel": "self",
+    "uri": "/tags/3"
+   }
+  }
+ }
+]

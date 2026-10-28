@@ -1,0 +1,33 @@
+{
+  "what": "A synthetic Firefly III 6.6.3 ledger for the migration tests: no real person, account or amount. The test server in crates/server/tests/common/firefly.rs serves these files the way Firefly's API v1 does: JSON:API items, meta.pagination and links.next, 4 items per page whatever limit is asked, Bearer token, GET only.",
+  "files": {
+    "accounts.json": "every account (GET /accounts?type=all); a type-less request gets only the 'normal' ones",
+    "groups.json": "every transaction group; lists return all but the 'liability credit' one (group 2), and without type=all they leave out opening balances and reconciliations",
+    "balances.json": "Firefly's current_balance per own account at each month end, worked by hand below (never computed by the test server)",
+    "map.json": "the person's map from Firefly accounts to Coinroost accounts",
+    "other files": "one list per remaining entity type, migrated as counts and gaps"
+  },
+  "traps": [
+    "group 1: an opening balance from the initial-balance account",
+    "group 2: the store card's opening debt, a 'liability credit' that no type filter lists; only GET /transactions/2 returns it",
+    "group 4: amount \"45.500000000000\", padded with zeros",
+    "group 5: one group with two journals (a split)",
+    "group 7: paying the card, a withdrawal between two own accounts",
+    "group 9 and 22: transfers merged by the hub, outflow id in external_id and both ids in the notes as ext=",
+    "group 10: deleted, its id answers 404",
+    "group 11: USD to JPY, the yen in foreign_amount",
+    "group 12: 2026-03-31T21:30:00-05:00, in March as written and in April in UTC",
+    "group 13: a JPY journal, no decimals",
+    "group 16: a reconciliation",
+    "groups 17-25: the May rows of spec/fixtures/bac-account with the same external_id, dates and amounts",
+    "accounts 10 and 22: an expense and a revenue account with the same name, one payee",
+    "account 5: inactive, emptied in April"
+  ],
+  "hand_worked_balances": {
+    "1 BAC Checking": "March: 300.00 + 1462.16 - 45.50 - 30.00 - 12.00 - 50.00 - 40.00 - 100.00 - 10.00 - 5.00 = 1469.66; April: - 0.35 = 1469.31; May: - 113.26 + 1462.16 - 45.50 - 45.50 - 20.00 - 500.00 - 3.75 + 12.50 + 0.56 = 2216.52",
+    "2 Savings": "March: 100.00; April: + 20.00 = 120.00; May: + 500.00 = 620.00",
+    "3 Store card": "March: - 200.00 - 20.00 + 50.00 = -170.00; April: -170.00; May: + 113.26 = -56.74",
+    "4 Yen wallet": "March: 1500; April: - 1200 = 300; May: 300",
+    "5 Old savings": "March: 0.00; April: + 20.00 - 20.00 = 0.00; May: 0.00"
+  }
+}

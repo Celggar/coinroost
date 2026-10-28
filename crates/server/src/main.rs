@@ -10,6 +10,10 @@
 //! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
 //! `coinroost-server token add <email> --name <label> [--read-only]`: prints a new API token for the user, once.
 //! `coinroost-server token revoke <email> --name <label>`: revokes the user's live token of that name.
+//! `coinroost-server firefly fetch --out <dir>`: reads a Firefly III ledger with GET requests only into a new
+//! folder only you can read; the address is `FIREFLY_URL` and the token is read from the file `FIREFLY_TOKEN_FILE`.
+//! `coinroost-server firefly import|check <dir> --household <id> --accounts <map.json>`: moves a fetched ledger
+//! into a household, or compares every mapped account's month-end balance with Firefly's.
 //! `coinroost-server openapi`: prints the API contract (`OpenAPI` 3.1, JSON).
 
 use std::io::IsTerminal;
@@ -17,14 +21,16 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use coinroost_server::tokens::{self, Scope};
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, mcp, openapi, rule_set};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, firefly, mcp, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
        | rules load <set.json> --household <id> | payroll load <employers.json> --household <id>
-       | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi";
+       | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi
+       | firefly fetch --out <dir> | firefly import <dir> --household <id> --accounts <map.json>
+       | firefly check <dir> --household <id> --accounts <map.json>";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -50,6 +56,19 @@ async fn main() -> ExitCode {
         ["token", "add", email, "--name", name] => add_token(email, name, Scope::Write).await,
         ["token", "add", email, "--name", name, "--read-only"] => add_token(email, name, Scope::Read).await,
         ["token", "revoke", email, "--name", name] => revoke_token(email, name).await,
+        ["firefly", "fetch", "--out", dir] => firefly_fetch(dir).await,
+        [
+            "firefly",
+            step @ ("import" | "check"),
+            dir,
+            "--household",
+            id,
+            "--accounts",
+            map,
+        ] => match Uuid::parse_str(id) {
+            Ok(id) => firefly_offline(step, dir, id, map).await,
+            Err(e) => Err(format!("--household: {e}")),
+        },
         _ => Err(USAGE.to_owned()),
     };
     match outcome {
@@ -191,5 +210,37 @@ async fn revoke_token(email: &str, name: &str) -> Result<(), String> {
         Ok(())
     } else {
         Err(format!("{email} has no live token named {name:?}"))
+    }
+}
+
+async fn firefly_fetch(dir: &str) -> Result<(), String> {
+    let url =
+        std::env::var("FIREFLY_URL").map_err(|_| "set FIREFLY_URL, such as http://firefly.lan".to_owned())?;
+    let token_file = std::env::var("FIREFLY_TOKEN_FILE")
+        .map_err(|_| "set FIREFLY_TOKEN_FILE to a file holding the token (chmod 600)".to_owned())?;
+    let token = firefly::fetch::token(std::path::Path::new(&token_file))?;
+    let summary = firefly::fetch::fetch(&url, &token, std::path::Path::new(dir)).await?;
+    eprintln!("{summary}");
+    Ok(())
+}
+
+async fn firefly_offline(step: &str, dir: &str, household: Uuid, map: &str) -> Result<(), String> {
+    let snapshot = firefly::snapshot::Snapshot::load(std::path::Path::new(dir))?;
+    let text = std::fs::read_to_string(map).map_err(|e| format!("{map}: {e}"))?;
+    let map: firefly::plan::Map = serde_json::from_str(&text).map_err(|e| format!("{map}: {e}"))?;
+    let db = connect().await?;
+    if step == "import" {
+        println!(
+            "{}",
+            firefly::import::import(&db, household, &snapshot, &map).await?
+        );
+        return Ok(());
+    }
+    let (report, differ) = firefly::check::check(&db, household, &snapshot, &map).await?;
+    println!("{report}");
+    if differ == 0 {
+        Ok(())
+    } else {
+        Err(format!("{differ} month-end balances differ from Firefly's"))
     }
 }

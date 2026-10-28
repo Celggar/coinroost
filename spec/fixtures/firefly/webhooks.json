@@ -1,0 +1,22 @@
+[
+ {
+  "type": "webhooks",
+  "id": "1",
+  "attributes": {
+   "title": "Example hook",
+   "url": "http://hooks.example/",
+   "active": false,
+   "secret": "synthetic-secret",
+   "triggers": [],
+   "deliveries": [],
+   "responses": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/webhooks/1",
+   "0": {
+    "rel": "self",
+    "uri": "/webhooks/1"
+   }
+  }
+ }
+]

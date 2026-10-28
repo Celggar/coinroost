@@ -1,0 +1,32 @@
+[
+ {
+  "type": "piggy-banks",
+  "id": "1",
+  "attributes": {
+   "name": "Trip",
+   "target_amount": "1000.00",
+   "current_amount": "120.00",
+   "start_date": "2026-03-01",
+   "target_date": null,
+   "order": 1,
+   "notes": null,
+   "currency_id": "1",
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_decimal_places": 2,
+   "accounts": [
+    {
+     "account_id": "2",
+     "name": "Savings"
+    }
+   ]
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/piggy-banks/1",
+   "0": {
+    "rel": "self",
+    "uri": "/piggy-banks/1"
+   }
+  }
+ }
+]

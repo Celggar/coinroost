@@ -1,0 +1,26 @@
+[
+ {
+  "type": "budget_limits",
+  "id": "1",
+  "attributes": {
+   "start": "2026-03-01T00:00:00-05:00",
+   "end": "2026-03-31T23:59:59-05:00",
+   "budget_id": "1",
+   "amount": "300.00",
+   "currency_id": "1",
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_decimal_places": 2,
+   "period": "monthly",
+   "spent": [],
+   "notes": null
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/budget-limits/1",
+   "0": {
+    "rel": "self",
+    "uri": "/budget-limits/1"
+   }
+  }
+ }
+]

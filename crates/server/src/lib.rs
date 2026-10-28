@@ -6,6 +6,7 @@
 pub mod auth;
 pub mod employers;
 pub mod error;
+pub mod firefly;
 mod import;
 pub mod mcp;
 mod pairing;

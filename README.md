@@ -119,6 +119,42 @@ rules never change it. A read-only token gets the API's refusal on any change, r
 refuses every request that carries an `Origin` header, which browsers send, and never reads the login cookie, so a
 web page open in your browser cannot drive it.
 
+## Migrating from Firefly III
+
+Three commands move a Firefly III ledger (API v1, tested against 6.6.3) without changing anything in it. Firefly's
+tokens cannot be limited to reading, so the promise is in the client: it can only send GET requests.
+
+```sh
+(umask 077; read -rs -p "Firefly token: " t && printf %s "$t" > ~/firefly.token); echo   # readable by you alone
+FIREFLY_URL=http://firefly.lan FIREFLY_TOKEN_FILE=~/firefly.token \
+  cargo run -p coinroost-server -- firefly fetch --out ~/firefly-snapshot
+cargo run -p coinroost-server -- firefly import ~/firefly-snapshot --household <household id> --accounts map.json
+cargo run -p coinroost-server -- firefly check ~/firefly-snapshot --household <household id> --accounts map.json
+```
+
+- **`fetch`** copies every page of every entity type into a new folder only you can read (it holds your financial
+  data). It also copies the groups no list returns (a liability's opening credit, found through the ids the lists
+  skip) and each asset and liability account's balance at every month end. Firefly must answer on `http://`: run it
+  on your network or through a local tunnel.
+- **`import`** works offline from that folder and a map that names each Firefly asset or liability account:
+  ```json
+  { "accounts": { "1": { "name": "Checking", "kind": "checking", "namespace": "bank-checking", "profile": "bac-account" } },
+    "categories": { "Savings": "transfer" } }
+  ```
+  - The namespace must be the one the account's statements are imported with. Each leg keeps Firefly's
+    `external_id`, so a statement imported later adds nothing it already has, and the migration run after a
+    statement adds only what is missing.
+  - The legs follow the accounts: a payment between two of your accounts becomes one transfer whatever Firefly
+    called it.
+  - Categories keep Firefly's choice and rules never change them. Expense and revenue accounts become payees.
+  - Running it again adds nothing.
+- **`check`** compares every mapped account's balance at each month end with Firefly's own figure, to the cent, and
+  exits non-zero if any differs.
+
+The import report counts every Firefly entity type next to where it now lives. Tags, budgets, bills, piggy banks,
+attachments, recurring transactions, Firefly's own rules, webhooks, object groups and transaction links have no home
+in Coinroost yet: they are listed as gaps with their counts, never dropped silently.
+
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: every change goes through a pull
