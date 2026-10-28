@@ -178,52 +178,56 @@ pub async fn changes(db: &mut PgConnection, household_id: Uuid) -> ApiResult<Vec
     .fetch_all(&mut *db)
     .await?;
     let mut changes = Vec::new();
-    for (id, date, description, category, category_by, payee, payee_by, rule, amount, currency, account) in
-        candidates
-    {
-        let category_manual = category_by.as_deref() == Some("manual");
-        let payee_manual = payee_by.as_deref() == Some("manual");
-        let decision = sorter.decide(&description, amount, account)?;
-        let rule_category = decision.as_ref().and_then(|d| d.category_id);
-        let rule_payee = decision.as_ref().and_then(|d| d.payee.clone()).map(|p| match p {
-            PayeeChoice::Name(name) => names
-                .get(&name)
-                .map_or(PayeeChoice::Name(name), |id| PayeeChoice::Id(*id)),
-            known @ PayeeChoice::Id(_) => known,
-        });
-        let after_category = if category_manual { category } else { rule_category };
-        let after_payee = if payee_manual {
-            payee.map(PayeeChoice::Id)
-        } else {
-            rule_payee
-        };
-        let ruled =
-            (!category_manual && after_category.is_some()) || (!payee_manual && after_payee.is_some());
-        let after = Sorted {
-            category_id: after_category,
-            payee: after_payee,
-            rule_id: decision.filter(|_| ruled).map(|d| d.rule_id),
-        };
-        let before = Sorted {
-            category_id: category,
-            payee: payee.map(PayeeChoice::Id),
-            rule_id: rule,
-        };
-        if before != after {
-            changes.push(Change {
-                transaction_id: id,
-                date,
-                description,
-                amount_minor: amount,
-                currency,
-                before,
-                after,
-                category_manual,
-                payee_manual,
-            });
+    for candidate in candidates {
+        if let Some(change) = change(&sorter, &names, candidate)? {
+            changes.push(change);
         }
     }
     Ok(changes)
+}
+
+/// What applying the rules again would change in one candidate transaction, if anything.
+fn change(sorter: &Sorter, names: &HashMap<String, Uuid>, candidate: Candidate) -> ApiResult<Option<Change>> {
+    let (id, date, description, category, category_by, payee, payee_by, rule, amount, currency, account) =
+        candidate;
+    let category_manual = category_by.as_deref() == Some("manual");
+    let payee_manual = payee_by.as_deref() == Some("manual");
+    let decision = sorter.decide(&description, amount, account)?;
+    let rule_category = decision.as_ref().and_then(|d| d.category_id);
+    let rule_payee = decision.as_ref().and_then(|d| d.payee.clone()).map(|p| match p {
+        PayeeChoice::Name(name) => names
+            .get(&name)
+            .map_or(PayeeChoice::Name(name), |id| PayeeChoice::Id(*id)),
+        known @ PayeeChoice::Id(_) => known,
+    });
+    let after_category = if category_manual { category } else { rule_category };
+    let after_payee = if payee_manual {
+        payee.map(PayeeChoice::Id)
+    } else {
+        rule_payee
+    };
+    let ruled = (!category_manual && after_category.is_some()) || (!payee_manual && after_payee.is_some());
+    let after = Sorted {
+        category_id: after_category,
+        payee: after_payee,
+        rule_id: decision.filter(|_| ruled).map(|d| d.rule_id),
+    };
+    let before = Sorted {
+        category_id: category,
+        payee: payee.map(PayeeChoice::Id),
+        rule_id: rule,
+    };
+    Ok((before != after).then_some(Change {
+        transaction_id: id,
+        date,
+        description,
+        amount_minor: amount,
+        currency,
+        before,
+        after,
+        category_manual,
+        payee_manual,
+    }))
 }
 
 /// A strong validator (RFC 9110 § 8.8.3) of a change set: equal sets give equal tags.

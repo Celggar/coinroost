@@ -92,14 +92,13 @@ impl Api {
         (status, json)
     }
 
-    /// A JSON request with extra headers; returns the status, the headers and the JSON body (or null).
+    /// A request without a body but with extra headers; returns the status, the headers and the JSON body (or null).
     pub async fn exchange(
         &self,
         method: &str,
         uri: &str,
         token: &str,
         headers: &[(&str, &str)],
-        body: Option<Value>,
     ) -> (StatusCode, HeaderMap, Value) {
         let mut request = Request::builder()
             .method(method)
@@ -108,14 +107,7 @@ impl Api {
         for (name, value) in headers {
             request = request.header(*name, *value);
         }
-        let request = match body {
-            Some(body) => request
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(body.to_string())),
-            None => request.body(Body::empty()),
-        }
-        .unwrap();
-        self.send_full(request).await
+        self.send_full(request.body(Body::empty()).unwrap()).await
     }
 
     /// Opens a checking account read with the synthetic BAC fixture's profile and imports the fixture.

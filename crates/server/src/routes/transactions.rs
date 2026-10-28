@@ -1,13 +1,10 @@
 //! Transactions and their legs. One leg is income or spending on one account; two legs are a transfer between
 //! two of the household's accounts, in one currency, summing to zero.
 
-use std::collections::HashMap;
-
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use time::{Date, OffsetDateTime};
 use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::router::OpenApiRouter;
@@ -18,6 +15,9 @@ use crate::AppState;
 use crate::auth::Session;
 use crate::error::{ApiError, ApiResult, Problem};
 use crate::validate;
+
+mod legs;
+use legs::{attach_legs, check_legs};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -193,27 +193,6 @@ async fn list_transactions(
     Ok(Json(Transactions { items }))
 }
 
-async fn attach_legs(db: &PgPool, household_id: Uuid, items: &mut [Transaction]) -> ApiResult<()> {
-    let ids: Vec<Uuid> = items.iter().map(|t| t.id).collect();
-    let legs: Vec<Leg> = sqlx::query_as(
-        "select id, transaction_id, account_id, amount_minor, currency, posted_on, statement_text, external_id,
-                import_batch_id
-         from legs where household_id = $1 and transaction_id = any($2) order by amount_minor, id",
-    )
-    .bind(household_id)
-    .bind(&ids)
-    .fetch_all(db)
-    .await?;
-    let mut by_transaction: HashMap<Uuid, Vec<Leg>> = HashMap::new();
-    for leg in legs {
-        by_transaction.entry(leg.transaction_id).or_default().push(leg);
-    }
-    for item in items {
-        item.legs = by_transaction.remove(&item.id).unwrap_or_default();
-    }
-    Ok(())
-}
-
 /// Records a transaction: one leg, or a transfer of two legs on different accounts that sum to zero.
 #[utoipa::path(post, path = "/api/v1/transactions", tag = "transactions", request_body = NewTransaction,
     responses(
@@ -271,53 +250,6 @@ async fn create_transaction(
         .pop()
         .ok_or_else(|| ApiError::Internal("transaction vanished".to_owned()))?;
     Ok((StatusCode::CREATED, Json(created)))
-}
-
-/// The currency of each leg's account, after checking the legs make one valid transaction.
-async fn check_legs(db: &PgPool, household_id: Uuid, legs: &[NewLeg]) -> ApiResult<Vec<String>> {
-    if legs.is_empty() || legs.len() > 2 {
-        return Err(ApiError::Invalid(
-            "a transaction has one leg, or two for a transfer".to_owned(),
-        ));
-    }
-    if legs.iter().any(|l| l.amount_minor == 0) {
-        return Err(ApiError::Invalid("a leg moves a non-zero amount".to_owned()));
-    }
-    if legs.iter().any(|l| l.statement_text.chars().count() > 1000) {
-        return Err(ApiError::Invalid(
-            "statement_text has at most 1000 characters".to_owned(),
-        ));
-    }
-    let mut currencies = Vec::with_capacity(legs.len());
-    for leg in legs {
-        let currency: Option<(String,)> =
-            sqlx::query_as("select currency from accounts where id = $1 and household_id = $2")
-                .bind(leg.account_id)
-                .bind(household_id)
-                .fetch_optional(db)
-                .await?;
-        let (currency,) =
-            currency.ok_or_else(|| ApiError::Invalid(format!("no account {}", leg.account_id)))?;
-        currencies.push(currency);
-    }
-    if let [a, b] = legs {
-        if a.account_id == b.account_id {
-            return Err(ApiError::Invalid(
-                "a transfer moves money between two different accounts".to_owned(),
-            ));
-        }
-        if currencies[0] != currencies[1] {
-            return Err(ApiError::Invalid(
-                "a transfer moves money within one currency".to_owned(),
-            ));
-        }
-        if a.amount_minor.checked_add(b.amount_minor) != Some(0) {
-            return Err(ApiError::Invalid(
-                "the two legs of a transfer sum to zero".to_owned(),
-            ));
-        }
-    }
-    Ok(currencies)
 }
 
 /// The fields to change; the others stay. What a person sets here, rules never change.

@@ -9,9 +9,9 @@ use common::{Api, User};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
+/// Who acts is one argument: the API and the user.
 async fn one_leg(
-    api: &Api,
-    user: &User,
+    (api, user): (&Api, &User),
     date: &str,
     account: &str,
     cents: i64,
@@ -141,14 +141,14 @@ async fn manual_pair_checks_its_legs(db: PgPool) {
     let savings = manual_account(&api, &user, "Savings", "USD").await;
     let euros = manual_account(&api, &user, "Euros", "EUR").await;
     let day = "2026-05-04";
-    let out = one_leg(&api, &user, day, &checking, -1000, None).await;
-    let same_account = one_leg(&api, &user, day, &checking, 1000, None).await;
-    let less = one_leg(&api, &user, day, &savings, 900, None).await;
-    let also_out = one_leg(&api, &user, day, &savings, -1000, None).await;
-    let in_euros = one_leg(&api, &user, day, &euros, 1000, None).await;
+    let out = one_leg((&api, &user), day, &checking, -1000, None).await;
+    let same_account = one_leg((&api, &user), day, &checking, 1000, None).await;
+    let less = one_leg((&api, &user), day, &savings, 900, None).await;
+    let also_out = one_leg((&api, &user), day, &savings, -1000, None).await;
+    let in_euros = one_leg((&api, &user), day, &euros, 1000, None).await;
     let theirs = {
         let account = manual_account(&api, &other, "Theirs", "USD").await;
-        one_leg(&api, &other, day, &account, 1000, None).await
+        one_leg((&api, &other), day, &account, 1000, None).await
     };
     let body = json!({ "date": day, "description": "BOTH", "legs": [
         { "account_id": checking, "amount_minor": -1000 }, { "account_id": savings, "amount_minor": 1000 }] });
@@ -170,7 +170,7 @@ async fn manual_pair_checks_its_legs(db: PgPool) {
             "{why}: {problem}"
         );
     }
-    let right = one_leg(&api, &user, "2026-05-20", &savings, 1000, None).await;
+    let right = one_leg((&api, &user), "2026-05-20", &savings, 1000, None).await;
     assert_eq!(
         pair(&api, &user, &right, &out).await.0,
         StatusCode::CREATED,
@@ -200,10 +200,10 @@ async fn summary_matches_hand_worked_totals(db: PgPool) {
         ("2026-06-01", &checking, -999, Some(&groceries)),
         (may, &euros, -1000, Some(&groceries)),
     ] {
-        one_leg(&api, &user, date, account, cents, category.map(String::as_str)).await;
+        one_leg((&api, &user), date, account, cents, category.map(String::as_str)).await;
     }
-    let out = one_leg(&api, &user, may, &checking, -50000, Some(&own)).await;
-    let inn = one_leg(&api, &user, may, &savings, 50000, Some(&own)).await;
+    let out = one_leg((&api, &user), may, &checking, -50000, Some(&own)).await;
+    let inn = one_leg((&api, &user), may, &savings, 50000, Some(&own)).await;
     assert_eq!(pair(&api, &user, &out, &inn).await.0, StatusCode::CREATED);
 
     let (status, summary) = api

@@ -224,13 +224,26 @@ macro_rules! batch_columns {
     };
 }
 
+/// A statement file as it was uploaded.
+pub struct Upload<'a> {
+    pub name: &'a str,
+    pub bytes: &'a [u8],
+}
+
+/// Where an import's new transactions go: the caller's household, the account and the batch that records them.
+#[derive(Clone, Copy)]
+struct Destination<'a> {
+    session: Session,
+    target: &'a Target,
+    batch_id: Uuid,
+}
+
 /// Adds the transactions the account does not have yet, and records the import.
 pub async fn store(
     db: &PgPool,
     session: Session,
     target: &Target,
-    file_name: &str,
-    file: &[u8],
+    upload: &Upload<'_>,
     normalization: &Normalization,
 ) -> ApiResult<ImportBatch> {
     let range = date_range(normalization)?;
@@ -258,8 +271,8 @@ pub async fn store(
     ))
     .bind(session.household_id)
     .bind(target.account_id)
-    .bind(file_name)
-    .bind(Sha256::digest(file).to_vec())
+    .bind(upload.name)
+    .bind(Sha256::digest(upload.bytes).to_vec())
     .bind(&target.profile_id)
     .bind(count(normalization.summary.rows)?)
     .bind(count(new.len())?)
@@ -270,55 +283,72 @@ pub async fn store(
     .bind(session.user_id)
     .fetch_one(&mut *tx)
     .await?;
+    let to = Destination {
+        session,
+        target,
+        batch_id: batch.id,
+    };
     for transaction in new {
-        let date = parse_date(&transaction.date)?;
-        let amount = transaction.amount.minor_units();
-        let decision = sorter.decide(&transaction.description, amount, target.account_id)?;
-        let (rule_id, category_id, payee) = match decision {
-            Some(d) => (Some(d.rule_id), d.category_id, d.payee),
-            None => (None, None, None),
-        };
-        let payee_id = match payee {
-            Some(PayeeChoice::Id(id)) => Some(id),
-            Some(PayeeChoice::Name(name)) => Some(payee_named(&mut tx, session.household_id, &name).await?),
-            None => None,
-        };
-        let (id,): (Uuid,) = sqlx::query_as(
-            "insert into transactions (household_id, date, description, category_id, category_set_by, payee_id,
-                                       payee_set_by, rule_id)
-             values ($1, $2, $3, $4, $5, $6, $7, $8) returning id",
-        )
-        .bind(session.household_id)
-        .bind(date)
-        .bind(&transaction.description)
-        .bind(category_id)
-        .bind(category_id.map(|_| "rule"))
-        .bind(payee_id)
-        .bind(payee_id.map(|_| "rule"))
-        .bind(rule_id)
-        .fetch_one(&mut *tx)
-        .await?;
-        sqlx::query(
-            "insert into legs (transaction_id, household_id, account_id, amount_minor, currency, posted_on,
-                               statement_text, external_id, import_batch_id)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        )
-        .bind(id)
-        .bind(session.household_id)
-        .bind(target.account_id)
-        .bind(amount)
-        .bind(&target.currency)
-        .bind(date)
-        .bind(&transaction.description)
-        .bind(&transaction.external_id)
-        .bind(batch.id)
-        .execute(&mut *tx)
-        .await?;
+        insert_new(&mut tx, to, &sorter, transaction).await?;
     }
     // Legs of transfers this file completes are paired now; the counterpart usually came with an earlier file.
     pairing::pair_imported(&mut tx, session.household_id, batch.id).await?;
     tx.commit().await?;
     Ok(batch)
+}
+
+/// One new transaction of the file, sorted by the rules, with its leg on the account.
+async fn insert_new(
+    tx: &mut PgConnection,
+    to: Destination<'_>,
+    sorter: &Sorter,
+    transaction: &coinroost_normalizer::Transaction,
+) -> ApiResult<()> {
+    let household_id = to.session.household_id;
+    let date = parse_date(&transaction.date)?;
+    let amount = transaction.amount.minor_units();
+    let decision = sorter.decide(&transaction.description, amount, to.target.account_id)?;
+    let (rule_id, category_id, payee) = match decision {
+        Some(d) => (Some(d.rule_id), d.category_id, d.payee),
+        None => (None, None, None),
+    };
+    let payee_id = match payee {
+        Some(PayeeChoice::Id(id)) => Some(id),
+        Some(PayeeChoice::Name(name)) => Some(payee_named(&mut *tx, household_id, &name).await?),
+        None => None,
+    };
+    let (id,): (Uuid,) = sqlx::query_as(
+        "insert into transactions (household_id, date, description, category_id, category_set_by, payee_id,
+                                   payee_set_by, rule_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8) returning id",
+    )
+    .bind(household_id)
+    .bind(date)
+    .bind(&transaction.description)
+    .bind(category_id)
+    .bind(category_id.map(|_| "rule"))
+    .bind(payee_id)
+    .bind(payee_id.map(|_| "rule"))
+    .bind(rule_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    sqlx::query(
+        "insert into legs (transaction_id, household_id, account_id, amount_minor, currency, posted_on,
+                           statement_text, external_id, import_batch_id)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    )
+    .bind(id)
+    .bind(household_id)
+    .bind(to.target.account_id)
+    .bind(amount)
+    .bind(&to.target.currency)
+    .bind(date)
+    .bind(&transaction.description)
+    .bind(&transaction.external_id)
+    .bind(to.batch_id)
+    .execute(&mut *tx)
+    .await?;
+    Ok(())
 }
 
 /// The household's imports, newest first.

@@ -1,10 +1,10 @@
 {
-  "$comment": "Code size and naming limits for this repository. Files over the limits, long functions, too many parameters and non-English names are rejected.",
+  "$comment": "Code size and naming limits for this repository. Files over the limits, long functions, too many parameters and non-English names are rejected. CI checks file lines (scripts/policy/check.sh sizes) and, in Rust, function lines and parameters (clippy.toml); the complexity limits are not checked by a tool. schema.d.ts is generated from the API contract.",
   "fileLines": 400,
   "testFileLines": 600,
   "functionLines": 60,
   "cognitiveComplexity": 15,
   "cyclomaticComplexity": 10,
   "parameters": 5,
-  "exclude": ["target/**", "node_modules/**", "web/build/**", ".svelte-kit/**", "spec/fixtures/**", "**/locales/**"]
+  "exclude": ["target/**", "node_modules/**", "web/build/**", ".svelte-kit/**", "spec/fixtures/**", "**/locales/**", "web/src/lib/api/schema.d.ts"]
 }

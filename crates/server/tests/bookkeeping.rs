@@ -15,7 +15,8 @@ async fn account(api: &Api, user: &User, name: &str) -> String {
     id(&post(api, user, "/api/v1/accounts", body).await).to_owned()
 }
 
-async fn spend(api: &Api, user: &User, account: &str, date: &str, cents: i64, text: &str) -> String {
+/// Who acts is one argument: the API and the user.
+async fn spend((api, user): (&Api, &User), account: &str, date: &str, cents: i64, text: &str) -> String {
     let body = json!({ "date": date, "description": text, "legs": [{ "account_id": account, "amount_minor": cents }] });
     id(&post(api, user, "/api/v1/transactions", body).await).to_owned()
 }
@@ -35,8 +36,8 @@ async fn an_account_shows_the_sum_of_its_legs(db: PgPool) {
     let user = api.household("Balances").await;
     let checking = account(&api, &user, "Checking").await;
     let savings = account(&api, &user, "Savings").await;
-    spend(&api, &user, &checking, "2026-05-01", 150_000, "SALARY").await;
-    spend(&api, &user, &checking, "2026-05-02", -4550, "MARKET").await;
+    spend((&api, &user), &checking, "2026-05-01", 150_000, "SALARY").await;
+    spend((&api, &user), &checking, "2026-05-02", -4550, "MARKET").await;
     let transfer = json!({ "date": "2026-05-03", "description": "MOVE", "legs": [
         { "account_id": checking, "amount_minor": -20000 }, { "account_id": savings, "amount_minor": 20000 }] });
     post(&api, &user, "/api/v1/transactions", transfer).await;
@@ -57,13 +58,12 @@ async fn text_search_ignores_case_and_scopes_to_the_household(db: PgPool) {
     let user = api.household("Search").await;
     let other = api.household("Neighbour").await;
     let checking = account(&api, &user, "Checking").await;
-    spend(&api, &user, &checking, "2026-05-01", -1000, "Super Market SOL").await;
-    spend(&api, &user, &checking, "2026-05-02", -2000, "CAFE LUNA").await;
-    spend(&api, &user, &checking, "2026-05-03", -3000, "MARKET 100%").await;
+    spend((&api, &user), &checking, "2026-05-01", -1000, "Super Market SOL").await;
+    spend((&api, &user), &checking, "2026-05-02", -2000, "CAFE LUNA").await;
+    spend((&api, &user), &checking, "2026-05-03", -3000, "MARKET 100%").await;
     let theirs = account(&api, &other, "Checking").await;
     spend(
-        &api,
-        &other,
+        (&api, &other),
         &theirs,
         "2026-05-01",
         -999,
@@ -98,7 +98,7 @@ async fn deleting_refuses_transfers_and_other_households(db: PgPool) {
     let other = api.household("Stranger").await;
     let checking = account(&api, &user, "Checking").await;
     let savings = account(&api, &user, "Savings").await;
-    let coffee = spend(&api, &user, &checking, "2026-05-01", -450, "COFFEE").await;
+    let coffee = spend((&api, &user), &checking, "2026-05-01", -450, "COFFEE").await;
     let transfer = json!({ "date": "2026-05-03", "description": "MOVE", "legs": [
         { "account_id": checking, "amount_minor": -20000 }, { "account_id": savings, "amount_minor": 20000 }] });
     let moved = id(&post(&api, &user, "/api/v1/transactions", transfer).await).to_owned();

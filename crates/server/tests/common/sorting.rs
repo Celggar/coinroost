@@ -72,7 +72,7 @@ pub async fn payee_names(api: &Api, user: &User) -> Vec<String> {
 /// The preview's changes and its tag, checking the `ETag` header says the same.
 pub async fn preview(api: &Api, user: &User) -> (Vec<Value>, String) {
     let (status, headers, body) = api
-        .exchange("POST", "/api/v1/rules/preview", &user.token, &[], None)
+        .exchange("POST", "/api/v1/rules/preview", &user.token, &[])
         .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let tag = body["tag"].as_str().unwrap().to_owned();
@@ -83,7 +83,7 @@ pub async fn preview(api: &Api, user: &User) -> (Vec<Value>, String) {
 pub async fn apply(api: &Api, user: &User, tag: Option<&str>) -> (StatusCode, Value) {
     let headers: Vec<(&str, &str)> = tag.map(|t| ("if-match", t)).into_iter().collect();
     let (status, _, body) = api
-        .exchange("POST", "/api/v1/rules/apply", &user.token, &headers, None)
+        .exchange("POST", "/api/v1/rules/apply", &user.token, &headers)
         .await;
     (status, body)
 }

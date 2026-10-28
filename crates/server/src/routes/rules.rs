@@ -239,6 +239,36 @@ async fn create_rule(
     Ok((StatusCode::CREATED, Json(rule)))
 }
 
+/// Shifts the rules between a rule's position `from` and its new `position` (1 to `last`) to make room for it.
+async fn make_room(
+    tx: &mut PgConnection,
+    household_id: Uuid,
+    from: i32,
+    position: i32,
+    last: i32,
+) -> ApiResult<()> {
+    if !(1..=last).contains(&position) {
+        return Err(ApiError::Invalid(format!(
+            "position must be between 1 and {last}"
+        )));
+    }
+    let (shift, low, high) = if position < from {
+        (1, position, from - 1)
+    } else {
+        (-1, from + 1, position)
+    };
+    sqlx::query(
+        "update rules set position = position + $2 where household_id = $1 and position between $3 and $4",
+    )
+    .bind(household_id)
+    .bind(shift)
+    .bind(low)
+    .bind(high)
+    .execute(&mut *tx)
+    .await?;
+    Ok(())
+}
+
 /// Changes a rule, or moves it. Transactions already there keep their category and payee.
 #[utoipa::path(patch, path = "/api/v1/rules/{rule_id}", tag = "rules", request_body = RuleUpdate,
     params(("rule_id" = Uuid, Path, description = "The rule")),
@@ -273,26 +303,7 @@ async fn update_rule(
     let then = body.then.unwrap_or(current.then);
     check(&when, &then)?;
     if let Some(position) = body.position {
-        if !(1..=last).contains(&position) {
-            return Err(ApiError::Invalid(format!(
-                "position must be between 1 and {last}"
-            )));
-        }
-        let from = current.position;
-        let (shift, low, high) = if position < from {
-            (1, position, from - 1)
-        } else {
-            (-1, from + 1, position)
-        };
-        sqlx::query(
-            "update rules set position = position + $2 where household_id = $1 and position between $3 and $4",
-        )
-        .bind(session.household_id)
-        .bind(shift)
-        .bind(low)
-        .bind(high)
-        .execute(&mut *tx)
-        .await?;
+        make_room(&mut tx, session.household_id, current.position, position, last).await?;
     }
     let rule = sqlx::query_as(concat!(
         "update rules set position = $3, name = $4, enabled = $5, description_contains = $6, direction = $7,

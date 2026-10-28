@@ -19,7 +19,8 @@
 use pdf_oxide::content::Operator;
 
 use super::edges::{Shape, ShapeKind};
-use super::glyphs::{Frame, Matrix, apply};
+use super::geometry::{Matrix, apply};
+use super::glyphs::Frame;
 
 struct Segment {
     op: u8,

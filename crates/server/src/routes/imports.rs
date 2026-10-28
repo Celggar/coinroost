@@ -138,7 +138,11 @@ async fn import_file(
     let file_name = validate::text("file_name", &query.file_name, 255)?;
     let target = import::target(&state.db, session.household_id, account_id).await?;
     let normalization = import::read(file.clone(), &target).await?;
-    let batch = import::store(&state.db, session, &target, &file_name, &file, &normalization).await?;
+    let upload = import::Upload {
+        name: &file_name,
+        bytes: &file,
+    };
+    let batch = import::store(&state.db, session, &target, &upload, &normalization).await?;
     let row_errors = import::failures(&normalization);
     Ok((StatusCode::CREATED, Json(ImportReport { batch, row_errors })))
 }
