@@ -73,6 +73,18 @@ EOF
 cargo run -p coinroost-server -- rules load rules.json --household <household id>
 cargo run -p coinroost-cli -- categorize --rules rules.json < transactions.jsonl   # try a set without a server
 ```
+
+Employers paid by the fortnight are loaded the same way; the payroll report then lists, per employer, the
+fortnights still owed (measured at the account's last imported statement, never beyond), the ones paid ahead and
+each payment's history:
+
+```sh
+cat > employers.json <<'EOF'
+{ "employers": [{ "name": "Acme", "match": "ACME", "account": "checking",
+                  "min_amount_minor": 70000, "amount_minor": 80000, "start": "2026-01" }] }
+EOF
+cargo run -p coinroost-server -- payroll load employers.json --household <household id>
+```
 After a route changes, `cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract and
 `npm run api-types` in `web/` refreshes the app's types from it.
 
