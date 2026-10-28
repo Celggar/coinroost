@@ -1,0 +1,12 @@
+# Joins the app to a reverse proxy's own Docker network, so the proxy reaches it by container name
+# (coinroost-app-1:8080) instead of through the loopback port. The database never joins it. deploy/deploy.sh adds
+# this file when the env file sets COINROOST_PROXY_NETWORK. The network belongs to the proxy's compose project and
+# must exist first; give the app a network of its own there, not one shared with unrelated services.
+services:
+  app:
+    networks: [data, edge, proxy]
+
+networks:
+  proxy:
+    external: true
+    name: ${COINROOST_PROXY_NETWORK:?set COINROOST_PROXY_NETWORK in the env file}
