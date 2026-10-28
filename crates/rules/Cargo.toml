@@ -1,0 +1,18 @@
+[package]
+name = "coinroost-rules"
+description = "Ordered first-match rules that set a transaction's category and payee. Pure: no I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+regex = "1.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1.1"
+
+[lints]
+workspace = true
