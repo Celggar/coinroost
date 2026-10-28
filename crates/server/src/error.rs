@@ -27,6 +27,10 @@ pub enum ApiError {
     NotFound,
     /// The row already exists (a unique name, an `external_id` already imported).
     Conflict(String),
+    /// What the request was based on has changed (`If-Match` no longer matches); the detail says what to do.
+    PreconditionFailed(String),
+    /// The request must say what it was based on (`If-Match`).
+    PreconditionRequired(String),
     /// Anything unexpected; logged, never shown.
     Internal(String),
 }
@@ -38,6 +42,8 @@ impl ApiError {
             ApiError::Invalid(_) => StatusCode::UNPROCESSABLE_ENTITY,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::Conflict(_) => StatusCode::CONFLICT,
+            ApiError::PreconditionFailed(_) => StatusCode::PRECONDITION_FAILED,
+            ApiError::PreconditionRequired(_) => StatusCode::PRECONDITION_REQUIRED,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -48,9 +54,11 @@ impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ApiError::Unauthorized => f.write_str("not authorized"),
-            ApiError::Invalid(detail) | ApiError::Conflict(detail) | ApiError::Internal(detail) => {
-                f.write_str(detail)
-            }
+            ApiError::Invalid(detail)
+            | ApiError::Conflict(detail)
+            | ApiError::PreconditionFailed(detail)
+            | ApiError::PreconditionRequired(detail)
+            | ApiError::Internal(detail) => f.write_str(detail),
             ApiError::NotFound => f.write_str("not found"),
         }
     }
@@ -61,7 +69,10 @@ impl IntoResponse for ApiError {
         let status = self.status();
         let detail = match self {
             ApiError::Unauthorized => Some("a valid session is required".to_owned()),
-            ApiError::Invalid(detail) | ApiError::Conflict(detail) => Some(detail),
+            ApiError::Invalid(detail)
+            | ApiError::Conflict(detail)
+            | ApiError::PreconditionFailed(detail)
+            | ApiError::PreconditionRequired(detail) => Some(detail),
             ApiError::NotFound => None,
             ApiError::Internal(cause) => {
                 eprintln!("internal error: {cause}");

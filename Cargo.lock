@@ -488,6 +488,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "coinroost-normalizer",
+ "coinroost-rules",
  "http-body-util",
  "iso_currency",
  "rand",

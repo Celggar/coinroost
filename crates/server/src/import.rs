@@ -3,7 +3,8 @@
 //!
 //! The server reads the file with the account's profile and namespace, so every `external_id` is computed here,
 //! never taken from the caller. A transaction whose `external_id` the account already has is a duplicate and is
-//! skipped, which makes importing the same file twice add nothing.
+//! skipped, which makes importing the same file twice add nothing. New transactions are sorted by the household's
+//! rules as they are at that moment.
 
 use std::collections::{HashMap, HashSet};
 
@@ -19,6 +20,7 @@ use uuid::Uuid;
 
 use crate::auth::Session;
 use crate::error::{ApiError, ApiResult};
+use crate::sorting::{PayeeChoice, Sorter, payee_named};
 use crate::validate;
 
 /// The account a file is read for, and how.
@@ -243,6 +245,8 @@ pub async fn store(
         .iter()
         .filter(|t| !known.contains(&t.external_id))
         .collect();
+    // New transactions are sorted by the rules as they are now; nothing already there is touched.
+    let sorter = Sorter::load(&mut *tx, session.household_id).await?;
     let count =
         |n: usize| i32::try_from(n).map_err(|_| ApiError::Invalid("the file has too many rows".to_owned()));
     let batch: ImportBatch = sqlx::query_as(concat!(
@@ -267,12 +271,30 @@ pub async fn store(
     .await?;
     for transaction in new {
         let date = parse_date(&transaction.date)?;
+        let amount = transaction.amount.minor_units();
+        let decision = sorter.decide(&transaction.description, amount, target.account_id)?;
+        let (rule_id, category_id, payee) = match decision {
+            Some(d) => (Some(d.rule_id), d.category_id, d.payee),
+            None => (None, None, None),
+        };
+        let payee_id = match payee {
+            Some(PayeeChoice::Id(id)) => Some(id),
+            Some(PayeeChoice::Name(name)) => Some(payee_named(&mut tx, session.household_id, &name).await?),
+            None => None,
+        };
         let (id,): (Uuid,) = sqlx::query_as(
-            "insert into transactions (household_id, date, description) values ($1, $2, $3) returning id",
+            "insert into transactions (household_id, date, description, category_id, category_set_by, payee_id,
+                                       payee_set_by, rule_id)
+             values ($1, $2, $3, $4, $5, $6, $7, $8) returning id",
         )
         .bind(session.household_id)
         .bind(date)
         .bind(&transaction.description)
+        .bind(category_id)
+        .bind(category_id.map(|_| "rule"))
+        .bind(payee_id)
+        .bind(payee_id.map(|_| "rule"))
+        .bind(rule_id)
         .fetch_one(&mut *tx)
         .await?;
         sqlx::query(
@@ -283,7 +305,7 @@ pub async fn store(
         .bind(id)
         .bind(session.household_id)
         .bind(target.account_id)
-        .bind(transaction.amount.minor_units())
+        .bind(amount)
         .bind(&target.currency)
         .bind(date)
         .bind(&transaction.description)

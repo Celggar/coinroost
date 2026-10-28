@@ -7,6 +7,8 @@ pub mod auth;
 pub mod error;
 mod import;
 mod routes;
+pub mod rule_set;
+mod sorting;
 mod validate;
 
 use std::path::Path;
@@ -64,6 +66,7 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::accounts::router())
         .merge(routes::catalog::router())
         .merge(routes::rules::router())
+        .merge(routes::apply::router())
         .merge(routes::transactions::router())
         .merge(routes::imports::router())
         .merge(routes::coverage::router())
