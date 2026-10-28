@@ -8,6 +8,8 @@
 //!   answer does not tell which emails exist.
 //! - A session is 256 random bits, sent as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie or as a bearer token;
 //!   only its SHA-256 is stored. Sessions last 7 days.
+//! - An API token (`crt_…`, see [`crate::tokens`]) is accepted as a bearer only, never from a cookie; a `read`
+//!   token may only read (GET and HEAD), and any other method answers 403.
 
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,7 +17,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
-use axum::http::{HeaderMap, header};
+use axum::http::{HeaderMap, Method, header};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use sha2::{Digest, Sha256};
@@ -25,6 +27,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::error::{ApiError, ApiResult};
+use crate::tokens;
 
 pub const SESSION_COOKIE: &str = "coinroost_session";
 pub const SESSION_DAYS: i64 = 7;
@@ -49,8 +52,11 @@ where
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Session, ApiError> {
-        let token = session_token(&parts.headers).ok_or(ApiError::Unauthorized)?;
         let state = AppState::from_ref(state);
+        if let Some(token) = bearer(&parts.headers).filter(|t| t.starts_with(tokens::PREFIX)) {
+            return api_token(&state, &token, &parts.method).await;
+        }
+        let token = session_token(&parts.headers).ok_or(ApiError::Unauthorized)?;
         let row: Option<(Uuid, Uuid)> = sqlx::query_as(
             "select u.id, u.household_id from sessions s join users u on u.id = s.user_id
              where s.token_hash = $1 and s.expires_at > now()",
@@ -66,15 +72,43 @@ where
     }
 }
 
-/// The token from `Authorization: Bearer …`, else from the session cookie.
-pub fn session_token(headers: &HeaderMap) -> Option<String> {
-    let bearer = headers
+/// The caller of an API token: its user, if the token is live, and only for reading when it is a read token.
+async fn api_token(state: &AppState, token: &str, method: &Method) -> Result<Session, ApiError> {
+    let row: Option<(Uuid, Uuid, String)> = sqlx::query_as(
+        "with used as (update api_tokens set last_used_at = now() where token_hash = $1 and revoked_at is null
+                       returning user_id, scope)
+         select u.id, u.household_id, used.scope from used join users u on u.id = used.user_id",
+    )
+    .bind(token_hash(token))
+    .fetch_optional(&state.db)
+    .await?;
+    let (user_id, household_id, scope) = row.ok_or(ApiError::Unauthorized)?;
+    if scope != "write" && !matches!(*method, Method::GET | Method::HEAD) {
+        return Err(ApiError::Forbidden(
+            "this token may only read: ask for a write token".to_owned(),
+        ));
+    }
+    Ok(Session {
+        user_id,
+        household_id,
+    })
+}
+
+/// The token of `Authorization: Bearer …`, if any.
+pub fn bearer(headers: &HeaderMap) -> Option<String> {
+    headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .map(str::trim);
-    if let Some(token) = bearer.filter(|t| !t.is_empty()) {
-        return Some(token.to_owned());
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(str::to_owned)
+}
+
+/// The token from `Authorization: Bearer …`, else from the session cookie.
+pub fn session_token(headers: &HeaderMap) -> Option<String> {
+    if let Some(token) = bearer(headers) {
+        return Some(token);
     }
     headers
         .get_all(header::COOKIE)

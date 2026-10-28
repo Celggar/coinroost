@@ -7,19 +7,23 @@
 //! `coinroost-server rules load <set.json> --household <id>`: loads a rule set (categories, payees and rules by
 //! name) into a household; loading it again changes nothing.
 //! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
+//! `coinroost-server token add <email> --name <label> [--read-only]`: prints a new API token for the user, once.
+//! `coinroost-server token revoke <email> --name <label>`: revokes the user's live token of that name.
 //! `coinroost-server openapi`: prints the API contract (`OpenAPI` 3.1, JSON).
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use coinroost_server::tokens::{self, Scope};
 use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
-       | rules load <set.json> --household <id> | payroll load <employers.json> --household <id> | openapi";
+       | rules load <set.json> --household <id> | payroll load <employers.json> --household <id>
+       | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -42,6 +46,9 @@ async fn main() -> ExitCode {
             Ok(id) => load_employers(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
+        ["token", "add", email, "--name", name] => add_token(email, name, Scope::Write).await,
+        ["token", "add", email, "--name", name, "--read-only"] => add_token(email, name, Scope::Read).await,
+        ["token", "revoke", email, "--name", name] => revoke_token(email, name).await,
         _ => Err(USAGE.to_owned()),
     };
     match outcome {
@@ -158,4 +165,22 @@ fn read_password() -> Result<String, String> {
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).map_err(|e| e.to_string())?;
     Ok(line.trim_end_matches(['\r', '\n']).to_owned())
+}
+
+async fn add_token(email: &str, name: &str, scope: Scope) -> Result<(), String> {
+    let db = connect().await?;
+    let token = tokens::add(&db, email, name, scope).await?;
+    eprintln!("a {scope:?} token for {email}, named {name:?}; it is shown only now:");
+    println!("token {token}");
+    Ok(())
+}
+
+async fn revoke_token(email: &str, name: &str) -> Result<(), String> {
+    let db = connect().await?;
+    if tokens::revoke(&db, email, name).await? {
+        eprintln!("revoked {email}'s token {name:?}");
+        Ok(())
+    } else {
+        Err(format!("{email} has no live token named {name:?}"))
+    }
 }

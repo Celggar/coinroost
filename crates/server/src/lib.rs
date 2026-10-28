@@ -11,6 +11,7 @@ mod pairing;
 mod routes;
 pub mod rule_set;
 mod sorting;
+pub mod tokens;
 mod validate;
 
 use std::path::Path;
