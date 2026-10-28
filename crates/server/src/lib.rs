@@ -7,6 +7,7 @@ pub mod auth;
 pub mod employers;
 pub mod error;
 mod import;
+pub mod mcp;
 mod pairing;
 mod routes;
 pub mod rule_set;

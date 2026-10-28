@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+pub mod assistant;
 pub mod sorting;
 pub mod transfers;
 

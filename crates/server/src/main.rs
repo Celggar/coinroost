@@ -1,5 +1,6 @@
 //! `coinroost-server serve`: applies the schema and serves the API on `COINROOST_BIND` (default `127.0.0.1:8080`)
-//! with the database at `DATABASE_URL`, and the web app built in `COINROOST_WEB_DIR` when it is set.
+//! with the database at `DATABASE_URL`, the web app built in `COINROOST_WEB_DIR` when it is set, and `/mcp` for MCP
+//! clients, which accepts the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; default `localhost,127.0.0.1`).
 //! `coinroost-server migrate`: creates the database if it does not exist, applies the schema and exits.
 //! `coinroost-server user add <email> [--household <id>]`: adds a user, to a new household unless one is given.
 //! The password is read from the terminal (or from the first line of standard input when it is not a terminal),
@@ -16,7 +17,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use coinroost_server::tokens::{self, Scope};
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, openapi, rule_set};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, mcp, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
@@ -104,8 +105,16 @@ async fn serve() -> Result<(), String> {
         .await
         .map_err(|e| format!("{bind}: {e}"))?;
     let address = listener.local_addr().map_err(|e| e.to_string())?;
+    let hosts: Vec<String> = std::env::var("COINROOST_MCP_HOSTS")
+        .unwrap_or_else(|_| "localhost,127.0.0.1".to_owned())
+        .split(',')
+        .map(|h| h.trim().to_owned())
+        .filter(|h| !h.is_empty())
+        .collect();
     eprintln!("serving on {address}");
-    axum::serve(listener, app(AppState { db }, web.as_deref()))
+    let state = AppState { db };
+    let routes = mcp::router(state.clone(), &hosts).merge(app(state, web.as_deref()));
+    axum::serve(listener, routes)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })
