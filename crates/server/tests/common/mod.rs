@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 pub mod sorting;
+pub mod transfers;
 
 use axum::Router;
 use axum::body::Body;

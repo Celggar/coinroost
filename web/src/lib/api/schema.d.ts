@@ -288,6 +288,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Spending and income over a period, transfers left out. */
+        get: operations["summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions": {
         parameters: {
             query?: never;
@@ -321,6 +338,74 @@ export interface paths {
         head?: never;
         /** Sets a transaction's category or payee by hand. */
         patch: operations["update_transaction"];
+        trace?: never;
+    };
+    "/api/v1/transactions/{transaction_id}/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Splits a transfer back into two one-leg transactions. Balances do not change. */
+        post: operations["split_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pairs two one-leg transactions into one transfer, whatever their dates and categories. */
+        post: operations["pair_transactions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transfers/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Makes exactly the pairs of the preview whose tag comes in `If-Match`. */
+        post: operations["apply_transfers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transfers/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What pairing would do now, over every unpaired leg whose category is a transfer. Writes nothing. */
+        post: operations["preview_transfers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -615,6 +700,17 @@ export interface components {
             /** @description One leg, or two for a transfer. */
             legs: components["schemas"]["NewLeg"][];
         };
+        /** @description Two one-leg transactions a person says are the same movement. */
+        PairRequest: {
+            transaction_ids: string[];
+        };
+        Paired: {
+            /**
+             * Format: uuid
+             * @description The transfer: the outflow's transaction, now with both legs.
+             */
+            transaction_id: string;
+        };
         Payee: {
             /** Format: uuid */
             id: string;
@@ -666,6 +762,11 @@ export interface components {
             /** Format: date */
             last_date?: string | null;
         };
+        /**
+         * @description Why a leg is not paired.
+         * @enum {string}
+         */
+        Reason: "no_counterpart" | "several_candidates";
         RowFailure: {
             /** @description Row number in the file, 1 being the header. */
             row: number;
@@ -738,6 +839,42 @@ export interface components {
             /** Format: uuid */
             rule_id?: string | null;
         };
+        Split: {
+            /** @description The transfer's transaction, now with the outflow leg only, then the new one with the inflow leg. */
+            transaction_ids: string[];
+        };
+        Summary: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description One entry per currency with money in the period. */
+            totals: components["schemas"]["Totals"][];
+        };
+        /** @description Totals in one currency, as positive minor units. */
+        Totals: {
+            currency: string;
+            /**
+             * Format: int64
+             * @description Money out of one-leg transactions whose category is not a transfer (uncategorized included).
+             */
+            spending: number;
+            /**
+             * Format: int64
+             * @description Money in of one-leg transactions whose category is not a transfer.
+             */
+            income: number;
+            /**
+             * Format: int64
+             * @description Money out of transfer legs not paired yet.
+             */
+            unpaired_transfer_out: number;
+            /**
+             * Format: int64
+             * @description Money in of transfer legs not paired yet.
+             */
+            unpaired_transfer_in: number;
+        };
         Transaction: {
             /** Format: uuid */
             id: string;
@@ -774,6 +911,54 @@ export interface components {
         };
         Transactions: {
             items: components["schemas"]["Transaction"][];
+        };
+        /** @description One leg that may be half of a transfer, with its transaction. */
+        TransferLeg: {
+            /** Format: uuid */
+            transaction_id: string;
+            /** Format: date */
+            date: string;
+            description: string;
+            /**
+             * Format: int64
+             * @description Signed minor units in `currency`: below zero the money left `account_id`.
+             */
+            amount_minor: number;
+            currency: string;
+            /** Format: uuid */
+            account_id: string;
+            /** Format: uuid */
+            category_id?: string | null;
+        };
+        TransferPair: {
+            outflow: components["schemas"]["TransferLeg"];
+            inflow: components["schemas"]["TransferLeg"];
+            /**
+             * Format: int32
+             * @description 1: the only match within two days; 2: the outflow's text names the account; 3: Friday to Monday.
+             */
+            pass: number;
+            /** @description Pairing drops a category or payee a person chose for the inflow, so imports leave it for you. */
+            drops_manual: boolean;
+        };
+        TransferPreview: {
+            /** @description The pairs applying would make, oldest first. */
+            pairs: components["schemas"]["TransferPair"][];
+            unmatched: components["schemas"]["Unmatched"][];
+            /** @description The same tag as the `ETag` header: send it back in `If-Match` to apply. */
+            tag: string;
+        };
+        TransfersApplied: {
+            paired: number;
+        };
+        Unmatched: {
+            leg: components["schemas"]["TransferLeg"];
+            reason: components["schemas"]["Reason"];
+            /**
+             * @description Unpaired legs that could be its other side: same amount, other sign, other account, same currency (any
+             *     date when the reason is `no_counterpart`).
+             */
+            candidates: components["schemas"]["TransferLeg"][];
         };
     };
     responses: never;
@@ -1583,6 +1768,49 @@ export interface operations {
             };
         };
     };
+    summary: {
+        parameters: {
+            query: {
+                /** @description First date included. */
+                from: string;
+                /** @description Last date included. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The totals per currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Summary"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The period is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_transactions: {
         parameters: {
             query?: {
@@ -1594,6 +1822,8 @@ export interface operations {
                 to?: string;
                 /** @description Only transactions without a category. */
                 uncategorized?: boolean;
+                /** @description Only transfers: transactions with two legs. */
+                transfers?: boolean;
                 /** @description At most this many, newest first (default 100, at most 1000). */
                 limit?: number;
             };
@@ -1719,6 +1949,179 @@ export interface operations {
             };
             /** @description The category or payee does not exist */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    split_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A transaction with two legs */
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The two transactions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Split"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such transaction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description It does not have two legs */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    pair_transactions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairRequest"];
+            };
+        };
+        responses: {
+            /** @description The transfer */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Paired"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The two cannot be one transfer; the detail says why */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    apply_transfers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The `ETag` of the preview being applied */
+                "If-Match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How many pairs were made */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransfersApplied"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The pairs are not the previewed ones any more */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No `If-Match` */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_transfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pairs waiting and the legs left unpaired, tagged with `ETag` */
+            200: {
+                headers: {
+                    /** @description Tag of these pairs */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferPreview"];
+                };
+            };
+            /** @description No valid session */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

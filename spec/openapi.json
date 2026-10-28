@@ -972,6 +972,69 @@
         }
       }
     },
+    "/api/v1/summary": {
+      "get": {
+        "tags": [
+          "summary"
+        ],
+        "summary": "Spending and income over a period, transfers left out.",
+        "operationId": "summary",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The totals per currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The period is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/transactions": {
       "get": {
         "tags": [
@@ -1014,6 +1077,15 @@
             "name": "uncategorized",
             "in": "query",
             "description": "Only transactions without a category.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "transfers",
+            "in": "query",
+            "description": "Only transfers: transactions with two legs.",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -1175,6 +1247,221 @@
           },
           "422": {
             "description": "The category or payee does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions/{transaction_id}/split": {
+      "post": {
+        "tags": [
+          "transfers"
+        ],
+        "summary": "Splits a transfer back into two one-leg transactions. Balances do not change.",
+        "operationId": "split_transfer",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "description": "A transaction with two legs",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The two transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Split"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "It does not have two legs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transfers": {
+      "post": {
+        "tags": [
+          "transfers"
+        ],
+        "summary": "Pairs two one-leg transactions into one transfer, whatever their dates and categories.",
+        "operationId": "pair_transactions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The transfer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paired"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The two cannot be one transfer; the detail says why",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/apply": {
+      "post": {
+        "tags": [
+          "transfers"
+        ],
+        "summary": "Makes exactly the pairs of the preview whose tag comes in `If-Match`.",
+        "operationId": "apply_transfers",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "The `ETag` of the preview being applied",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many pairs were made",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransfersApplied"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The pairs are not the previewed ones any more",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "No `If-Match`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/preview": {
+      "post": {
+        "tags": [
+          "transfers"
+        ],
+        "summary": "What pairing would do now, over every unpaired leg whose category is a transfer. Writes nothing.",
+        "operationId": "preview_transfers",
+        "responses": {
+          "200": {
+            "description": "The pairs waiting and the legs left unpaired, tagged with `ETag`",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Tag of these pairs"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
             "content": {
               "application/json": {
                 "schema": {
@@ -2036,6 +2323,36 @@
         },
         "additionalProperties": false
       },
+      "PairRequest": {
+        "type": "object",
+        "description": "Two one-leg transactions a person says are the same movement.",
+        "required": [
+          "transaction_ids"
+        ],
+        "properties": {
+          "transaction_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Paired": {
+        "type": "object",
+        "required": [
+          "transaction_id"
+        ],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The transfer: the outflow's transaction, now with both legs."
+          }
+        }
+      },
       "Payee": {
         "type": "object",
         "required": [
@@ -2190,6 +2507,14 @@
             "format": "date"
           }
         }
+      },
+      "Reason": {
+        "type": "string",
+        "description": "Why a leg is not paired.",
+        "enum": [
+          "no_counterpart",
+          "several_candidates"
+        ]
       },
       "RowFailure": {
         "type": "object",
@@ -2420,6 +2745,83 @@
           }
         }
       },
+      "Split": {
+        "type": "object",
+        "required": [
+          "transaction_ids"
+        ],
+        "properties": {
+          "transaction_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The transfer's transaction, now with the outflow leg only, then the new one with the inflow leg."
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "totals"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Totals"
+            },
+            "description": "One entry per currency with money in the period."
+          }
+        }
+      },
+      "Totals": {
+        "type": "object",
+        "description": "Totals in one currency, as positive minor units.",
+        "required": [
+          "currency",
+          "spending",
+          "income",
+          "unpaired_transfer_out",
+          "unpaired_transfer_in"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "spending": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Money out of one-leg transactions whose category is not a transfer (uncategorized included)."
+          },
+          "income": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Money in of one-leg transactions whose category is not a transfer."
+          },
+          "unpaired_transfer_out": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Money out of transfer legs not paired yet."
+          },
+          "unpaired_transfer_in": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Money in of transfer legs not paired yet."
+          }
+        }
+      },
       "Transaction": {
         "type": "object",
         "required": [
@@ -2529,6 +2931,139 @@
             "items": {
               "$ref": "#/components/schemas/Transaction"
             }
+          }
+        }
+      },
+      "TransferLeg": {
+        "type": "object",
+        "description": "One leg that may be half of a transfer, with its transaction.",
+        "required": [
+          "transaction_id",
+          "date",
+          "description",
+          "amount_minor",
+          "currency",
+          "account_id"
+        ],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed minor units in `currency`: below zero the money left `account_id`."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "TransferPair": {
+        "type": "object",
+        "required": [
+          "outflow",
+          "inflow",
+          "pass",
+          "drops_manual"
+        ],
+        "properties": {
+          "outflow": {
+            "$ref": "#/components/schemas/TransferLeg"
+          },
+          "inflow": {
+            "$ref": "#/components/schemas/TransferLeg"
+          },
+          "pass": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1: the only match within two days; 2: the outflow's text names the account; 3: Friday to Monday.",
+            "minimum": 0
+          },
+          "drops_manual": {
+            "type": "boolean",
+            "description": "Pairing drops a category or payee a person chose for the inflow, so imports leave it for you."
+          }
+        }
+      },
+      "TransferPreview": {
+        "type": "object",
+        "required": [
+          "pairs",
+          "unmatched",
+          "tag"
+        ],
+        "properties": {
+          "pairs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferPair"
+            },
+            "description": "The pairs applying would make, oldest first."
+          },
+          "unmatched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Unmatched"
+            }
+          },
+          "tag": {
+            "type": "string",
+            "description": "The same tag as the `ETag` header: send it back in `If-Match` to apply."
+          }
+        }
+      },
+      "TransfersApplied": {
+        "type": "object",
+        "required": [
+          "paired"
+        ],
+        "properties": {
+          "paired": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Unmatched": {
+        "type": "object",
+        "required": [
+          "leg",
+          "reason",
+          "candidates"
+        ],
+        "properties": {
+          "leg": {
+            "$ref": "#/components/schemas/TransferLeg"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/Reason"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferLeg"
+            },
+            "description": "Unpaired legs that could be its other side: same amount, other sign, other account, same currency (any\ndate when the reason is `no_counterpart`)."
           }
         }
       }

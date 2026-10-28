@@ -491,6 +491,7 @@ dependencies = [
  "base64 0.22.1",
  "coinroost-normalizer",
  "coinroost-rules",
+ "coinroost-transfers",
  "http-body-util",
  "iso_currency",
  "rand",

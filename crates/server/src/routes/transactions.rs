@@ -136,6 +136,9 @@ pub struct Filter {
     /// Only transactions without a category.
     #[serde(default)]
     uncategorized: bool,
+    /// Only transfers: transactions with two legs.
+    #[serde(default)]
+    transfers: bool,
     /// At most this many, newest first (default 100, at most 1000).
     limit: Option<i64>,
 }
@@ -166,6 +169,7 @@ async fn list_transactions(
            and ($2::uuid is null or exists (select 1 from legs l where l.transaction_id = t.id and l.account_id = $2))
            and ($3::date is null or t.date >= $3) and ($4::date is null or t.date <= $4)
            and (not $6 or t.category_id is null)
+           and (not $7 or (select count(*) from legs l where l.transaction_id = t.id) = 2)
          order by t.date desc, t.created_at desc, t.id limit $5"
     ))
     .bind(session.household_id)
@@ -174,6 +178,7 @@ async fn list_transactions(
     .bind(filter.to)
     .bind(limit)
     .bind(filter.uncategorized)
+    .bind(filter.transfers)
     .fetch_all(&state.db)
     .await?;
     attach_legs(&state.db, session.household_id, &mut items).await?;

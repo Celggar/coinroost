@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 use crate::auth::Session;
 use crate::error::{ApiError, ApiResult};
+use crate::pairing;
 use crate::sorting::{PayeeChoice, Sorter, payee_named};
 use crate::validate;
 
@@ -314,6 +315,8 @@ pub async fn store(
         .execute(&mut *tx)
         .await?;
     }
+    // Legs of transfers this file completes are paired now; the counterpart usually came with an earlier file.
+    pairing::pair_imported(&mut tx, session.household_id, batch.id).await?;
     tx.commit().await?;
     Ok(batch)
 }
