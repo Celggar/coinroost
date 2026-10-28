@@ -37,7 +37,8 @@
 		niceStep(Math.max(0, ...points.flatMap((p) => [p.income, p.spending])) / TICKS)
 	);
 	const top = $derived(step * TICKS);
-	// A month label every `every` months, so labels stay about 44 px apart.
+	// A month label every `every` months, so labels stay about 44 px apart; the first label of each year shows the
+	// year under it, even when January itself is not labelled.
 	const every = $derived(Math.max(1, Math.ceil(44 / Math.max(band, 1))));
 	const title = $derived(`${t('chart.title')} · ${currency}`);
 	const shown = $derived(active === null ? null : points[active]);
@@ -152,7 +153,7 @@
 						<text class="tick" x={LEFT + band * (i + 0.5)} y={TOP + PLOT + 16} text-anchor="middle">
 							{monthShort(p.month)}
 						</text>
-						{#if i === 0 || p.month.endsWith('-01')}
+						{#if i < every || points[i - every].month.slice(0, 4) !== p.month.slice(0, 4)}
 							<text
 								class="tick"
 								x={LEFT + band * (i + 0.5)}
