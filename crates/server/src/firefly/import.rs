@@ -328,7 +328,12 @@ fn report(snapshot: &Snapshot, created: [usize; 3], ids: &Ids, tally: &Tally) ->
         lines.push(format!(
             "    {:<18} {count:>6} · {}",
             kind.name,
-            kind.home.unwrap_or("GAP: not migrated")
+            match kind.home {
+                Some(home) => home,
+                None if snapshot.unavailable.iter().any(|k| k == kind.name) =>
+                    "off in this Firefly: none to migrate",
+                None => "GAP: not migrated",
+            }
         ));
     }
     lines.push(format!(

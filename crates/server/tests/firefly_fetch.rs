@@ -62,8 +62,11 @@ async fn fetch_reads_everything_with_only_get() {
             snapshot.counts["tags"],
             snapshot.counts["webhooks"]
         ),
-        (14, 3, 1)
+        (14, 3, 0)
     );
+    // Webhooks are switched off in this Firefly: recorded as such, not as an empty list.
+    assert_eq!(manifest["unavailable"], serde_json::json!(["webhooks"]));
+    assert_eq!(snapshot.unavailable, ["webhooks"]);
     assert_eq!(snapshot.version, "6.6.3");
 
     // The folder holds real data when it is real: the owner alone reads it.

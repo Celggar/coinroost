@@ -61,6 +61,10 @@ fn save(path: &Path, body: &[u8]) -> Result<(), String> {
 
 async fn ok_json(firefly: &Firefly, path: &str) -> Result<(Bytes, Value), String> {
     let (status, body) = firefly.get(path).await?;
+    checked(path, status, body)
+}
+
+fn checked(path: &str, status: StatusCode, body: Bytes) -> Result<(Bytes, Value), String> {
     match status {
         StatusCode::OK => {}
         StatusCode::UNAUTHORIZED => return Err("Firefly refused the token".to_owned()),
@@ -70,24 +74,45 @@ async fn ok_json(firefly: &Firefly, path: &str) -> Result<(Bytes, Value), String
     Ok((body, value))
 }
 
-/// Every page of every kind, as Firefly sent them; the number of items Firefly announced for each.
-async fn pages(firefly: &Firefly, out: &Path) -> Result<(Value, Vec<Value>), String> {
-    let mut counts = serde_json::Map::new();
-    let mut groups = Vec::new();
+/// What the lists held: the number of items Firefly announced for each kind, the transaction groups, and the kinds
+/// this Firefly does not offer.
+struct Pages {
+    counts: serde_json::Map<String, Value>,
+    groups: Vec<Value>,
+    unavailable: Vec<&'static str>,
+}
+
+/// Every page of every kind, as Firefly sent them. A list Coinroost does not migrate may be switched off in Firefly
+/// (webhooks answer 404 unless an administrator allows them): it is recorded as unavailable, never as empty.
+async fn pages(firefly: &Firefly, out: &Path) -> Result<Pages, String> {
+    let mut found = Pages {
+        counts: serde_json::Map::new(),
+        groups: Vec::new(),
+        unavailable: Vec::new(),
+    };
     for kind in &KINDS {
         let mut page = 1;
         loop {
             let query = [kind.query, &format!("limit={PAGE_SIZE}&page={page}")].join("&");
             let path = format!("{}?{}", kind.path, query.trim_start_matches('&'));
-            let (body, value) = ok_json(firefly, &path).await?;
+            let (status, body) = firefly.get(&path).await?;
+            if status == StatusCode::NOT_FOUND && page == 1 && kind.home.is_none() {
+                found.unavailable.push(kind.name);
+                break;
+            }
+            let (body, value) = checked(&path, status, body)?;
             save(
                 &out.join("pages").join(kind.name).join(format!("{page}.json")),
                 &body,
             )?;
             let pagination = &value["meta"]["pagination"];
-            counts.insert(kind.name.to_owned(), pagination["total"].clone());
+            found
+                .counts
+                .insert(kind.name.to_owned(), pagination["total"].clone());
             if kind.name == "transactions" {
-                groups.extend(value["data"].as_array().cloned().unwrap_or_default());
+                found
+                    .groups
+                    .extend(value["data"].as_array().cloned().unwrap_or_default());
             }
             if pagination["total_pages"].as_u64().unwrap_or(1) <= page {
                 break;
@@ -95,7 +120,7 @@ async fn pages(firefly: &Firefly, out: &Path) -> Result<(Value, Vec<Value>), Str
             page += 1;
         }
     }
-    Ok((Value::Object(counts), groups))
+    Ok(found)
 }
 
 /// Groups no list returns (a liability's opening credit is in none of Firefly's type filters), fetched one by one
@@ -202,7 +227,11 @@ pub async fn fetch(url: &str, token: &str, out: &Path) -> Result<String, String>
     private_dir(out)?;
     let (about, about_value) = ok_json(&firefly, "/api/v1/about").await?;
     save(&out.join("about.json"), &about)?;
-    let (counts, mut groups) = pages(&firefly, out).await?;
+    let Pages {
+        counts,
+        mut groups,
+        unavailable,
+    } = pages(&firefly, out).await?;
     let listed: BTreeSet<u64> = groups
         .iter()
         .filter_map(|g| g["id"].as_str()?.parse().ok())
@@ -216,6 +245,7 @@ pub async fn fetch(url: &str, token: &str, out: &Path) -> Result<String, String>
         "fetched_from": firefly.base(),
         "fetched_at": OffsetDateTime::now_utc().to_string(),
         "announced": counts,
+        "unavailable": unavailable,
         "groups_outside_lists": outside,
         "groups_deleted": deleted,
         "month_end_balances": saved,

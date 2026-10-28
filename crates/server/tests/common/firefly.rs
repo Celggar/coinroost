@@ -154,6 +154,13 @@ fn balance(id: &str, query: &HashMap<String, String>) -> Response {
     axum::Json(json!({ "data": account })).into_response()
 }
 
+/// Firefly 6.6.3 lists budget limits only between two dates, both required and both exclusive: start after
+/// 1970-01-02, end before 2038-01-17 (measured on a live 6.6.3; it answers 422 otherwise).
+fn outside_dates(query: &HashMap<String, String>) -> bool {
+    let date = |key: &str| query.get(key).map_or("", String::as_str);
+    date("start") <= "1970-01-02" || date("end") >= "2038-01-17"
+}
+
 fn route(path: &str, query: &HashMap<String, String>) -> Response {
     let rest = path.trim_start_matches("/api/v1/");
     let found = match rest.split('/').collect::<Vec<_>>().as_slice() {
@@ -173,6 +180,21 @@ fn route(path: &str, query: &HashMap<String, String>) -> Response {
                         .into_response();
                 }
             }
+        }
+        // Webhooks are off unless an administrator allows them, and then Firefly 6.6.3 answers 404 for the list.
+        ["webhooks"] => {
+            return (
+                StatusCode::NOT_FOUND,
+                axum::Json(json!({ "message": "Resource not found" })),
+            )
+                .into_response();
+        }
+        ["budget-limits"] if outside_dates(query) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                axum::Json(json!({ "message": "The start field must be a date after 1970-01-02." })),
+            )
+                .into_response();
         }
         [kind] if fixture().join(format!("{kind}.json")).exists() => {
             page(load(&format!("{kind}.json")).as_array().unwrap(), query, path)

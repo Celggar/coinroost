@@ -84,6 +84,8 @@ pub struct Snapshot {
     pub categories: Vec<String>,
     /// How many of each entity type Firefly reported, by `Kind::name`.
     pub counts: BTreeMap<String, usize>,
+    /// The kinds this Firefly does not offer (a list switched off, such as webhooks): none to migrate.
+    pub unavailable: Vec<String>,
     pub balances: Vec<Balance>,
 }
 
@@ -179,10 +181,23 @@ fn balances(dir: &Path) -> Result<Vec<Balance>, String> {
 impl Snapshot {
     pub fn load(dir: &Path) -> Result<Snapshot, String> {
         let manifest = read(&dir.join("manifest.json"))?;
+        let unavailable: Vec<String> = manifest["unavailable"]
+            .as_array()
+            .map(|kinds| {
+                kinds
+                    .iter()
+                    .filter_map(|k| k.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default();
         let mut counts = BTreeMap::new();
         let mut lists = BTreeMap::new();
         for kind in &KINDS {
-            let found = items(dir, kind.name)?;
+            let found = if unavailable.iter().any(|k| k == kind.name) {
+                Vec::new()
+            } else {
+                items(dir, kind.name)?
+            };
             counts.insert(kind.name.to_owned(), found.len());
             lists.insert(kind.name, found);
         }
@@ -210,6 +225,7 @@ impl Snapshot {
             journals,
             categories,
             counts,
+            unavailable,
             balances: balances(dir)?,
         })
     }
