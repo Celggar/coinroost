@@ -9,10 +9,13 @@ One folder per case. Each holds:
 
 Every implementation of the normalizer must reproduce `result` exactly; `crates/normalizer/tests/fixtures.rs`
 checks the Rust one. Generated inputs keep their generator next to them (`coopeduc/make_input.py` writes
-both Coopeduc cases).
+both Coopeduc cases, `bg-account/make_input.py` both Banco General workbooks).
 
 | Folder | What it pins down |
 |---|---|
 | `bac-account` | Three-section CSV, windows-1252, quoted thousands, padded descriptions, equal rows on one day, an unreadable date |
 | `coopeduc` | One transaction per PDF text line, the table header on every page, a line without amounts |
 | `coopeduc-word-gap` | Words separated by narrow `TJ` offsets instead of spaces: they join into one word, as in the reference |
+| `bac-card` | Card CSV with a header block and a summary block, a masked card number, purchases positive (sign inverted), rows without a date, quoted amounts, equal purchases on one day |
+| `bg-account` | XLSX with seven metadata rows above the header, one signed `Monto`, dates and numbers both as text and as cells, a blank row |
+| `bg-account-debit-credit` | The same account in the accounting layout: `Débito` already negative and `Crédito` |
