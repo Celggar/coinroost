@@ -87,7 +87,8 @@ impl Amount {
         }
     }
 
-    /// The amount in cents (minor units for a two-decimal currency), rounding half away from zero.
+    /// The amount in cents (minor units for a two-decimal currency), rounding half away from zero. Beyond
+    /// ±92 233 720 368 547 758.07 it saturates.
     pub fn minor_units(self) -> i64 {
         let shift = self.exponent + 2;
         let magnitude = if shift >= 0 {

@@ -1,0 +1,46 @@
+{
+  "input": "input.xlsx",
+  "namespace": "bg-account",
+  "profile": "bg-account",
+  "result": {
+    "ambiguities": 1,
+    "errors": [
+      {
+        "row": 6
+      }
+    ],
+    "fatal": null,
+    "rows": 5,
+    "structural": 0,
+    "transactions": [
+      {
+        "amount": "-800",
+        "amount_minor": -80000,
+        "date": "2026-06-26",
+        "description": "BANCA MOVIL A OTRO BANCO",
+        "external_id": "9248cb3ec1ba7b141deb6751c1103255"
+      },
+      {
+        "amount": "0.79",
+        "amount_minor": 79,
+        "date": "2026-05-31",
+        "description": "INTERES CUENTA DE AHORROS",
+        "external_id": "35e7a89bceaf89ca79e9cbe88eae44e0"
+      },
+      {
+        "amount": "1300",
+        "amount_minor": 130000,
+        "date": "2026-05-16",
+        "description": "TRANSFERENCIA ENTRE CUENTAS",
+        "external_id": "f2565b20420021cf8be65cc2280f71d0"
+      },
+      {
+        "amount": "0",
+        "amount_minor": 0,
+        "date": "2026-05-10",
+        "description": "PAGO CON AMBOS",
+        "external_id": "861fc85cc29f4c1bffe95c341e4161df"
+      }
+    ]
+  }
+}

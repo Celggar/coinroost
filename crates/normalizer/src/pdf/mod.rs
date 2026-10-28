@@ -34,6 +34,21 @@ pub fn read_lines(_bytes: &[u8]) -> Result<Vec<String>, String> {
     Err("this build has no PDF support".to_owned())
 }
 
+/// The text of the first page, where statements print the account.
+#[cfg(feature = "pdf")]
+pub fn first_page_text(bytes: &[u8]) -> Result<String, String> {
+    let document = pdf_oxide::PdfDocument::from_bytes(bytes.to_vec()).map_err(|e| e.to_string())?;
+    if document.page_count().map_err(|e| e.to_string())? == 0 {
+        return Ok(String::new());
+    }
+    Ok(page_text(&glyphs::page_glyphs(&document, 0)?))
+}
+
+#[cfg(not(feature = "pdf"))]
+pub fn first_page_text(_bytes: &[u8]) -> Result<String, String> {
+    Err("this build has no PDF support".to_owned())
+}
+
 /// Turns statement lines into a table, keeping only lines that start a transaction. A line that starts one
 /// but does not match the full pattern keeps its first token as the date and the whole line as the
 /// description, so it is reported as an error instead of disappearing.

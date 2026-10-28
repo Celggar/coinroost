@@ -12,6 +12,7 @@ default = ["pdf"]
 pdf = ["dep:pdf_oxide"]
 
 [dependencies]
+calamine = { version = "=0.36.1", default-features = false }
 pdf_oxide = { version = "=0.3.78", default-features = false, optional = true }
 regex = "1.13"
 serde = { version = "1", features = ["derive"] }

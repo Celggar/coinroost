@@ -69,6 +69,15 @@ pub struct Csv {
     pub section_end: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Xlsx {
+    /// Text in a cell of the header row, for sheets with metadata rows above the table. Without it, or when
+    /// no row contains it, the first row is the header.
+    #[serde(default)]
+    pub header_marker: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PdfStrategy {
@@ -93,6 +102,15 @@ pub struct Dates {
     pub formats: Vec<String>,
 }
 
+/// Text that identifies the format in a file's header (see [`crate::detect`]).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Detect {
+    /// Every entry must appear, folded, in the header text.
+    #[serde(default)]
+    pub all: Vec<String>,
+}
+
 /// One bank export format.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -104,11 +122,15 @@ pub struct Profile {
     /// ISO 4217 code.
     pub currency: String,
     #[serde(default)]
+    pub detect: Detect,
+    #[serde(default)]
     pub columns: Columns,
     pub amounts: Amounts,
     pub dates: Dates,
     #[serde(default)]
     pub csv: Option<Csv>,
+    #[serde(default)]
+    pub xlsx: Option<Xlsx>,
     #[serde(default)]
     pub pdf: Option<Pdf>,
 }
@@ -116,6 +138,8 @@ pub struct Profile {
 /// The profiles shipped with the library, one per file in `spec/profiles/`.
 const BUILTIN: &[&str] = &[
     include_str!("../../../spec/profiles/bac-account.toml"),
+    include_str!("../../../spec/profiles/bac-card.toml"),
+    include_str!("../../../spec/profiles/bg-account.toml"),
     include_str!("../../../spec/profiles/coopeduc.toml"),
 ];
 
@@ -158,6 +182,9 @@ impl Profile {
         match self.format {
             FileFormat::Csv if self.csv.is_none() => Err(format!("{}: a csv profile needs [csv]", self.id)),
             FileFormat::Pdf if self.pdf.is_none() => Err(format!("{}: a pdf profile needs [pdf]", self.id)),
+            FileFormat::Xlsx if self.csv.is_some() || self.pdf.is_some() => {
+                Err(format!("{}: an xlsx profile takes only [xlsx]", self.id))
+            }
             _ => Ok(()),
         }
     }
@@ -170,7 +197,7 @@ mod tests {
     #[test]
     fn every_builtin_profile_loads() {
         let ids: Vec<String> = Profile::builtin().into_iter().map(|p| p.id).collect();
-        assert_eq!(ids, ["bac-account", "coopeduc"]);
+        assert_eq!(ids, ["bac-account", "bac-card", "bg-account", "coopeduc"]);
     }
 
     #[test]

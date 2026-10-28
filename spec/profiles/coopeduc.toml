@@ -8,6 +8,9 @@ name = "Coopeduc account statement (PDF)"
 format = "pdf"
 currency = "USD"
 
+[detect]
+all = ["el educador"]
+
 [pdf]
 strategy = "lines"
 row_start = '^\s*\d{2}/\d{2}/\d{4}\s'

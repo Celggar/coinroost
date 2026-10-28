@@ -1,0 +1,63 @@
+{
+  "input": "input.csv",
+  "namespace": "bac-card",
+  "profile": "bac-card",
+  "result": {
+    "ambiguities": 0,
+    "errors": [],
+    "fatal": null,
+    "rows": 11,
+    "structural": 4,
+    "transactions": [
+      {
+        "amount": "-14.37",
+        "amount_minor": -1437,
+        "date": "2026-04-02",
+        "description": "TIENDA EJEMPLO PANAMÁ",
+        "external_id": "e4d187e273a4e8f209063177928c6d5d"
+      },
+      {
+        "amount": "-9.99",
+        "amount_minor": -999,
+        "date": "2026-04-04",
+        "description": "SUSCRIPCION EJEMPLO",
+        "external_id": "c4dd3ee12028b48b5d70313115ea1856"
+      },
+      {
+        "amount": "100.00",
+        "amount_minor": 10000,
+        "date": "2026-04-07",
+        "description": "SU PAGO RECIBIDO GRACIAS",
+        "external_id": "cc8101e730d3fff462511b05559d87da"
+      },
+      {
+        "amount": "-5.00",
+        "amount_minor": -500,
+        "date": "2026-04-14",
+        "description": "COMPRA REPETIDA",
+        "external_id": "efaa6c32010387bde30d3d7d579ca080"
+      },
+      {
+        "amount": "-5.00",
+        "amount_minor": -500,
+        "date": "2026-04-14",
+        "description": "COMPRA REPETIDA",
+        "external_id": "4b3e440610ec066b3eccc98ef725ec18"
+      },
+      {
+        "amount": "-1250.00",
+        "amount_minor": -125000,
+        "date": "2026-04-20",
+        "description": "HOTEL EJEMPLO, S.A.",
+        "external_id": "3fe7e60958662af3c4d1cb2135ce85f5"
+      },
+      {
+        "amount": "0.50",
+        "amount_minor": 50,
+        "date": "2026-04-21",
+        "description": "DEVOLUCION EJEMPLO",
+        "external_id": "938dc56807d4b6ecaec908be0164a6dd"
+      }
+    ]
+  }
+}
