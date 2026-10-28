@@ -35,4 +35,4 @@ done
 
 cd "$web"
 npx playwright install chromium >/dev/null
-BASE_URL="http://$address" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" npx playwright test
+BASE_URL="http://$address" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" npx playwright test "$@"

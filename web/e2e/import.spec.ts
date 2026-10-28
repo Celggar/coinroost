@@ -29,6 +29,12 @@ async function loggedIn(context: BrowserContext): Promise<Page> {
 	return context.newPage();
 }
 
+async function overflow(page: Page): Promise<number> {
+	return page.evaluate(
+		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+	);
+}
+
 function count(card: Locator, label: string): Locator {
 	return card
 		.locator('.counts div', { has: card.page().getByText(label, { exact: true }) })
@@ -96,6 +102,7 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(card.getByRole('status')).toHaveText(
 		`Added ${transactions}; skipped 0 already imported.`
 	);
+	await expect(count(card, 'New')).toHaveText('0');
 
 	// The same file again: everything is already there, and the import button stays off.
 	await page.getByLabel('Choose files').setInputFiles(statement);
@@ -134,10 +141,16 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		const page = await phone.newPage();
 		await page.goto(path);
 		await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
-		const overflow = await page.evaluate(
-			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
-		);
-		expect(overflow, path).toBeLessThanOrEqual(0);
+		expect(await overflow(page), path).toBeLessThanOrEqual(0);
+		if (path === '/import') {
+			// With a card open and its transactions table expanded (the account made in the import test reads
+			// it), the table scrolls in its own box.
+			await page.getByLabel('Choose files').setInputFiles(statement);
+			const card = page.getByRole('article', { name: 'input.csv' });
+			await card.getByText(/^Show the \d+ transactions$/).click();
+			await expect(card.getByRole('table')).toBeVisible();
+			expect(await overflow(page), 'import with a table open').toBeLessThanOrEqual(0);
+		}
 		await page.close();
 	}
 	await phone.close();

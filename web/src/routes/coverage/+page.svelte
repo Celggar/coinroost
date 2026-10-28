@@ -48,9 +48,9 @@
 	>
 </div>
 <p class="hint">
-	Up to when each account has data, and what the imported files cover. Check means more than 15 days
-	without data, late more than 40: a statement cycle is about 30 days. A quiet account can be still
-	on purpose.
+	Up to when each account has data, and what the imported files cover. Status <strong>Check</strong
+	>: more than 15 days without data; <strong>Late</strong>: more than 40. A statement cycle is about
+	30 days, but a quiet account can be still on purpose.
 </p>
 
 {#if error}

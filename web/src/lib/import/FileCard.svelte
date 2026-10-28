@@ -67,6 +67,8 @@
 			return;
 		}
 		report = data;
+		// Read it again so the counts and rows show what the account has now.
+		await read(accountId);
 	}
 
 	onMount(() => {
@@ -186,6 +188,9 @@
 		justify-content: space-between;
 		align-items: start;
 		gap: 12px;
+	}
+	.head h2 {
+		min-width: 0;
 	}
 	.counts {
 		display: grid;

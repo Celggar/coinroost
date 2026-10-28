@@ -74,6 +74,16 @@
 		gap: 4px;
 		flex: 1;
 	}
+	/* On a phone: the name and Log out on the first row, the sections on their own row below. */
+	@media (max-width: 560px) {
+		.brand {
+			flex: 1;
+		}
+		nav {
+			order: 3;
+			flex-basis: 100%;
+		}
+	}
 	nav a {
 		padding: 10px 10px;
 		border-radius: var(--radius);

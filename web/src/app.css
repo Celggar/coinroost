@@ -117,8 +117,11 @@ select {
 	width: 100%;
 }
 
+/* Grid tracks are minmax(0, 1fr) so a wide child (a table, a file input) scrolls inside its box instead of
+   widening the page. */
 label {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 4px;
 	font-weight: 600;
 }
@@ -136,12 +139,19 @@ label .hint,
 	border-radius: var(--radius);
 	padding: 16px;
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 12px;
+	min-width: 0;
 }
 
 .stack {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 16px;
+}
+
+input[type='file'] {
+	max-width: 100%;
 }
 
 .table-wrap {
@@ -174,6 +184,11 @@ th.number {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+}
+
+.alert,
+.notice {
+	overflow-wrap: anywhere;
 }
 
 .alert {
