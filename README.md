@@ -74,6 +74,13 @@ docker compose -f deploy/compose.prod.yml --env-file ~/.config/coinroost/prod.en
   owner can read it. When it does not exist, it creates one with a random database password nobody has to type.
 - The app gets 256 MB and the database 512 MB. The app runs as an unprivileged user on a read-only filesystem.
 - `docker compose down -v` cannot delete your data: the volume is declared external.
+- To move a Firefly III ledger in, fetch it on the host first (see [Migrating from Firefly III](#migrating-from-firefly-iii)).
+  The snapshot is readable by you alone, so run the import as yourself; `firefly check` takes the same arguments:
+  ```sh
+  docker compose -f deploy/compose.prod.yml --env-file ~/.config/coinroost/prod.env run --rm --no-deps \
+    --user "$(id -u):$(id -g)" -v ~/firefly-snapshot:/snapshot:ro -v ~/map.json:/map.json:ro \
+    app firefly import /snapshot --household <household id> --accounts /map.json
+  ```
 
 The server listens on `127.0.0.1:8080` (`COINROOST_BIND` changes it) and creates the database if it is missing.
 
