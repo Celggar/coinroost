@@ -1,0 +1,9 @@
+{
+ "data": {
+  "version": "6.6.3",
+  "api_version": "6.6.3",
+  "php_version": "8.4.13",
+  "os": "Linux",
+  "driver": "mysql"
+ }
+}

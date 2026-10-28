@@ -1,0 +1,30 @@
+{
+ "accounts": {
+  "1": {
+   "name": "BAC Checking",
+   "kind": "checking",
+   "namespace": "bac",
+   "profile": "bac-account"
+  },
+  "2": {
+   "name": "Savings",
+   "kind": "savings",
+   "namespace": "savings"
+  },
+  "3": {
+   "name": "Store card",
+   "kind": "credit_card",
+   "namespace": "store-card"
+  },
+  "4": {
+   "name": "Yen wallet",
+   "kind": "cash",
+   "namespace": "yen"
+  },
+  "5": {
+   "name": "Old savings",
+   "kind": "savings",
+   "namespace": "old-savings"
+  }
+ }
+}

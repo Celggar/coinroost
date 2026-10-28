@@ -1,0 +1,27 @@
+[
+ {
+  "type": "budgets",
+  "id": "1",
+  "attributes": {
+   "name": "Food",
+   "active": true,
+   "order": 1,
+   "notes": null,
+   "auto_budget_type": null,
+   "auto_budget_period": null,
+   "auto_budget_amount": null,
+   "currency_id": "1",
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_decimal_places": 2,
+   "spent": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/budgets/1",
+   "0": {
+    "rel": "self",
+    "uri": "/budgets/1"
+   }
+  }
+ }
+]

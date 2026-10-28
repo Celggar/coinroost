@@ -1,0 +1,19 @@
+[
+ {
+  "type": "rule_groups",
+  "id": "1",
+  "attributes": {
+   "title": "Default rules",
+   "description": null,
+   "order": 1,
+   "active": true
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/rule-groups/1",
+   "0": {
+    "rel": "self",
+    "uri": "/rule-groups/1"
+   }
+  }
+ }
+]

@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 pub mod assistant;
+pub mod firefly;
 pub mod sorting;
 pub mod transfers;
 

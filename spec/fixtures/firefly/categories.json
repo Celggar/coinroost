@@ -1,0 +1,110 @@
+[
+ {
+  "type": "categories",
+  "id": "1",
+  "attributes": {
+   "name": "Salary",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/1",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/1"
+   }
+  }
+ },
+ {
+  "type": "categories",
+  "id": "2",
+  "attributes": {
+   "name": "Groceries",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/2",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/2"
+   }
+  }
+ },
+ {
+  "type": "categories",
+  "id": "3",
+  "attributes": {
+   "name": "Dining",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/3",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/3"
+   }
+  }
+ },
+ {
+  "type": "categories",
+  "id": "4",
+  "attributes": {
+   "name": "Own transfers",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/4",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/4"
+   }
+  }
+ },
+ {
+  "type": "categories",
+  "id": "5",
+  "attributes": {
+   "name": "People",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/5",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/5"
+   }
+  }
+ },
+ {
+  "type": "categories",
+  "id": "6",
+  "attributes": {
+   "name": "Fees",
+   "notes": null,
+   "spent": [],
+   "earned": [],
+   "transferred": []
+  },
+  "links": {
+   "self": "http://firefly.example/api/v1/categories/6",
+   "0": {
+    "rel": "self",
+    "uri": "/categories/6"
+   }
+  }
+ }
+]

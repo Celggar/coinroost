@@ -20,6 +20,10 @@ coinroost-normalizer = { path = "../normalizer" }
 coinroost-payroll = { path = "../payroll" }
 coinroost-rules = { path = "../rules" }
 coinroost-transfers = { path = "../transfers" }
+http-body-util = "0.1"
+# A plain-HTTP client for reading Firefly: hyper is already here through axum; this adds two small crates.
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "tokio"] }
 iso_currency = "0.7.1"
 rand = "0.10.3"
 # The MCP SDK, pinned: releases come weekly and a new one waits a week before it is taken.
@@ -32,7 +36,7 @@ serde_urlencoded = "0.7"
 sha2 = "0.11"
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-none", "postgres", "macros", "migrate", "uuid", "time", "json"] }
 time = { version = "0.3.55", features = ["serde-human-readable", "formatting", "parsing", "macros"] }
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
 totp-rs = { version = "6.0.0", features = ["otpauth"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.7.1", features = ["fs", "set-header"] }
@@ -41,7 +45,6 @@ utoipa-axum = "0.3.0"
 uuid = { version = "1.29.0", features = ["v4", "serde"] }
 
 [dev-dependencies]
-http-body-util = "0.1"
 tower = { version = "0.5", features = ["util"] }
 
 [lints]
