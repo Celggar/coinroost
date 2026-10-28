@@ -41,7 +41,7 @@ fn read_table(bytes: &[u8], profile: &Profile) -> Result<Table, Error> {
             let lines = pdf::read_lines(bytes).map_err(Error::Unreadable)?;
             pdf::lines_to_table(&lines, settings).map_err(Error::InvalidProfile)
         }
-        FileFormat::Xlsx => Err(Error::Unsupported(FileFormat::Xlsx)),
+        FileFormat::Xlsx => crate::xlsx::read(bytes, profile).map_err(Error::Unreadable),
     }
 }
 

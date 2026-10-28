@@ -9,6 +9,9 @@ name = "BAC account statement (CSV)"
 format = "csv"
 currency = "USD"
 
+[detect]
+all = ["detalle de estado bancario", "fecha de transaccion"]
+
 [csv]
 encoding = "windows-1252"
 delimiter = ","

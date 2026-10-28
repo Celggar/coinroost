@@ -11,6 +11,7 @@
 pub mod amount;
 mod csv;
 pub mod date;
+pub mod detect;
 mod external_id;
 mod normalize;
 pub mod pdf;
@@ -18,6 +19,7 @@ pub mod profile;
 mod report;
 pub mod table;
 pub mod text;
+mod xlsx;
 
 pub use amount::Amount;
 pub use external_id::external_id;

@@ -1,0 +1,34 @@
+# BAC Credomatic (Panama): credit card statement, CSV export. American Express and Visa cards export the same
+# format; the account they belong to is told apart by the card network prefix (see account rules).
+#
+# The transactions section starts at the header `Date, , Local, Dollars` (the merchant column has no name) and
+# ends at the `CURRENT Interest` section. `Local` is always 0.00; the amount is in `Dollars`, with purchases
+# positive and payments negative, so the sign is inverted. Opening balance, card number and fee footer rows have
+# no date and count as layout. Windows-1252, one space after every comma.
+id = "bac-card"
+name = "BAC credit card statement (CSV)"
+format = "csv"
+currency = "USD"
+
+[detect]
+all = ["minimum payment"]
+
+[csv]
+encoding = "windows-1252"
+delimiter = ","
+skip_initial_space = true
+section_start = "Local, Dollars"
+section_end = "CURRENT Interest"
+
+[columns]
+date = ["date", "fecha"]
+description = ["unnamed: 1", "descripcion", "comercio", "detalle"]
+amount = ["dollars", "dolares", "monto"]
+
+[amounts]
+decimal = "."
+thousands = ","
+invert_sign = true
+
+[dates]
+formats = ["%d/%m/%Y"]

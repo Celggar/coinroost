@@ -1,0 +1,16 @@
+Product, Name, Date, Minimum payment/due date, Minimum payment/ Local Amount, Minimum Payment / Dollars Amount, Cash payment/Due date, Cash payment / Local amount, Cash payment / Dollar amount
+3700-00**-****-0000, JANE DOE EXAMPLE, 03/05/2026, 19/05/2026, 0.00, 25.00, 19/05/2026, 0.00, 115.64
+Date, , Local, Dollars 
+, Previous balance, 0.00, -50.00
+, 3700-00**-****-0000, 0.00, 0.00
+02/04/2026, TIENDA EJEMPLO PANAMÁ, 0.00, 14.37
+04/04/2026, SUSCRIPCION EJEMPLO, 0.00, 9.99
+07/04/2026, SU PAGO RECIBIDO GRACIAS, 0.00, -100.00
+14/04/2026, COMPRA REPETIDA, 0.00, 5.00
+14/04/2026, COMPRA REPETIDA, 0.00, 5.00
+20/04/2026, "HOTEL EJEMPLO, S.A.", 0.00, "1,250.00"
+21/04/2026, DEVOLUCION EJEMPLO, 0.00, -0.50
+, TASA MENSUAL CARGOS X SERVICIO, 0.00, 0.00
+, NO. ESTADO DE CUENTA: 202605, 0.00, 0.00
+CURRENT Interest MONTH/LOCAL, CURRENT Interest MONTH/DOLLARS, Balance at cut-off /Local, Balance at cut-off /Dollars
+0.00, 0.00, 0.00, 1128.50

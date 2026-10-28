@@ -1,0 +1,32 @@
+# Banco General (Panama): account movements, XLSX export. Checking and savings accounts share the format.
+#
+# Seven metadata rows sit above the header, which is found by its `Saldo total` cell. Dates carry a time
+# (2026-06-26 23:49:57). Two layouts exist and both are read: the older one has one signed `Monto` column;
+# the accounting layout (since July 2026) has `Débito` and `Crédito`, with debits already negative. Each file
+# uses whichever its columns support, debit/credit first, and the same movement gets the same external_id in
+# both, so re-importing after the layout change adds nothing.
+id = "bg-account"
+name = "Banco General account movements (XLSX)"
+format = "xlsx"
+currency = "USD"
+
+[detect]
+all = ["saldo total"]
+
+[xlsx]
+header_marker = "Saldo total"
+
+[columns]
+date = ["fecha"]
+description = ["descripcion", "detalle", "concepto"]
+amount = ["monto", "importe", "valor"]
+debit = ["debito"]
+credit = ["credito"]
+
+[amounts]
+decimal = "."
+thousands = ","
+debit_sign = 1
+
+[dates]
+formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y"]

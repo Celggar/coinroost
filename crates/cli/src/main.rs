@@ -1,8 +1,10 @@
 //! `coinroost normalize --profile <id> --namespace <account> <file>`: prints the normalization as JSON.
+//! `coinroost detect --accounts <rules.toml> <file>`: prints which account a file belongs to, as JSON.
 //! `coinroost profiles`: lists the built-in profiles.
 
 use std::process::ExitCode;
 
+use coinroost_normalizer::detect::{AccountRules, Detection, detect};
 use coinroost_normalizer::{Profile, normalize};
 use serde_json::{Value, json};
 
@@ -18,7 +20,7 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
-        Some("normalize") => match run_normalize(&args[1..]) {
+        Some(command @ ("normalize" | "detect")) => match run(command, &args[1..]) {
             Ok(output) => {
                 println!("{output:#}");
                 ExitCode::SUCCESS
@@ -35,16 +37,23 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_normalize(args: &[String]) -> Result<Value, String> {
-    let (mut profile, mut namespace, mut file) = (None, None, None);
+fn run(command: &str, args: &[String]) -> Result<Value, String> {
+    let (mut profile, mut namespace, mut accounts, mut file) = (None, None, None, None);
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
             "--profile" => profile = rest.next(),
             "--namespace" => namespace = rest.next(),
+            "--accounts" => accounts = rest.next(),
             _ if file.is_none() => file = Some(arg),
             _ => return Err(USAGE.to_owned()),
         }
+    }
+    if command == "detect" {
+        let (Some(accounts), Some(file)) = (accounts, file) else {
+            return Err(USAGE.to_owned());
+        };
+        return run_detect(accounts, file);
     }
     let (Some(profile), Some(namespace), Some(file)) = (profile, namespace, file) else {
         return Err(USAGE.to_owned());
@@ -54,5 +63,20 @@ fn run_normalize(args: &[String]) -> Result<Value, String> {
     Ok(match normalize(&bytes, &profile, namespace) {
         Ok(result) => result.to_json(),
         Err(error) => json!({ "fatal": error.to_string() }),
+    })
+}
+
+fn run_detect(accounts: &str, file: &str) -> Result<Value, String> {
+    let rules = std::fs::read_to_string(accounts).map_err(|e| format!("{accounts}: {e}"))?;
+    let rules = AccountRules::from_toml(&rules).map_err(|e| format!("{accounts}: {e}"))?;
+    let bytes = std::fs::read(file).map_err(|e| format!("{file}: {e}"))?;
+    let name = std::path::Path::new(file)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+    Ok(match detect(&bytes, name, &Profile::builtin(), &rules.account) {
+        Detection::Found(namespace) => json!({ "result": "found", "namespace": namespace }),
+        Detection::Ambiguous(candidates) => json!({ "result": "ambiguous", "candidates": candidates }),
+        Detection::NotFound => json!({ "result": "not_found" }),
     })
 }

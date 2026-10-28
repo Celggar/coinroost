@@ -1,0 +1,60 @@
+{
+  "input": "input.xlsx",
+  "namespace": "bg-account",
+  "profile": "bg-account",
+  "result": {
+    "ambiguities": 2,
+    "errors": [
+      {
+        "row": 8
+      }
+    ],
+    "fatal": null,
+    "rows": 8,
+    "structural": 1,
+    "transactions": [
+      {
+        "amount": "-8",
+        "amount_minor": -800,
+        "date": "2026-06-26",
+        "description": "TRANSFERENCIA A JOHN DOE",
+        "external_id": "c53fe587309712e916e890456213de4c"
+      },
+      {
+        "amount": "279.53",
+        "amount_minor": 27953,
+        "date": "2026-06-25",
+        "description": "TRANSFERENCIA DE EMPRESA EJEMPLO",
+        "external_id": "8a7e0b5677dd724880f16b3bfd6ae98a"
+      },
+      {
+        "amount": "-12.5",
+        "amount_minor": -1250,
+        "date": "2026-06-20",
+        "description": "COMPRA EJEMPLO",
+        "external_id": "1dc1312eb8d2335042fc904eedda9c79"
+      },
+      {
+        "amount": "-1.25",
+        "amount_minor": -125,
+        "date": "2026-06-18",
+        "description": "",
+        "external_id": "a08d5d89b1148e995b6619cd7492cd7c"
+      },
+      {
+        "amount": "-3",
+        "amount_minor": -300,
+        "date": "2026-06-18",
+        "description": "CARGO EJEMPLO",
+        "external_id": "b0b6b33d792ec80b9874ef36bc0c8484"
+      },
+      {
+        "amount": "0.125",
+        "amount_minor": 13,
+        "date": "2026-06-15",
+        "description": "INTERES EJEMPLO",
+        "external_id": "c7bdb8edcd4dc9c1df31d12dbf20ab16"
+      }
+    ]
+  }
+}
