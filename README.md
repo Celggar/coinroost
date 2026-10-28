@@ -178,6 +178,19 @@ cargo run -p coinroost-server -- firefly check ~/firefly-snapshot --household <h
   - Running it again adds nothing.
 - **`check`** compares every mapped account's balance at each month end with Firefly's own figure, to the cent, and
   exits non-zero if any differs.
+- The migrated accounts have a profile but no detection, so a dropped statement that fits two of them (two cards
+  of the same bank, say) asks which one it is. An account rules file, the one `coinroost detect --accounts` reads,
+  sets each account's detection by namespace, with the same checks as creating an account; loading it again
+  changes nothing:
+  ```sh
+  cargo run -p coinroost-server -- accounts load accounts.toml --household <household id>
+  ```
+  ```toml
+  [[account]]
+  namespace = "card-amex"
+  profile = "bac-card"
+  card_prefixes = ["34", "37"]
+  ```
 
 The import report counts every Firefly entity type next to where it now lives. Tags, budgets, bills, piggy banks,
 attachments, recurring transactions, Firefly's own rules, webhooks, object groups and transaction links have no home

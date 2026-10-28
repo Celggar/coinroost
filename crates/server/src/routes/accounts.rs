@@ -4,6 +4,7 @@
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
+use coinroost_normalizer::detect::AccountRule;
 use coinroost_normalizer::{FileFormat, Profile};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -73,6 +74,22 @@ pub struct Detection {
 }
 
 impl Detection {
+    /// A rule's detection from an account rules file (`accounts.toml`), checked as this route checks a body.
+    pub(crate) fn from_rule(rule: &AccountRule) -> ApiResult<Detection> {
+        Detection {
+            markers: rule.markers.clone(),
+            card_prefixes: rule.card_prefixes.clone(),
+            label: rule.label.clone(),
+            number_hash: rule.number_hash.clone(),
+        }
+        .validated()
+    }
+
+    /// Markers, card prefixes, label and number hash, in the order of their columns.
+    pub(crate) fn into_columns(self) -> (Vec<String>, Vec<String>, Option<String>, Option<String>) {
+        (self.markers, self.card_prefixes, self.label, self.number_hash)
+    }
+
     fn validated(self) -> ApiResult<Detection> {
         let markers = self
             .markers
@@ -168,13 +185,7 @@ async fn create_account(
     let namespace = validate::namespace(&body.namespace)?;
     let detection = body.detection.validated()?;
     if let Some(id) = &body.profile {
-        let profile = Profile::find(id).ok_or_else(|| ApiError::Invalid(format!("no profile {id}")))?;
-        if profile.currency != currency {
-            return Err(ApiError::Invalid(format!(
-                "profile {id} reads {} statements, the account is in {currency}",
-                profile.currency
-            )));
-        }
+        check_profile(id, &currency)?;
     }
     let account = sqlx::query_as(concat!(
         "insert into accounts (household_id, name, kind, currency, namespace, profile, detect_markers,
@@ -195,6 +206,18 @@ async fn create_account(
     .fetch_one(&state.db)
     .await?;
     Ok((StatusCode::CREATED, Json(account)))
+}
+
+/// The profile exists and reads statements in the account's currency.
+pub(crate) fn check_profile(id: &str, currency: &str) -> ApiResult<()> {
+    let profile = Profile::find(id).ok_or_else(|| ApiError::Invalid(format!("no profile {id}")))?;
+    if profile.currency != currency {
+        return Err(ApiError::Invalid(format!(
+            "profile {id} reads {} statements, the account is in {currency}",
+            profile.currency
+        )));
+    }
+    Ok(())
 }
 
 #[derive(Serialize, ToSchema)]

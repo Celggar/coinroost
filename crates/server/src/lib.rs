@@ -3,6 +3,7 @@
 //! and the login needs a session, and every query is scoped to the caller's household. The same server can serve
 //! the web app, a static build, from a directory.
 
+pub mod account_rules;
 pub mod auth;
 pub mod employers;
 pub mod error;

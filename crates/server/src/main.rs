@@ -8,6 +8,8 @@
 //! `coinroost-server rules load <set.json> --household <id>`: loads a rule set (categories, payees and rules by
 //! name) into a household; loading it again changes nothing.
 //! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
+//! `coinroost-server accounts load <accounts.toml> --household <id>`: sets each listed account's profile and the
+//! detection that tells its exports apart, by namespace (accounts made by a migration have none); again, nothing changes.
 //! `coinroost-server token add <email> --name <label> [--read-only]`: prints a new API token for the user, once.
 //! `coinroost-server token revoke <email> --name <label>`: revokes the user's live token of that name.
 //! `coinroost-server firefly fetch --out <dir>`: reads a Firefly III ledger with GET requests only into a new
@@ -21,13 +23,16 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use coinroost_server::tokens::{self, Scope};
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, firefly, mcp, openapi, rule_set};
+use coinroost_server::{
+    AppState, MIGRATOR, SHELL, account_rules, app, auth, employers, firefly, mcp, openapi, rule_set,
+};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
        | rules load <set.json> --household <id> | payroll load <employers.json> --household <id>
+       | accounts load <accounts.toml> --household <id>
        | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi
        | firefly fetch --out <dir> | firefly import <dir> --household <id> --accounts <map.json>
        | firefly check <dir> --household <id> --accounts <map.json>";
@@ -51,6 +56,10 @@ async fn main() -> ExitCode {
         },
         ["payroll", "load", file, "--household", id] => match Uuid::parse_str(id) {
             Ok(id) => load_employers(file, id).await,
+            Err(e) => Err(format!("--household: {e}")),
+        },
+        ["accounts", "load", file, "--household", id] => match Uuid::parse_str(id) {
+            Ok(id) => load_accounts(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
         ["token", "add", email, "--name", name] => add_token(email, name, Scope::Write).await,
@@ -177,6 +186,19 @@ async fn load_employers(file: &str, household: Uuid) -> Result<(), String> {
     let db = connect().await?;
     let report = employers::load(&db, household, &employers).await?;
     println!("employers added {}, changed {}", report.added, report.changed);
+    Ok(())
+}
+
+async fn load_accounts(file: &str, household: Uuid) -> Result<(), String> {
+    let text = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+    let rules =
+        coinroost_normalizer::detect::AccountRules::from_toml(&text).map_err(|e| format!("{file}: {e}"))?;
+    let db = connect().await?;
+    let report = account_rules::load(&db, household, &rules).await?;
+    println!(
+        "accounts changed {}, unchanged {}",
+        report.changed, report.unchanged
+    );
     Ok(())
 }
 
