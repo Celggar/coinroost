@@ -1,0 +1,77 @@
+# coinroost in production. One file for this environment alone: `docker compose down -v` removes only the volumes
+# declared by its own file, and the database volume is external besides, created once by hand:
+#   docker volume create coinroost-pgdata
+# Deploy with deploy/deploy.sh, which passes the env file and checks what it started.
+name: coinroost
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in the env file (deploy/prod.env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file (deploy/prod.env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in the env file (deploy/prod.env.example)}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    # The database is reachable from the app alone: `data` has no route out and no published port.
+    networks: [data]
+    mem_limit: 512m
+    cpus: 1.0
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: coinroost-app:prod
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # Inside the container the server must listen on every interface; the port below is what limits who reaches it.
+      COINROOST_BIND: 0.0.0.0:8080
+      COINROOST_WEB_DIR: /srv/web
+      COINROOST_MCP_HOSTS: ${COINROOST_MCP_HOSTS:-}
+    # Loopback only: Docker writes its own firewall rules, so a port published on every interface bypasses ufw.
+    # A reverse proxy on this host reaches it here.
+    ports:
+      - 127.0.0.1:${COINROOST_PORT:-8094}:8080
+    # A port cannot be published from an internal network alone, hence `edge`.
+    networks: [data, edge]
+    mem_limit: 256m
+    cpus: 1.0
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      # The runtime image has no curl: bash opens the connection itself.
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /api/v1/health HTTP/1.0\r\n\r\n' >&3 && head -n1 <&3 | grep -q ' 200 '
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
+
+networks:
+  data:
+    internal: true
+  edge: {}
+
+volumes:
+  pgdata:
+    external: true
+    name: coinroost-pgdata

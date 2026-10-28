@@ -1,0 +1,15 @@
+# The image is built from an allow-list: only what it needs enters the build context (deploy/Dockerfile).
+*
+!Cargo.toml
+!Cargo.lock
+!crates/
+!spec/
+!web/
+web/node_modules/
+web/build/
+web/.svelte-kit/
+web/test-results/
+web/e2e/
+web/*.log
+**/.claude/
+**/.env*
