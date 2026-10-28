@@ -1,0 +1,22 @@
+# Cooperativa El Educador (Panama): savings account statement, PDF export.
+#
+# One text line per transaction: date, reference, detail, debit, credit, balance. Debit and credit are
+# positive magnitudes (0.00 when they do not apply). The reference has no decimals, so it never matches an
+# amount; the balance is read and ignored. Several accounts of the same cooperative share this format.
+id = "coopeduc"
+name = "Coopeduc account statement (PDF)"
+format = "pdf"
+currency = "USD"
+
+[pdf]
+strategy = "lines"
+row_start = '^\s*\d{2}/\d{2}/\d{4}\s'
+row = '^\s*(?P<date>\d{2}/\d{2}/\d{4})\s+(?P<reference>\S+)\s+(?P<description>.+?)\s+(?P<debit>[\d,]+\.\d{2})\s+(?P<credit>[\d,]+\.\d{2})\s+(?P<balance>[\d,]+\.\d{2})\s*$'
+
+[amounts]
+decimal = "."
+thousands = ","
+debit_sign = -1
+
+[dates]
+formats = ["%d/%m/%Y"]
