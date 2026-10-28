@@ -1,0 +1,28 @@
+name: rust
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rust-toolchain.toml pins the version, components and targets; rustup installs them on first use.
+      - name: Toolchain
+        run: rustup show active-toolchain
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lints
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests
+        run: cargo test --workspace --locked
+      - name: Normalizer builds for iOS and the web
+        run: |
+          cargo check -p coinroost-normalizer --target aarch64-apple-ios --locked
+          cargo check -p coinroost-normalizer --target wasm32-unknown-unknown --locked
