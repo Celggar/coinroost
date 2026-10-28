@@ -502,6 +502,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "coinroost-normalizer",
+ "coinroost-payroll",
  "coinroost-rules",
  "coinroost-transfers",
  "http-body-util",
