@@ -139,6 +139,8 @@ pub struct Filter {
     /// Only transfers: transactions with two legs.
     #[serde(default)]
     transfers: bool,
+    /// Only transactions whose description contains this text, upper or lower case alike.
+    q: Option<String>,
     /// At most this many, newest first (default 100, at most 1000).
     limit: Option<i64>,
 }
@@ -160,6 +162,10 @@ async fn list_transactions(
             "limit must be between 1 and {MAX_LIMIT}"
         )));
     }
+    let text = filter.q.as_deref().map(str::trim);
+    if text.is_some_and(|q| q.is_empty() || q.chars().count() > 200) {
+        return Err(ApiError::Invalid("q has 1 to 200 characters".to_owned()));
+    }
     let mut items: Vec<Transaction> = sqlx::query_as(
         concat!(
         "select ",
@@ -170,6 +176,7 @@ async fn list_transactions(
            and ($3::date is null or t.date >= $3) and ($4::date is null or t.date <= $4)
            and (not $6 or t.category_id is null)
            and (not $7 or (select count(*) from legs l where l.transaction_id = t.id) = 2)
+           and ($8::text is null or strpos(lower(t.description), lower($8)) > 0)
          order by t.date desc, t.created_at desc, t.id limit $5"
     ))
     .bind(session.household_id)
@@ -179,6 +186,7 @@ async fn list_transactions(
     .bind(limit)
     .bind(filter.uncategorized)
     .bind(filter.transfers)
+    .bind(text)
     .fetch_all(&state.db)
     .await?;
     attach_legs(&state.db, session.household_id, &mut items).await?;

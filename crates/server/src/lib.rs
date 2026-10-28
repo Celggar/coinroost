@@ -71,6 +71,7 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::rules::router())
         .merge(routes::apply::router())
         .merge(routes::transactions::router())
+        .merge(routes::removal::router())
         .merge(routes::imports::router())
         .merge(routes::coverage::router())
         .merge(routes::transfers::router())

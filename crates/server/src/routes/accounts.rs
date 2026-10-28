@@ -114,6 +114,8 @@ pub struct Account {
     profile: Option<String>,
     #[sqlx(flatten)]
     detection: Detection,
+    /// The sum of every leg on the account, in minor units of its currency.
+    balance_minor: i64,
     #[serde(with = "time::serde::rfc3339")]
     created_at: OffsetDateTime,
 }
@@ -126,7 +128,9 @@ pub struct Accounts {
 macro_rules! columns {
     () => {
         "id, name, kind, currency, namespace, profile, detect_markers, detect_card_prefixes, detect_label,
-         detect_number_hash, created_at"
+         detect_number_hash, created_at,
+         (select coalesce(sum(l.amount_minor), 0) from legs l where l.account_id = accounts.id)::bigint
+             as balance_minor"
     };
 }
 

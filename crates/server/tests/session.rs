@@ -151,7 +151,8 @@ async fn repeated_failures_lock_the_user(db: PgPool) {
 async fn health_answers_without_a_session(db: PgPool) {
     let api = Api::new(db);
     let (status, body) = api.call("GET", "/api/v1/health", None, None).await;
-    assert_eq!((status, body), (StatusCode::OK, json!({ "status": "ok" })));
+    let expected = json!({ "status": "ok", "version": env!("CARGO_PKG_VERSION") });
+    assert_eq!((status, body), (StatusCode::OK, expected));
 }
 
 /// The console enrollment gives a working login: the password, and codes from the URI it prints.

@@ -18,6 +18,8 @@ pub fn router() -> OpenApiRouter<AppState> {
 pub struct Health {
     /// `ok` when the database answers.
     status: &'static str,
+    /// The server's version.
+    version: &'static str,
 }
 
 /// Whether the server and its database answer. Needs no session.
@@ -25,5 +27,8 @@ pub struct Health {
     responses((status = OK, description = "The server and its database answer", body = Health)))]
 async fn health(State(state): State<AppState>) -> ApiResult<Json<Health>> {
     sqlx::query("select 1").execute(&state.db).await?;
-    Ok(Json(Health { status: "ok" }))
+    Ok(Json(Health {
+        status: "ok",
+        version: env!("CARGO_PKG_VERSION"),
+    }))
 }
