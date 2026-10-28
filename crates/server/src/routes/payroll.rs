@@ -114,7 +114,10 @@ pub struct EmployerPayroll {
     currency: String,
     /// What a fortnight is worth today.
     amount_minor: i64,
-    /// When the deposits could not be read (no deposit counted), why; the other fields then stay empty.
+    /// The first day of the first fortnight the employer pays.
+    start: Date,
+    /// When the deposits could not be read (no deposit counted since `start`), why; the other fields then stay
+    /// empty.
     error: Option<String>,
     /// Due and unpaid, oldest first.
     owed: Vec<FortnightView>,
@@ -140,12 +143,14 @@ pub struct Payroll {
 
 fn view(owing: Owing) -> EmployerPayroll {
     let e = owing.employer;
+    let start = Fortnight::containing(e.start_month).first_day();
     let mut out = EmployerPayroll {
         employer_id: e.id,
         name: e.name,
         account_id: e.account_id,
         currency: e.currency,
         amount_minor: e.amount_minor,
+        start,
         error: None,
         owed: Vec::new(),
         owed_total_minor: 0,
@@ -158,8 +163,7 @@ fn view(owing: Owing) -> EmployerPayroll {
     };
     let Ok((report, paid)) = owing.outcome else {
         out.error = Some(format!(
-            "no deposit counted since {}: check the match text, the account and the minimum amount",
-            Fortnight::containing(e.start_month).first_day()
+            "no deposit counted since {start}: check the match text, the account and the minimum amount"
         ));
         return out;
     };

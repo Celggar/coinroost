@@ -642,7 +642,15 @@ export interface components {
              * @description What a fortnight is worth today.
              */
             amount_minor: number;
-            /** @description When the deposits could not be read (no deposit counted), why; the other fields then stay empty. */
+            /**
+             * Format: date
+             * @description The first day of the first fortnight the employer pays.
+             */
+            start: string;
+            /**
+             * @description When the deposits could not be read (no deposit counted since `start`), why; the other fields then stay
+             *     empty.
+             */
             error?: string | null;
             /** @description Due and unpaid, oldest first. */
             owed: components["schemas"]["FortnightView"][];

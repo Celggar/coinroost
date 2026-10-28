@@ -135,6 +135,10 @@ async fn employer_without_deposits_is_an_error(db: PgPool) {
         "{nobody}"
     );
     assert_eq!(
+        nobody["start"], "2026-01-01",
+        "the reason's date, for a client to word it"
+    );
+    assert_eq!(
         (&nobody["owed"], &nobody["owed_total_minor"]),
         (&json!([]), &json!(0)),
         "never owes everything"
