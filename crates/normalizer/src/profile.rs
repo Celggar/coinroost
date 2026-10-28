@@ -78,21 +78,25 @@ pub struct Xlsx {
     pub header_marker: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PdfStrategy {
-    /// One transaction per text line, split into fields by a regular expression.
-    Lines,
-}
-
+/// How a PDF statement becomes rows. Patterns match from the start of the text.
 #[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Pdf {
-    pub strategy: PdfStrategy,
-    /// A line that starts a transaction. Such a line that does not match `row` is reported, not dropped.
-    pub row_start: String,
-    /// Named groups become columns: `date`, `description`, and `amount` or `debit`/`credit`.
-    pub row: String,
+#[serde(tag = "strategy", rename_all = "lowercase", deny_unknown_fields)]
+pub enum Pdf {
+    /// One transaction per text line, split into fields by a regular expression. Columns are named after
+    /// the groups unless the profile lists others.
+    Lines {
+        /// A line that starts a transaction. Such a line that does not match `row` is reported, not dropped.
+        row_start: String,
+        /// Named groups become columns: `date`, `description`, and `amount` or `debit`/`credit`.
+        row: String,
+    },
+    /// The cells of the tables drawn with ruling lines, for descriptions that span several lines.
+    Tables {
+        /// Text of a header cell (folded, whole cell): the first row that has it names the columns.
+        header: String,
+        /// Matches the first cell of a transaction row; other rows are left out.
+        row_start: String,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -140,6 +144,7 @@ const BUILTIN: &[&str] = &[
     include_str!("../../../spec/profiles/bac-account.toml"),
     include_str!("../../../spec/profiles/bac-card.toml"),
     include_str!("../../../spec/profiles/bg-account.toml"),
+    include_str!("../../../spec/profiles/bg-christmas-savings.toml"),
     include_str!("../../../spec/profiles/coopeduc.toml"),
 ];
 
@@ -197,7 +202,24 @@ mod tests {
     #[test]
     fn every_builtin_profile_loads() {
         let ids: Vec<String> = Profile::builtin().into_iter().map(|p| p.id).collect();
-        assert_eq!(ids, ["bac-account", "bac-card", "bg-account", "coopeduc"]);
+        assert_eq!(
+            ids,
+            [
+                "bac-account",
+                "bac-card",
+                "bg-account",
+                "bg-christmas-savings",
+                "coopeduc"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_pdf_strategy_takes_only_its_own_settings() {
+        let text = include_str!("../../../spec/profiles/coopeduc.toml");
+        assert!(Profile::from_toml(&text.replace("[pdf]", "[pdf]\nheader = \"fecha\"")).is_err());
+        let tables = text.replace("strategy = \"lines\"", "strategy = \"tables\"");
+        assert!(Profile::from_toml(&tables).is_err());
     }
 
     #[test]
