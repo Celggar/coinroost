@@ -18,6 +18,7 @@ axum = "0.8.9"
 base64 = "0.22"
 coinroost-normalizer = { path = "../normalizer" }
 coinroost-rules = { path = "../rules" }
+coinroost-transfers = { path = "../transfers" }
 iso_currency = "0.7.1"
 rand = "0.10.3"
 rpassword = "7.5.4"

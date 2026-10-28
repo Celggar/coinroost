@@ -8,5 +8,7 @@ pub mod coverage;
 pub mod imports;
 pub mod rules;
 pub mod session;
+pub mod summary;
 pub mod system;
 pub mod transactions;
+pub mod transfers;

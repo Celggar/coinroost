@@ -97,7 +97,10 @@
 					<option value={choice.id}>{choice.name}</option>
 				{/each}
 			</select>
-			{#if note}<span class="hint">{note}</span>{/if}
+			{#if note}<span class="hint"
+					>{note}
+					{#if !importable.length}<a href="/accounts">Open Accounts</a>{/if}</span
+				>{/if}
 		</label>
 	{:else if busy}
 		<p class="hint">Reading…</p>

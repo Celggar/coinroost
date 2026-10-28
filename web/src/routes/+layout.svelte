@@ -11,6 +11,7 @@
 		{ href: '/import', label: 'Import' },
 		{ href: '/uncategorized', label: 'Uncategorized' },
 		{ href: '/rules', label: 'Rules' },
+		{ href: '/transfers', label: 'Transfers' },
 		{ href: '/coverage', label: 'Coverage' },
 		{ href: '/accounts', label: 'Accounts' }
 	];

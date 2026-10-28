@@ -6,6 +6,7 @@
 pub mod auth;
 pub mod error;
 mod import;
+mod pairing;
 mod routes;
 pub mod rule_set;
 mod sorting;
@@ -70,6 +71,8 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::transactions::router())
         .merge(routes::imports::router())
         .merge(routes::coverage::router())
+        .merge(routes::transfers::router())
+        .merge(routes::summary::router())
 }
 
 /// The HTTP API. A path under `/api/` that is not in the contract answers a problem+json 404.

@@ -10,6 +10,18 @@
 	let done = $state('');
 	let busy = $state(false);
 
+	/** Only what changes: the category, the payee, or both. */
+	function what(change: Schemas['RuleChange']): string[] {
+		const parts: string[] = [];
+		const fromCategory = categoryName(change.before.category_id, names);
+		const toCategory = categoryName(change.after.category_id, names);
+		if (fromCategory !== toCategory) parts.push(`Category: ${fromCategory} → ${toCategory}`);
+		const [fromPayee, toPayee] = [payeeName(change.before, names), payeeName(change.after, names)];
+		if (fromPayee !== toPayee) parts.push(`Payee: ${fromPayee} → ${toPayee}`);
+		if (parts.length === 0) parts.push('Only the rule that set it changes');
+		return parts;
+	}
+
 	async function check() {
 		busy = true;
 		error = '';
@@ -55,7 +67,14 @@
 		See first what would change. A category or payee you chose by hand is never changed.
 	</p>
 	<div>
-		<button class="secondary" onclick={check} disabled={busy}>Check changes</button>
+		<button
+			class="secondary"
+			onclick={() => {
+				done = '';
+				check();
+			}}
+			disabled={busy}>Check changes</button
+		>
 	</div>
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if done}<p class="notice" role="status">{done}</p>{/if}
@@ -75,12 +94,7 @@
 							<span class="description">{change.description}</span>
 							<span class="amount">{money(change.amount_minor, change.currency)}</span>
 						</div>
-						<div class="hint">
-							Category: {categoryName(change.before.category_id, names)} → {categoryName(
-								change.after.category_id,
-								names
-							)} · Payee: {payeeName(change.before, names)} → {payeeName(change.after, names)}
-						</div>
+						<div class="hint">{what(change).join(' · ')}</div>
 					</li>
 				{/each}
 			</ul>

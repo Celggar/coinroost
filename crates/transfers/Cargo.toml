@@ -1,0 +1,16 @@
+[package]
+name = "coinroost-transfers"
+description = "Pairs the two legs of a movement between own accounts into one transfer. Pure: no I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+regex = "1.13"
+time = { version = "0.3.55", default-features = false }
+
+[lints]
+workspace = true

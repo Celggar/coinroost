@@ -27,6 +27,11 @@
 	let done = $state('');
 	let busy = $state(false);
 
+	function clear() {
+		error = '';
+		done = '';
+	}
+
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		error = '';
@@ -72,7 +77,7 @@
 	}
 </script>
 
-<form class="card" onsubmit={submit} aria-label="New rule">
+<form class="card" onsubmit={submit} oninput={clear} aria-label="New rule">
 	<h2>New rule</h2>
 	<p class="hint">
 		It goes last. It sorts files imported from now on; existing transactions change only when you
@@ -143,5 +148,6 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 		gap: 12px;
+		align-items: end;
 	}
 </style>

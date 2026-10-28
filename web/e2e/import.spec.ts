@@ -161,6 +161,71 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	expect(by).toEqual(['manual', 'rule']);
 });
 
+test('pairs two legs and splits them', async ({ context }) => {
+	const page = await loggedIn(context);
+	const post = async (url: string, data: object) => {
+		const response = await page.request.post(url, { data });
+		expect(response.status(), url).toBe(201);
+		return response.json();
+	};
+	// The other side of the statement's "TRANSF A CUENTA PROPIA" (-500.00 on 2026-05-15), in a second account.
+	const own = await post('/api/v1/categories', { name: 'Own transfers', kind: 'transfer' });
+	const savings = await post('/api/v1/accounts', {
+		name: 'Savings',
+		kind: 'savings',
+		currency: 'USD',
+		namespace: 'savings'
+	});
+	await post('/api/v1/transactions', {
+		date: '2026-05-15',
+		description: 'FROM CHECKING',
+		category_id: own.id,
+		legs: [{ account_id: savings.id, amount_minor: 50000, statement_text: 'FROM CHECKING' }]
+	});
+	// The outflow becomes a transfer by hand.
+	await page.goto('/uncategorized');
+	await page
+		.getByRole('listitem')
+		.filter({ hasText: 'TRANSF A CUENTA PROPIA' })
+		.getByLabel('Category')
+		.selectOption({ label: 'Own transfers' });
+	await expect(page.getByRole('status')).toHaveText('TRANSF A CUENTA PROPIA: Own transfers.');
+
+	await page.getByRole('link', { name: 'Transfers' }).click();
+	const waiting = page.getByRole('list', { name: 'Pairs waiting' });
+	await expect(waiting.getByRole('listitem')).toHaveCount(1);
+	await expect(waiting).toContainText('Checking (2026-05-15) → Savings (2026-05-15)');
+	await page.getByLabel('From', { exact: true }).fill('2026-05-01');
+	await page.getByLabel('To', { exact: true }).fill('2026-05-31');
+	const unpaired = page.getByRole('definition').nth(2);
+	await expect(unpaired).toHaveText('$500.00');
+	await page.getByRole('button', { name: 'Pair 1' }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'Paired' })).toHaveText('Paired 1.');
+	const made = page.getByRole('list', { name: 'Transfers made' });
+	await expect(made.getByRole('listitem')).toHaveCount(1);
+	await expect(unpaired).toHaveText('$0.00');
+
+	// Split: the two transactions come back, and the pair waits again.
+	await page.getByRole('button', { name: 'Split TRANSF A CUENTA PROPIA' }).click();
+	await page.getByRole('button', { name: 'Split it' }).click();
+	await expect(page.getByText('No transfers yet.')).toBeVisible();
+	await expect(waiting.getByRole('listitem')).toHaveCount(1);
+
+	// By hand: the same leg twice is refused with the API's reason; the right two pair.
+	const form = page.getByRole('form', { name: 'Pair by hand' });
+	const outflow = '2026-05-15 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
+	await form.getByLabel('One side').selectOption({ label: outflow });
+	await form.getByLabel('The other side').selectOption({ label: outflow });
+	await form.getByRole('button', { name: 'Pair them' }).click();
+	await expect(form.getByRole('alert')).toHaveText('choose two different transactions');
+	await form
+		.getByLabel('The other side')
+		.selectOption({ label: '2026-05-15 · Savings · $500.00 · FROM CHECKING' });
+	await form.getByRole('button', { name: 'Pair them' }).click();
+	await expect(form.getByRole('status')).toHaveText('Paired.');
+	await expect(made.getByRole('listitem')).toHaveCount(1);
+});
+
 test('coverage shows what was imported', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/coverage');
@@ -179,7 +244,8 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		['/coverage', 'Coverage'],
 		['/accounts', 'Accounts'],
 		['/rules', 'Rules'],
-		['/uncategorized', 'Uncategorized']
+		['/uncategorized', 'Uncategorized'],
+		['/transfers', 'Transfers']
 	];
 	for (const [path, heading] of pages) {
 		if (path !== '/login') await phone.addCookies(session.cookies);

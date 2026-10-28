@@ -9,6 +9,11 @@
 	let done = $state('');
 	let busy = $state(false);
 
+	function clear() {
+		error = '';
+		done = '';
+	}
+
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
@@ -32,7 +37,7 @@
 	}
 </script>
 
-<form class="card" onsubmit={submit} aria-label="New category">
+<form class="card" onsubmit={submit} oninput={clear} aria-label="New category">
 	<h2>New category</h2>
 	<div class="fields">
 		<label>
