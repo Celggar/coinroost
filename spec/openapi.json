@@ -1,0 +1,1452 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Coinroost",
+    "description": "Personal finance for one household: accounts, transactions, imports.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/accounts": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "The household's accounts, by name.",
+        "operationId": "list_accounts",
+        "responses": {
+          "200": {
+            "description": "The accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accounts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Opens an account. Its currency must be the profile's, when it has one.",
+        "operationId": "create_account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewAccount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The name or namespace is taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A value is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/accounts/{account_id}/imports": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Imports a bank file into an account, with the account's profile. Transactions already in the account are\nskipped; rows that cannot be read are reported and left out.",
+        "operationId": "import_file",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "description": "The account the file belongs to",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "file_name",
+            "in": "query",
+            "description": "The file's name, as the bank gave it.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The file as exported",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "What was added and what was skipped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The file cannot be read with the account's profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "categories"
+        ],
+        "summary": "The household's categories, by name.",
+        "operationId": "list_categories",
+        "responses": {
+          "200": {
+            "description": "The categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamedList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "categories"
+        ],
+        "summary": "Adds a category.",
+        "operationId": "create_category",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Named"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The name is taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The name is empty or too long",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Whether the server and its database answer. Needs no session.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "The server and its database answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/imports": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "The household's imports, newest first.",
+        "operationId": "list_imports",
+        "responses": {
+          "200": {
+            "description": "The imports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatches"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "session"
+        ],
+        "summary": "The user and household of the current session.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "The session's user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payees": {
+      "get": {
+        "tags": [
+          "payees"
+        ],
+        "summary": "The household's payees, by name.",
+        "operationId": "list_payees",
+        "responses": {
+          "200": {
+            "description": "The payees",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamedList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payees"
+        ],
+        "summary": "Adds a payee.",
+        "operationId": "create_payee",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewName"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new payee",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Named"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The name is taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The name is empty or too long",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rules": {
+      "get": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "The household's rules, in the order they are tried.",
+        "operationId": "list_rules",
+        "responses": {
+          "200": {
+            "description": "The rules, first one first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rules"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "rules"
+        ],
+        "summary": "Adds a rule at a position.",
+        "operationId": "create_rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewRule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rule"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A value is not valid or refers to nothing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "summary": "Starts a session. Every failure answers 401 the same way, whatever was wrong.",
+        "operationId": "log_in",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Logged in; the token is also set as a cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/sessions/current": {
+      "delete": {
+        "tags": [
+          "session"
+        ],
+        "summary": "Ends the current session.",
+        "operationId": "log_out",
+        "responses": {
+          "204": {
+            "description": "Logged out"
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "The household's transactions, newest first.",
+        "operationId": "list_transactions",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "description": "Only transactions with a leg on this account.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First date included.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last date included.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many, newest first (default 100, at most 1000).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The transactions with their legs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transactions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A filter is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Records a transaction: one leg, or a transfer of two legs on different accounts that sum to zero.",
+        "operationId": "create_transaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTransaction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The legs or a reference are not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Account": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "currency",
+          "namespace",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccountKind": {
+        "type": "string",
+        "enum": [
+          "checking",
+          "savings",
+          "credit_card",
+          "cash",
+          "loan",
+          "investment"
+        ]
+      },
+      "Accounts": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            }
+          }
+        }
+      },
+      "Actions": {
+        "type": "object",
+        "description": "What a matching rule sets; at least one.",
+        "properties": {
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Conditions": {
+        "type": "object",
+        "description": "Conditions; every one that is set must hold, and at least one must be set.",
+        "properties": {
+          "description_contains": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Case-insensitive text the description must contain."
+          },
+          "direction": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Direction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "account_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "amount_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Smallest magnitude, in minor units, included."
+          },
+          "amount_max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Largest magnitude, in minor units, included."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Direction": {
+        "type": "string",
+        "enum": [
+          "in",
+          "out"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "`ok` when the database answers."
+          }
+        }
+      },
+      "Hex": {
+        "type": "string"
+      },
+      "ImportBatch": {
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "file_name",
+          "file_sha256",
+          "profile",
+          "rows_read",
+          "added",
+          "duplicates",
+          "errors",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "file_sha256": {
+            "$ref": "#/components/schemas/Hex",
+            "description": "SHA-256 of the file, hexadecimal."
+          },
+          "profile": {
+            "type": "string"
+          },
+          "rows_read": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Data rows in the file, the header excluded."
+          },
+          "added": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportBatches": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportBatch"
+            }
+          }
+        }
+      },
+      "ImportReport": {
+        "type": "object",
+        "required": [
+          "batch",
+          "row_errors"
+        ],
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/ImportBatch"
+          },
+          "row_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RowFailure"
+            },
+            "description": "Rows that could not be read; they were not imported."
+          }
+        }
+      },
+      "Leg": {
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "amount_minor",
+          "currency",
+          "posted_on",
+          "statement_text"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "posted_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "statement_text": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The deduplication key of an imported leg."
+          },
+          "import_batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "LogIn": {
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "code"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "The 6-digit code the authenticator app shows now."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "household_id",
+          "email"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "household_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "Named": {
+        "type": "object",
+        "description": "A category or a payee.",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NamedList": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Named"
+            }
+          }
+        }
+      },
+      "NewAccount": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "currency",
+          "namespace"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217 code."
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Lower case letters, digits, `_` and `-`; cannot change once the account has transactions."
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Id of the bank profile its exports are read with (`coinroost profiles` lists them)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewLeg": {
+        "type": "object",
+        "required": [
+          "account_id",
+          "amount_minor"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed minor units in the account's currency: negative is money leaving the account."
+          },
+          "posted_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The bank's date for this leg; the transaction's date when absent."
+          },
+          "statement_text": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewName": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewRule": {
+        "type": "object",
+        "required": [
+          "name",
+          "when",
+          "then"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Where it goes, 1 being first; the rules from there on move down one. Last when absent."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "when": {
+            "$ref": "#/components/schemas/Conditions"
+          },
+          "then": {
+            "$ref": "#/components/schemas/Actions"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewSession": {
+        "type": "object",
+        "required": [
+          "token",
+          "expires_at"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Also set as the `coinroost_session` cookie; clients without cookies send it as a bearer token."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NewTransaction": {
+        "type": "object",
+        "required": [
+          "date",
+          "description",
+          "legs"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewLeg"
+            },
+            "description": "One leg, or two for a transfer."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Problem": {
+        "type": "object",
+        "description": "An error response. `title` is fixed per status; `detail` says what to fix, without internals.",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Always `about:blank`: the status code says it all."
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RowFailure": {
+        "type": "object",
+        "required": [
+          "row",
+          "reason"
+        ],
+        "properties": {
+          "row": {
+            "type": "integer",
+            "description": "Row number in the file, 1 being the header.",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "Rule": {
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "name",
+          "enabled",
+          "when",
+          "then",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "when": {
+            "$ref": "#/components/schemas/Conditions"
+          },
+          "then": {
+            "$ref": "#/components/schemas/Actions"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Rules": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Rule"
+            }
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "description",
+          "created_at",
+          "legs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Leg"
+            }
+          }
+        }
+      },
+      "Transactions": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Transaction"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "session_cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "coinroost_session"
+      }
+    }
+  },
+  "security": [
+    {
+      "session_cookie": []
+    },
+    {
+      "bearer": []
+    }
+  ]
+}

@@ -1,0 +1,249 @@
+//! Who is calling: users, their login and their sessions.
+//!
+//! - Passwords are hashed with Argon2id at OWASP's recommended cost (19 MiB, 2 passes, 1 lane).
+//! - A login needs the password and a current TOTP code (RFC 6238: SHA-1, 6 digits, 30-second steps, one step of
+//!   clock drift either way). A code is accepted once: the step it matched must be later than the last one used.
+//! - Five failed logins in a row lock the user for 15 minutes. Every failure, whatever its cause (unknown email,
+//!   wrong password, wrong code, locked), gets the same answer, and an unknown email still costs a hash, so the
+//!   answer does not tell which emails exist.
+//! - A session is 256 random bits, sent as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie or as a bearer token;
+//!   only its SHA-256 is stored. Sessions last 7 days.
+
+use std::sync::LazyLock;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use axum::extract::{FromRef, FromRequestParts};
+use axum::http::request::Parts;
+use axum::http::{HeaderMap, header};
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use sha2::{Digest, Sha256};
+use sqlx::PgPool;
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+use crate::AppState;
+use crate::error::{ApiError, ApiResult};
+
+pub const SESSION_COOKIE: &str = "coinroost_session";
+pub const SESSION_DAYS: i64 = 7;
+const MAX_FAILED_LOGINS: i32 = 5;
+const LOCK_MINUTES: i64 = 15;
+const MIN_PASSWORD_CHARS: usize = 12;
+const TOTP_STEP: u64 = 30;
+
+/// The caller of a request: a user with a live session, and their household. Every query a handler runs is
+/// scoped to `household_id`.
+#[derive(Clone, Copy, Debug)]
+pub struct Session {
+    pub user_id: Uuid,
+    pub household_id: Uuid,
+}
+
+impl<S> FromRequestParts<S> for Session
+where
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Session, ApiError> {
+        let token = session_token(&parts.headers).ok_or(ApiError::Unauthorized)?;
+        let state = AppState::from_ref(state);
+        let row: Option<(Uuid, Uuid)> = sqlx::query_as(
+            "select u.id, u.household_id from sessions s join users u on u.id = s.user_id
+             where s.token_hash = $1 and s.expires_at > now()",
+        )
+        .bind(token_hash(&token))
+        .fetch_optional(&state.db)
+        .await?;
+        let (user_id, household_id) = row.ok_or(ApiError::Unauthorized)?;
+        Ok(Session {
+            user_id,
+            household_id,
+        })
+    }
+}
+
+/// The token from `Authorization: Bearer …`, else from the session cookie.
+pub fn session_token(headers: &HeaderMap) -> Option<String> {
+    let bearer = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .map(str::trim);
+    if let Some(token) = bearer.filter(|t| !t.is_empty()) {
+        return Some(token.to_owned());
+    }
+    headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|v| v.split(';'))
+        .filter_map(|pair| pair.trim().split_once('='))
+        .find(|(name, _)| *name == SESSION_COOKIE)
+        .map(|(_, value)| value.to_owned())
+}
+
+pub fn token_hash(token: &str) -> Vec<u8> {
+    Sha256::digest(token.as_bytes()).to_vec()
+}
+
+pub fn hash_password(password: &str) -> ApiResult<String> {
+    if password.chars().count() < MIN_PASSWORD_CHARS {
+        return Err(ApiError::Invalid(format!(
+            "a password needs at least {MIN_PASSWORD_CHARS} characters"
+        )));
+    }
+    Argon2::default()
+        .hash_password(password.as_bytes())
+        .map(|hash| hash.to_string())
+        .map_err(|e| ApiError::Internal(e.to_string()))
+}
+
+/// A household with nobody in it yet.
+pub async fn create_household(db: &PgPool, name: &str) -> ApiResult<Uuid> {
+    let (id,): (Uuid,) = sqlx::query_as("insert into households (name) values ($1) returning id")
+        .bind(name.trim())
+        .fetch_one(db)
+        .await?;
+    Ok(id)
+}
+
+/// Adds a user to a household and returns their id and the TOTP secret to enroll in an authenticator app.
+pub async fn create_user(
+    db: &PgPool,
+    household_id: Uuid,
+    email: &str,
+    password: &str,
+) -> ApiResult<(Uuid, Vec<u8>)> {
+    let email = email.trim().to_lowercase();
+    let secret: [u8; 20] = rand::random();
+    let (id,): (Uuid,) = sqlx::query_as(
+        "insert into users (household_id, email, password_hash, totp_secret) values ($1, $2, $3, $4) returning id",
+    )
+    .bind(household_id)
+    .bind(&email)
+    .bind(hash_password(password)?)
+    .bind(secret.as_slice())
+    .fetch_one(db)
+    .await?;
+    Ok((id, secret.to_vec()))
+}
+
+/// The `otpauth://` URI an authenticator app enrolls from.
+pub fn enrollment_uri(email: &str, secret: &[u8]) -> ApiResult<String> {
+    totp(secret, email)?
+        .to_url()
+        .map_err(|e| ApiError::Internal(e.to_string()))
+}
+
+fn totp(secret: &[u8], account: &str) -> ApiResult<totp_rs::Totp> {
+    totp_rs::Builder::new()
+        .with_algorithm(totp_rs::Algorithm::SHA1)
+        .with_digits(6)
+        .with_skew(1)
+        .with_step_duration(TOTP_STEP)
+        .with_secret(secret)
+        .with_issuer(Some("Coinroost"))
+        .with_account_name(account)
+        .build()
+        .map_err(|e| ApiError::Internal(e.to_string()))
+}
+
+/// The current code for a secret, as an authenticator app shows it (tests use it to log in).
+pub fn current_code(secret: &[u8]) -> ApiResult<String> {
+    Ok(totp(secret, "user")?.generate(now_seconds()).to_string())
+}
+
+fn now_seconds() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
+/// A new session for the user, or `Unauthorized` for any failed check.
+pub async fn login(
+    db: &PgPool,
+    email: &str,
+    password: &str,
+    code: &str,
+) -> ApiResult<(String, OffsetDateTime)> {
+    let row: Option<(Uuid, String, Vec<u8>, i64, bool)> = sqlx::query_as(
+        "select id, password_hash, totp_secret, totp_last_step, coalesce(locked_until > now(), false)
+         from users where email = $1",
+    )
+    .bind(email.trim().to_lowercase())
+    .fetch_optional(db)
+    .await?;
+    let Some((user_id, password_hash, secret, last_step, locked)) = row else {
+        // Same cost as a real check, so timing does not reveal unknown emails.
+        let _ = Argon2::default().verify_password(password.as_bytes(), DUMMY_HASH.as_str());
+        return Err(ApiError::Unauthorized);
+    };
+    if locked {
+        return Err(ApiError::Unauthorized);
+    }
+    let password_ok = Argon2::default()
+        .verify_password(password.as_bytes(), password_hash.as_str())
+        .is_ok();
+    let step = totp(&secret, email)?
+        .check(code.trim(), now_seconds())
+        .and_then(|step| i64::try_from(step).ok());
+    let code_ok = step.is_some_and(|step| step > last_step);
+    if !(password_ok && code_ok) {
+        sqlx::query(
+            "update users set failed_logins = failed_logins + 1,
+             locked_until = case when failed_logins + 1 >= $2 then now() + make_interval(mins => $3) end
+             where id = $1",
+        )
+        .bind(user_id)
+        .bind(MAX_FAILED_LOGINS)
+        .bind(i32::try_from(LOCK_MINUTES).unwrap_or(15))
+        .execute(db)
+        .await?;
+        return Err(ApiError::Unauthorized);
+    }
+    // Claims the step; a concurrent login with the same code finds it taken.
+    let claimed = sqlx::query(
+        "update users set totp_last_step = $2, failed_logins = 0, locked_until = null
+         where id = $1 and totp_last_step < $2",
+    )
+    .bind(user_id)
+    .bind(step)
+    .execute(db)
+    .await?;
+    if claimed.rows_affected() == 0 {
+        return Err(ApiError::Unauthorized);
+    }
+    let token = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 32]>());
+    let expires_at = OffsetDateTime::now_utc() + time::Duration::days(SESSION_DAYS);
+    sqlx::query("insert into sessions (token_hash, user_id, expires_at) values ($1, $2, $3)")
+        .bind(token_hash(&token))
+        .bind(user_id)
+        .bind(expires_at)
+        .execute(db)
+        .await?;
+    Ok((token, expires_at))
+}
+
+/// An Argon2id hash of a random password, checked against when the email is unknown.
+static DUMMY_HASH: LazyLock<String> = LazyLock::new(|| {
+    let password = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 16]>());
+    Argon2::default()
+        .hash_password(password.as_bytes())
+        .map(|hash| hash.to_string())
+        .unwrap_or_default()
+});
+
+/// The `Set-Cookie` value for a session.
+pub fn session_cookie(token: &str) -> String {
+    let max_age = SESSION_DAYS * 24 * 3600;
+    format!("{SESSION_COOKIE}={token}; Path=/; Max-Age={max_age}; HttpOnly; Secure; SameSite=Strict")
+}
+
+/// The `Set-Cookie` value that clears the session cookie.
+pub fn cleared_cookie() -> String {
+    format!("{SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict")
+}
