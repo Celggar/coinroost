@@ -10,7 +10,7 @@ use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use coinroost_server::{AppState, MIGRATOR, app, auth, openapi};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, openapi};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
@@ -72,8 +72,8 @@ async fn serve() -> Result<(), String> {
     let web = match std::env::var_os("COINROOST_WEB_DIR") {
         Some(dir) => {
             let dir = PathBuf::from(dir);
-            if !dir.join("index.html").is_file() {
-                return Err(format!("COINROOST_WEB_DIR: no index.html in {}", dir.display()));
+            if !dir.join(SHELL).is_file() {
+                return Err(format!("COINROOST_WEB_DIR: no {SHELL} in {}", dir.display()));
             }
             Some(dir)
         }

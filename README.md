@@ -37,9 +37,11 @@ See [docs/architecture.md](docs/architecture.md) for the details and [docs/roadm
 
 ## Running the checks
 
-`./ci.sh` runs formatting, lints, every test, the iOS and WebAssembly builds of the normalizer, the repository
-policy and a secret scan. The server tests need PostgreSQL 18 at `DATABASE_URL`; each test creates its own
-database there. A throwaway one for development:
+`./ci.sh` runs formatting, lints, every test, the iOS and WebAssembly builds of the normalizer, the web app's
+checks and build, an end-to-end import in a headless Chromium against a real server, the repository policy and
+a secret scan. It needs Node.js 24 besides Rust. The server tests need PostgreSQL 18 at `DATABASE_URL`; each test
+creates its own database there, and the end-to-end test uses a database named `coinroost_e2e` on the same
+server. A throwaway one for development:
 
 ```sh
 docker run -d --name coinroost-dev-postgres -p 127.0.0.1:55432:5432 \
@@ -48,8 +50,17 @@ export DATABASE_URL=postgres://coinroost:coinroost@127.0.0.1:55432/coinroost
 ./ci.sh
 ```
 
-`cargo run -p coinroost-server -- serve` serves the API on `127.0.0.1:8080` (`COINROOST_BIND` changes it);
-`cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract after a route changes.
+To run it yourself:
+
+```sh
+(cd web && npm ci && npm run build)
+cargo run -p coinroost-server -- user add you@example.com    # asks for a password, prints the TOTP enrollment
+COINROOST_WEB_DIR=web/build cargo run -p coinroost-server -- serve
+```
+
+The server listens on `127.0.0.1:8080` (`COINROOST_BIND` changes it) and creates the database if it is missing.
+After a route changes, `cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract and
+`npm run api-types` in `web/` refreshes the app's types from it.
 
 ## Contributing
 

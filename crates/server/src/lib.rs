@@ -22,6 +22,9 @@ use utoipa::OpenApi;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa_axum::router::OpenApiRouter;
 
+/// The page the static web build serves for every route of the app (the adapter's single-page fallback).
+pub const SHELL: &str = "200.html";
+
 /// The schema, embedded at build time from `migrations/`.
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
 
@@ -75,8 +78,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/{*rest}", any(|| async { error::ApiError::NotFound }))
 }
 
-/// The API, and the web app built into `web` when given: its files, and `index.html` for any other path so the
-/// app's own routes load. Fingerprinted assets (`_app/immutable/`) are cached for good; the rest is revalidated.
+/// The API, and the web app built into `web` when given: its files, and the app shell ([`SHELL`]) for any other
+/// path so the app's own routes load. Fingerprinted assets (`_app/immutable/`) are cached for good; the rest is revalidated.
 pub fn app(state: AppState, web: Option<&Path>) -> Router {
     let app = router(state);
     let app = match web {
@@ -90,7 +93,7 @@ pub fn app(state: AppState, web: Option<&Path>) -> Router {
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-cache"),
             )
-            .layer(ServeDir::new(dir).fallback(ServeFile::new(dir.join("index.html"))));
+            .layer(ServeDir::new(dir).fallback(ServeFile::new(dir.join(SHELL))));
             app.nest_service("/_app/immutable", immutable)
                 .fallback_service(pages)
         }

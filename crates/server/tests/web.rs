@@ -31,7 +31,11 @@ fn header<'a>(headers: &'a HeaderMap, name: &header::HeaderName) -> &'a str {
 async fn serves_the_web_app_and_keeps_api_problems(db: PgPool) {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("web-app");
     fs::create_dir_all(dir.join("_app/immutable")).unwrap();
-    fs::write(dir.join("index.html"), "<!doctype html><title>app shell</title>").unwrap();
+    fs::write(
+        dir.join(coinroost_server::SHELL),
+        "<!doctype html><title>app shell</title>",
+    )
+    .unwrap();
     fs::write(dir.join("_app/immutable/start.1a2b.js"), "export {};").unwrap();
     fs::write(dir.join("robots.txt"), "User-agent: *\nDisallow: /\n").unwrap();
     let app = app(AppState { db }, Some(&dir));

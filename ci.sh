@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The full check, the same locally and before every push: formatting, lints, tests, the mobile and web
-# targets of the normalizer, repository policy and secret scan.
+# targets of the normalizer, the web app (format, types against the API contract, build, and the import flow
+# end to end in a browser against a real server), repository policy and secret scan.
 #
 # The server tests need PostgreSQL at DATABASE_URL (each test creates and drops its own database). When the
 # variable is not set, it is read from ~/.config/coinroost/dev.env if that file exists. Without a reachable
@@ -53,6 +54,24 @@ for target in aarch64-apple-ios wasm32-unknown-unknown; do
   step "normalizer builds for $target"
   cargo check -p coinroost-normalizer --target "$target" --locked
 done
+
+step "web: install"
+(cd web && npm ci --no-audit --no-fund)
+
+step "web: format"
+(cd web && npx prettier --check .)
+
+step "web: API types match the contract"
+(cd web && npm run -s api-types:check)
+
+step "web: types"
+(cd web && npm run -s check)
+
+step "web: build"
+(cd web && npm run -s build)
+
+step "web: end to end"
+bash web/e2e/run.sh
 
 step "repository policy"
 base=$(git merge-base origin/main HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)

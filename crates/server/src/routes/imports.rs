@@ -29,6 +29,12 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_imports))
 }
 
+/// A bank export, byte for byte as the bank gave it.
+#[derive(ToSchema)]
+#[schema(value_type = String, format = Binary)]
+#[expect(dead_code, reason = "it only describes the request body in the contract")]
+pub struct BankFile(Vec<u8>);
+
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct FileName {
@@ -116,7 +122,7 @@ pub struct ImportPreview {
 /// skipped; rows that cannot be read are reported and left out.
 #[utoipa::path(post, path = "/api/v1/accounts/{account_id}/imports", tag = "imports",
     params(("account_id" = Uuid, Path, description = "The account the file belongs to"), FileName),
-    request_body(content = Vec<u8>, content_type = "application/octet-stream", description = "The file as exported"),
+    request_body(content = BankFile, content_type = "application/octet-stream", description = "The file as exported"),
     responses(
         (status = CREATED, description = "What was added and what was skipped", body = ImportReport),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),
@@ -141,7 +147,7 @@ async fn import_file(
 /// file unless named), every transaction read and whether the account already has it, and the rows that cannot
 /// be read.
 #[utoipa::path(post, path = "/api/v1/imports/preview", tag = "imports", params(PreviewQuery),
-    request_body(content = Vec<u8>, content_type = "application/octet-stream", description = "The file as exported"),
+    request_body(content = BankFile, content_type = "application/octet-stream", description = "The file as exported"),
     responses(
         (status = OK, description = "What the import would do", body = ImportPreview),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),

@@ -133,12 +133,7 @@
           "content": {
             "application/octet-stream": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "int32",
-                  "minimum": 0
-                }
+                "$ref": "#/components/schemas/BankFile"
               }
             }
           },
@@ -409,12 +404,7 @@
           "content": {
             "application/octet-stream": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "int32",
-                  "minimum": 0
-                }
+                "$ref": "#/components/schemas/BankFile"
               }
             }
           },
@@ -1049,6 +1039,11 @@
           }
         },
         "additionalProperties": false
+      },
+      "BankFile": {
+        "type": "string",
+        "format": "binary",
+        "description": "A bank export, byte for byte as the bank gave it."
       },
       "BankProfile": {
         "type": "object",
