@@ -1,0 +1,20 @@
+[package]
+name = "coinroost-cli"
+description = "Command-line access to the Coinroost normalizer."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "coinroost"
+path = "src/main.rs"
+
+[dependencies]
+coinroost-normalizer = { path = "../normalizer" }
+serde_json = "1"
+
+[lints]
+workspace = true

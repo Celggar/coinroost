@@ -1,0 +1,24 @@
+[package]
+name = "coinroost-normalizer"
+description = "Bank statement normalizer: CSV, XLSX and PDF exports to normalized transactions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["pdf"]
+pdf = ["dep:pdf_oxide"]
+
+[dependencies]
+pdf_oxide = { version = "=0.3.78", default-features = false, optional = true }
+regex = "1.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+toml = "1.1"
+unicode-normalization = "0.1"
+
+[lints]
+workspace = true

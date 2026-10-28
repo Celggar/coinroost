@@ -1,0 +1,109 @@
+{
+  "input": "input.pdf",
+  "namespace": "coopeduc",
+  "profile": "coopeduc",
+  "result": {
+    "ambiguities": 0,
+    "errors": [
+      {
+        "row": 15
+      }
+    ],
+    "fatal": null,
+    "rows": 14,
+    "structural": 0,
+    "transactions": [
+      {
+        "amount": "250.00",
+        "amount_minor": 25000,
+        "date": "2025-01-02",
+        "description": "DEPOSITO EN EFECTIVO",
+        "external_id": "e40002f98d4f4cac613190f70a641e74"
+      },
+      {
+        "amount": "1000.00",
+        "amount_minor": 100000,
+        "date": "2025-01-05",
+        "description": "ACH-BANCO EJEMPLO-JANE DOE EXAMPLE",
+        "external_id": "17a52eb904287a7e9f51cfdb22d3ac78"
+      },
+      {
+        "amount": "-40.00",
+        "amount_minor": -4000,
+        "date": "2025-01-09",
+        "description": "RETIRO CAJERO AUTOMATICO",
+        "external_id": "2f406bd89363fbb9507d115d4928bd15"
+      },
+      {
+        "amount": "-40.00",
+        "amount_minor": -4000,
+        "date": "2025-01-09",
+        "description": "RETIRO CAJERO AUTOMATICO",
+        "external_id": "bba971d4b8c5fe4acb150f2e699d3971"
+      },
+      {
+        "amount": "-125.35",
+        "amount_minor": -12535,
+        "date": "2025-01-15",
+        "description": "CUOTA PRESTAMO PERSONAL",
+        "external_id": "9db44e5463ad92efb85f19f7e5f0c42d"
+      },
+      {
+        "amount": "1.07",
+        "amount_minor": 107,
+        "date": "2025-01-31",
+        "description": "INTERESES DE AHORRO",
+        "external_id": "86ec5c44d2cdaecd86f80fa78613249e"
+      },
+      {
+        "amount": "-1500.00",
+        "amount_minor": -150000,
+        "date": "2025-02-03",
+        "description": "TRANSFERENCIA A CUENTA PROPIA",
+        "external_id": "7aa8ea251e2f0ab263a40f4c2da31f1a"
+      },
+      {
+        "amount": "-12.50",
+        "amount_minor": -1250,
+        "date": "2025-02-14",
+        "description": "PAGO SEGURO DE VIDA",
+        "external_id": "9202c737f25e69ebeec19cc2973c3286"
+      },
+      {
+        "amount": "0.44",
+        "amount_minor": 44,
+        "date": "2025-02-28",
+        "description": "INTERESES DE AHORRO",
+        "external_id": "a081d3b44abd5495ee56582936bcc579"
+      },
+      {
+        "amount": "2345.67",
+        "amount_minor": 234567,
+        "date": "2025-03-03",
+        "description": "DEPOSITO CHEQUE AJENO",
+        "external_id": "55edaecb7cafd999e0216265b344f49e"
+      },
+      {
+        "amount": "-3.00",
+        "amount_minor": -300,
+        "date": "2025-03-10",
+        "description": "COMISION MANEJO DE CUENTA",
+        "external_id": "d49dcd00c1067257aed6158522dba345"
+      },
+      {
+        "amount": "3.00",
+        "amount_minor": 300,
+        "date": "2025-03-17",
+        "description": "REVERSO DE COMISION",
+        "external_id": "1440a2f750d1e6e841622e01c6a7fb92"
+      },
+      {
+        "amount": "2.36",
+        "amount_minor": 236,
+        "date": "2025-03-31",
+        "description": "INTERESES DE AHORRO",
+        "external_id": "610a4659c17ada7182c8d8cbd99b00e3"
+      }
+    ]
+  }
+}

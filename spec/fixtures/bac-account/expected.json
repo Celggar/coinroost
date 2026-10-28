@@ -1,0 +1,81 @@
+{
+  "input": "input.csv",
+  "namespace": "bac",
+  "profile": "bac-account",
+  "result": {
+    "ambiguities": 0,
+    "errors": [
+      {
+        "row": 9
+      }
+    ],
+    "fatal": null,
+    "rows": 10,
+    "structural": 0,
+    "transactions": [
+      {
+        "amount": "-113.26",
+        "amount_minor": -11326,
+        "date": "2026-05-02",
+        "description": "PAGO TARJETA EJEMPLO",
+        "external_id": "88c5939cd49fe3393a53399b1771b597"
+      },
+      {
+        "amount": "1462.16",
+        "amount_minor": 146216,
+        "date": "2026-05-06",
+        "description": "ACH CRE EMPRESA EJEMPLO SA",
+        "external_id": "c4356a344634b0618a8331c7943cde6e"
+      },
+      {
+        "amount": "-45.50",
+        "amount_minor": -4550,
+        "date": "2026-05-09",
+        "description": "COMPRA SUPERMERCADO EJEMPLO",
+        "external_id": "2ec2fe93606b4509d25af14a683d0f36"
+      },
+      {
+        "amount": "-45.50",
+        "amount_minor": -4550,
+        "date": "2026-05-09",
+        "description": "COMPRA SUPERMERCADO EJEMPLO",
+        "external_id": "1c2043e47d43c2261138fcf27cfe1991"
+      },
+      {
+        "amount": "-20.00",
+        "amount_minor": -2000,
+        "date": "2026-05-14",
+        "description": "YAPPY A JOHN DOE",
+        "external_id": "e46a33e704974f872347dc7e6956d75d"
+      },
+      {
+        "amount": "-500.00",
+        "amount_minor": -50000,
+        "date": "2026-05-15",
+        "description": "TRANSF A CUENTA PROPIA",
+        "external_id": "1b9ececc7734787c4a9e5cd62de50907"
+      },
+      {
+        "amount": "-3.75",
+        "amount_minor": -375,
+        "date": "2026-05-18",
+        "description": "CAFETERÍA PANAMÁ CENTRO",
+        "external_id": "016153babe8975c2c90cd5e36691db39"
+      },
+      {
+        "amount": "12.5",
+        "amount_minor": 1250,
+        "date": "2026-05-22",
+        "description": "DEVOLUCION COMPRA",
+        "external_id": "0fff091bbd3950ddff7e8dda578c847f"
+      },
+      {
+        "amount": "0.56",
+        "amount_minor": 56,
+        "date": "2026-05-31",
+        "description": "INTERESES",
+        "external_id": "8e74fea0b38c0eb9bea14d2432c5f5c6"
+      }
+    ]
+  }
+}

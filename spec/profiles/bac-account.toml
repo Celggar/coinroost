@@ -1,0 +1,30 @@
+# BAC Credomatic (Panama): bank account statement, CSV export.
+#
+# The file has three sections: an account summary, the transactions table and a totals table. Only the
+# transactions table is read, from its header line to the first blank line. Windows-1252, one space after
+# every comma, US number format (1,234.56), day-first dates, debit and credit as positive magnitudes with
+# 0.00 when they do not apply.
+id = "bac-account"
+name = "BAC account statement (CSV)"
+format = "csv"
+currency = "USD"
+
+[csv]
+encoding = "windows-1252"
+delimiter = ","
+skip_initial_space = true
+section_start = "Fecha de Transacción"
+
+[columns]
+date = ["fecha de transaccion", "fecha"]
+description = ["descripcion de transaccion", "descripcion", "concepto"]
+debit = ["debito de transaccion", "debito"]
+credit = ["credito de transaccion", "credito"]
+
+[amounts]
+decimal = "."
+thousands = ","
+debit_sign = -1
+
+[dates]
+formats = ["%d/%m/%Y"]

@@ -1,0 +1,19 @@
+Numero de Clientes, Nombre, Producto, Moneda, Saldo Inicial, Saldo en Libros, Fecha 
+000000, JANE DOE EXAMPLE, 999, USD, 500.00, "1,246.21", 31/05/2026 
+
+Detalle de Estado Bancario
+Fecha de Transacción, Referencia de Transacción, Código de Transacción, Descripción de Transacción, Débito de Transacción, Crédito de Transacción, Balance de Transacción 
+02/05/2026, 100001, PT, PAGO TARJETA EJEMPLO      , 113.26, 0.00, 386.74 
+06/05/2026, 100002, 4C, ACH CRE EMPRESA EJEMPLO SA, 0.00, "1,462.16", "1,848.90" 
+09/05/2026, 100003, PO, COMPRA SUPERMERCADO EJEMPLO, 45.50, 0.00, "1,803.40" 
+09/05/2026, 100004, PO, COMPRA SUPERMERCADO EJEMPLO, 45.50, 0.00, "1,757.90" 
+14/05/2026, 100005, YP, YAPPY A JOHN DOE          , 20.00, 0.00, "1,737.90" 
+15/05/2026, 100006, TR, TRANSF A CUENTA PROPIA    , 500.00, 0.00, "1,237.90" 
+18/05/2026, 100007, PO, CAFETERÍA PANAMÁ CENTRO   , 3.75, 0.00, "1,234.15" 
+2026/05/20, 100008, PO, MOVIMIENTO CON FECHA RARA , 1.00, 0.00, "1,233.15" 
+22/05/2026, 100009, DV, DEVOLUCION COMPRA         , 0.00, 12.5, "1,245.65" 
+31/05/2026, 100010, 3O, INTERESES                 , 0.00, 0.56, "1,246.21" 
+
+Resumen de Estado Bancario
+Código Transacción Totales, Cantidad Débitos Totales, Montos Débitos Totales, Cantidad Créditos Totales, Montos Créditos Totales 
+Total, 7, 729.01, 3, "1,475.22" 
