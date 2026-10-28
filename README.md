@@ -58,6 +58,23 @@ cargo run -p coinroost-server -- user add you@example.com    # asks for a passwo
 COINROOST_WEB_DIR=web/build cargo run -p coinroost-server -- serve
 ```
 
+## Running it with Docker
+
+`deploy/` runs the server, its web app and PostgreSQL with Docker Compose on one machine. The app is published on
+`127.0.0.1:8094` alone, for a reverse proxy on the same host; the database has no port and no route out.
+
+```sh
+docker volume create coinroost-pgdata   # once: the database lives here, outside any compose file
+deploy/deploy.sh                         # builds, starts, then checks the port and the health endpoint
+docker compose -f deploy/compose.prod.yml --env-file ~/.config/coinroost/prod.env \
+  exec app coinroost-server user add you@example.com   # asks for your password
+```
+
+- `deploy.sh` reads `~/.config/coinroost/prod.env` (see `deploy/prod.env.example`) and refuses it unless only its
+  owner can read it. When it does not exist, it creates one with a random database password nobody has to type.
+- The app gets 256 MB and the database 512 MB. The app runs as an unprivileged user on a read-only filesystem.
+- `docker compose down -v` cannot delete your data: the volume is declared external.
+
 The server listens on `127.0.0.1:8080` (`COINROOST_BIND` changes it) and creates the database if it is missing.
 
 Rules live on the Rules page: the first rule from the top that matches sets the category and payee of each
