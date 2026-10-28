@@ -7,6 +7,7 @@ pub mod catalog;
 pub mod coverage;
 pub mod imports;
 pub mod payroll;
+pub mod removal;
 pub mod reports;
 pub mod rules;
 pub mod session;

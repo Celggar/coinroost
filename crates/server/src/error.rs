@@ -22,6 +22,8 @@ pub struct Problem {
 pub enum ApiError {
     /// No valid session, or a failed login; the detail never says which part was wrong.
     Unauthorized,
+    /// The caller is known but may not do this (a read-only token asking to write); the detail says why.
+    Forbidden(String),
     /// The request is well formed but breaks a rule; the detail names it.
     Invalid(String),
     NotFound,
@@ -39,6 +41,7 @@ impl ApiError {
     fn status(&self) -> StatusCode {
         match self {
             ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
+            ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
             ApiError::Invalid(_) => StatusCode::UNPROCESSABLE_ENTITY,
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::Conflict(_) => StatusCode::CONFLICT,
@@ -54,7 +57,8 @@ impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ApiError::Unauthorized => f.write_str("not authorized"),
-            ApiError::Invalid(detail)
+            ApiError::Forbidden(detail)
+            | ApiError::Invalid(detail)
             | ApiError::Conflict(detail)
             | ApiError::PreconditionFailed(detail)
             | ApiError::PreconditionRequired(detail)
@@ -69,7 +73,8 @@ impl IntoResponse for ApiError {
         let status = self.status();
         let detail = match self {
             ApiError::Unauthorized => Some("a valid session is required".to_owned()),
-            ApiError::Invalid(detail)
+            ApiError::Forbidden(detail)
+            | ApiError::Invalid(detail)
             | ApiError::Conflict(detail)
             | ApiError::PreconditionFailed(detail)
             | ApiError::PreconditionRequired(detail) => Some(detail),

@@ -60,7 +60,8 @@ async fn serves_the_web_app_and_keeps_api_problems(db: PgPool) {
 
     // The API keeps its answers: JSON, and problem+json for a path it does not have, never the app shell.
     let (status, _, body) = get(&app, "/api/v1/health").await;
-    assert_eq!((status, body.as_str()), (StatusCode::OK, r#"{"status":"ok"}"#));
+    let health = format!(r#"{{"status":"ok","version":"{}"}}"#, env!("CARGO_PKG_VERSION"));
+    assert_eq!((status, body), (StatusCode::OK, health));
     for missing in ["/api/v1/nothing-here", "/api/v2/accounts"] {
         let (status, headers, body) = get(&app, missing).await;
         assert_eq!(status, StatusCode::NOT_FOUND, "{missing}");

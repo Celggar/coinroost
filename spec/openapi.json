@@ -1334,6 +1334,15 @@
             }
           },
           {
+            "name": "q",
+            "in": "query",
+            "description": "Only transactions whose description contains this text, upper or lower case alike.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "description": "At most this many, newest first (default 100, at most 1000).",
@@ -1428,6 +1437,60 @@
       }
     },
     "/api/v1/transactions/{transaction_id}": {
+      "delete": {
+        "tags": [
+          "transactions"
+        ],
+        "summary": "Deletes a transaction with one leg.",
+        "operationId": "delete_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "description": "The transaction",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A transfer: split it first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "transactions"
@@ -1727,6 +1790,7 @@
           "currency",
           "namespace",
           "detection",
+          "balance_minor",
           "created_at"
         ],
         "properties": {
@@ -1754,6 +1818,11 @@
           },
           "detection": {
             "$ref": "#/components/schemas/Detection"
+          },
+          "balance_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The sum of every leg on the account, in minor units of its currency."
           },
           "created_at": {
             "type": "string",
@@ -2390,12 +2459,17 @@
       "Health": {
         "type": "object",
         "required": [
-          "status"
+          "status",
+          "version"
         ],
         "properties": {
           "status": {
             "type": "string",
             "description": "`ok` when the database answers."
+          },
+          "version": {
+            "type": "string",
+            "description": "The server's version."
           }
         }
       },

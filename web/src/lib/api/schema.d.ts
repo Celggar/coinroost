@@ -401,7 +401,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Deletes a transaction with one leg. */
+        delete: operations["delete_transaction"];
         options?: never;
         head?: never;
         /** Sets a transaction's category or payee by hand. */
@@ -489,6 +490,11 @@ export interface components {
             namespace: string;
             profile?: string | null;
             detection: components["schemas"]["Detection"];
+            /**
+             * Format: int64
+             * @description The sum of every leg on the account, in minor units of its currency.
+             */
+            balance_minor: number;
             /** Format: date-time */
             created_at: string;
         };
@@ -723,6 +729,8 @@ export interface components {
         Health: {
             /** @description `ok` when the database answers. */
             status: string;
+            /** @description The server's version. */
+            version: string;
         };
         Hex: string;
         ImportBatch: {
@@ -2191,6 +2199,8 @@ export interface operations {
                 uncategorized?: boolean;
                 /** @description Only transfers: transactions with two legs. */
                 transfers?: boolean;
+                /** @description Only transactions whose description contains this text, upper or lower case alike. */
+                q?: string;
                 /** @description At most this many, newest first (default 100, at most 1000). */
                 limit?: number;
             };
@@ -2262,6 +2272,54 @@ export interface operations {
             };
             /** @description The legs or a reference are not valid */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_transaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The transaction */
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such transaction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A transfer: split it first */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

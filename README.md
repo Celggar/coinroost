@@ -88,6 +88,37 @@ cargo run -p coinroost-server -- payroll load employers.json --household <househ
 After a route changes, `cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract and
 `npm run api-types` in `web/` refreshes the app's types from it.
 
+## Connecting an MCP client
+
+The server also speaks the [Model Context Protocol](https://modelcontextprotocol.io) at `/mcp` (Streamable
+HTTP), so any MCP client can read the ledger, sum it up and, once you say yes, record or sort transactions. Every
+tool sends a request to the same API the web app uses, with your token, so it gets the same checks and nothing
+more. Give each client its own token:
+
+```sh
+cargo run -p coinroost-server -- token add you@example.com --name laptop                # prints crt_… once
+cargo run -p coinroost-server -- token add you@example.com --name viewer --read-only    # may only read
+cargo run -p coinroost-server -- token revoke you@example.com --name laptop
+```
+
+Then point the client at `http://127.0.0.1:8080/mcp` with the header `Authorization: Bearer crt_…`.
+
+| Kind | Tools |
+|---|---|
+| Read | `list_accounts`, `list_categories`, `list_rules`, `list_transactions`, `search_transactions`, `about` |
+| Reports | `spending_summary`, `monthly_trend` (with the gaps between statements), `top_payees`, `payroll_status` |
+| Write | `create_transaction`, `update_transaction`, `categorize_transaction`, `delete_transaction`, `create_category` |
+| Rules | `create_rule`, `move_rule`, `preview_rules`, `apply_rules` |
+
+Amounts go in and out as decimal strings in the account's currency (`"45.50"`), never rounded; accounts,
+categories, payees and rules are named by name or id. A category set through a tool counts as set by hand, so
+rules never change it. A read-only token gets the API's refusal on any change, rule previews included.
+
+`/mcp` accepts only the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; a name alone matches any port,
+`name:port` only that port). Unset or empty, that means loopback: behind a reverse proxy, add its public name. It
+refuses every request that carries an `Origin` header, which browsers send, and never reads the login cookie, so a
+web page open in your browser cannot drive it.
+
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: every change goes through a pull

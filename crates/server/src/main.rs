@@ -1,5 +1,6 @@
 //! `coinroost-server serve`: applies the schema and serves the API on `COINROOST_BIND` (default `127.0.0.1:8080`)
-//! with the database at `DATABASE_URL`, and the web app built in `COINROOST_WEB_DIR` when it is set.
+//! with the database at `DATABASE_URL`, the web app built in `COINROOST_WEB_DIR` when it is set, and `/mcp` for MCP
+//! clients, which accepts the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; loopback when unset or empty).
 //! `coinroost-server migrate`: creates the database if it does not exist, applies the schema and exits.
 //! `coinroost-server user add <email> [--household <id>]`: adds a user, to a new household unless one is given.
 //! The password is read from the terminal (or from the first line of standard input when it is not a terminal),
@@ -7,19 +8,23 @@
 //! `coinroost-server rules load <set.json> --household <id>`: loads a rule set (categories, payees and rules by
 //! name) into a household; loading it again changes nothing.
 //! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
+//! `coinroost-server token add <email> --name <label> [--read-only]`: prints a new API token for the user, once.
+//! `coinroost-server token revoke <email> --name <label>`: revokes the user's live token of that name.
 //! `coinroost-server openapi`: prints the API contract (`OpenAPI` 3.1, JSON).
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, openapi, rule_set};
+use coinroost_server::tokens::{self, Scope};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, mcp, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
-       | rules load <set.json> --household <id> | payroll load <employers.json> --household <id> | openapi";
+       | rules load <set.json> --household <id> | payroll load <employers.json> --household <id>
+       | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -42,6 +47,9 @@ async fn main() -> ExitCode {
             Ok(id) => load_employers(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
+        ["token", "add", email, "--name", name] => add_token(email, name, Scope::Write).await,
+        ["token", "add", email, "--name", name, "--read-only"] => add_token(email, name, Scope::Read).await,
+        ["token", "revoke", email, "--name", name] => revoke_token(email, name).await,
         _ => Err(USAGE.to_owned()),
     };
     match outcome {
@@ -97,8 +105,16 @@ async fn serve() -> Result<(), String> {
         .await
         .map_err(|e| format!("{bind}: {e}"))?;
     let address = listener.local_addr().map_err(|e| e.to_string())?;
+    let hosts: Vec<String> = std::env::var("COINROOST_MCP_HOSTS")
+        .unwrap_or_default()
+        .split(',')
+        .map(|h| h.trim().to_owned())
+        .filter(|h| !h.is_empty())
+        .collect();
     eprintln!("serving on {address}");
-    axum::serve(listener, app(AppState { db }, web.as_deref()))
+    let state = AppState { db };
+    let routes = mcp::router(state.clone(), &hosts).merge(app(state, web.as_deref()));
+    axum::serve(listener, routes)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })
@@ -158,4 +174,22 @@ fn read_password() -> Result<String, String> {
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).map_err(|e| e.to_string())?;
     Ok(line.trim_end_matches(['\r', '\n']).to_owned())
+}
+
+async fn add_token(email: &str, name: &str, scope: Scope) -> Result<(), String> {
+    let db = connect().await?;
+    let token = tokens::add(&db, email, name, scope).await?;
+    eprintln!("a {scope:?} token for {email}, named {name:?}; it is shown only now:");
+    println!("token {token}");
+    Ok(())
+}
+
+async fn revoke_token(email: &str, name: &str) -> Result<(), String> {
+    let db = connect().await?;
+    if tokens::revoke(&db, email, name).await? {
+        eprintln!("revoked {email}'s token {name:?}");
+        Ok(())
+    } else {
+        Err(format!("{email} has no live token named {name:?}"))
+    }
 }
