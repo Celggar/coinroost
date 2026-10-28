@@ -25,7 +25,7 @@ hitting the same walls. It borrows ideas, not code. The goals are:
 | Part | Technology | Where |
 |---|---|---|
 | Statement normalizer and domain core | Rust, shared through UniFFI (mobile) and WebAssembly (web) | `crates/` |
-| API server | Rust (Axum) + PostgreSQL | `server/` |
+| API server | Rust (Axum) + PostgreSQL, contract in `spec/openapi.json` | `crates/server/` |
 | Web app | SvelteKit (Svelte 5), built as static files served by the API | `web/` |
 | Bank profiles and golden fixtures | Declarative data, used by every implementation | `spec/` |
 | Mobile app | SwiftUI (iPhone first; Android later through Skip) | [coinroost-mobile](https://github.com/Celggar/coinroost-mobile) |
@@ -34,6 +34,22 @@ Money is stored as integer minor units with an ISO 4217 currency code. Each impo
 deduplication id, so importing the same statement twice, from the web or from the phone, never duplicates it.
 
 See [docs/architecture.md](docs/architecture.md) for the details and [docs/roadmap.md](docs/roadmap.md) for the plan.
+
+## Running the checks
+
+`./ci.sh` runs formatting, lints, every test, the iOS and WebAssembly builds of the normalizer, the repository
+policy and a secret scan. The server tests need PostgreSQL 18 at `DATABASE_URL`; each test creates its own
+database there. A throwaway one for development:
+
+```sh
+docker run -d --name coinroost-dev-postgres -p 127.0.0.1:55432:5432 \
+  -e POSTGRES_USER=coinroost -e POSTGRES_PASSWORD=coinroost -e POSTGRES_DB=coinroost postgres:18.6-alpine
+export DATABASE_URL=postgres://coinroost:coinroost@127.0.0.1:55432/coinroost
+./ci.sh
+```
+
+`cargo run -p coinroost-server -- serve` serves the API on `127.0.0.1:8080` (`COINROOST_BIND` changes it);
+`cargo run -p coinroost-server -- openapi > spec/openapi.json` refreshes the contract after a route changes.
 
 ## Contributing
 
