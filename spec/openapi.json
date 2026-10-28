@@ -575,6 +575,49 @@
         }
       }
     },
+    "/api/v1/payroll": {
+      "get": {
+        "tags": [
+          "payroll"
+        ],
+        "summary": "What each employer owes at a date: one report per employer, or the reason it has none.",
+        "operationId": "payroll",
+        "parameters": [
+          {
+            "name": "as_of",
+            "in": "query",
+            "description": "The day to measure at (today in UTC when absent): send the person's today.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Each employer's fortnights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payroll"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/profiles": {
       "get": {
         "tags": [
@@ -595,6 +638,205 @@
           },
           "401": {
             "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/categories": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Spending per category.",
+        "operationId": "by_category",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per category and currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ByCategory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The period is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/monthly": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Spending and income per month.",
+        "operationId": "monthly",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per month and currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monthly"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The period is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/payees": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "The payees most spent on.",
+        "operationId": "by_payee",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last date included.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many per currency (default 10, at most 100).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per payee and currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ByPayee"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The period or the limit is not valid",
             "content": {
               "application/json": {
                 "schema": {
@@ -1674,6 +1916,36 @@
           }
         }
       },
+      "ByCategory": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategorySpending"
+            },
+            "description": "Per currency, most spent first; ties by category id, uncategorized last."
+          }
+        }
+      },
+      "ByPayee": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayeeSpending"
+            },
+            "description": "Per currency, most spent first; ties by payee id, no payee last."
+          }
+        }
+      },
       "Categories": {
         "type": "object",
         "required": [
@@ -1721,6 +1993,36 @@
           "income",
           "transfer"
         ]
+      },
+      "CategorySpending": {
+        "type": "object",
+        "required": [
+          "currency",
+          "spending",
+          "count"
+        ],
+        "properties": {
+          "category_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "None: transactions without a category."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many transactions."
+          }
+        }
       },
       "Conditions": {
         "type": "object",
@@ -1855,6 +2157,200 @@
           "in",
           "out"
         ]
+      },
+      "EmployerPayroll": {
+        "type": "object",
+        "required": [
+          "employer_id",
+          "name",
+          "account_id",
+          "currency",
+          "amount_minor",
+          "owed",
+          "owed_total_minor",
+          "ahead",
+          "unknown",
+          "paid",
+          "history"
+        ],
+        "properties": {
+          "employer_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "What a fortnight is worth today."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When the deposits could not be read (no deposit counted), why; the other fields then stay empty."
+          },
+          "owed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FortnightView"
+            },
+            "description": "Due and unpaid, oldest first."
+          },
+          "owed_total_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "`amount_minor` times the owed fortnights."
+          },
+          "ahead": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FortnightView"
+            }
+          },
+          "unknown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FortnightView"
+            },
+            "description": "Due after the last data of the account."
+          },
+          "paid": {
+            "type": "integer",
+            "description": "Deposits that counted as a fortnight's pay.",
+            "minimum": 0
+          },
+          "next_due": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FortnightView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The date \"owed\" is measured at: `as_of`, or the account's last data when earlier."
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FortnightLine"
+            },
+            "description": "From the first fortnight to the last one due or paid."
+          }
+        }
+      },
+      "FortnightLine": {
+        "type": "object",
+        "required": [
+          "fortnight",
+          "status"
+        ],
+        "properties": {
+          "fortnight": {
+            "$ref": "#/components/schemas/FortnightView"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FortnightStatus"
+          },
+          "days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Days late (zero or below: on time); for an owed fortnight, days due at the last data."
+          },
+          "payment": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Payment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FortnightView",
+                "description": "The fortnight the bank's description named, when it named one."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "FortnightStatus": {
+        "type": "string",
+        "enum": [
+          "owed",
+          "no_data",
+          "late",
+          "on_time",
+          "ahead"
+        ]
+      },
+      "FortnightView": {
+        "type": "object",
+        "description": "A salary fortnight: the 1st to the 15th (half 1) or the 16th to the end of the month (half 2).",
+        "required": [
+          "year",
+          "month",
+          "half",
+          "first_day",
+          "last_day",
+          "due_on"
+        ],
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "month": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "half": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "first_day": {
+            "type": "string",
+            "format": "date"
+          },
+          "last_day": {
+            "type": "string",
+            "format": "date"
+          },
+          "due_on": {
+            "type": "string",
+            "format": "date",
+            "description": "The day after it ends."
+          }
+        }
       },
       "Gap": {
         "type": "object",
@@ -2142,6 +2638,47 @@
           }
         }
       },
+      "MonthTotals": {
+        "type": "object",
+        "required": [
+          "month",
+          "currency",
+          "spending",
+          "income"
+        ],
+        "properties": {
+          "month": {
+            "type": "string",
+            "description": "`YYYY-MM`."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "income": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Monthly": {
+        "type": "object",
+        "required": [
+          "months"
+        ],
+        "properties": {
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthTotals"
+            },
+            "description": "Months with money in or out, oldest first; then by currency."
+          }
+        }
+      },
       "NewAccount": {
         "type": "object",
         "required": [
@@ -2374,6 +2911,35 @@
           }
         }
       },
+      "PayeeSpending": {
+        "type": "object",
+        "required": [
+          "currency",
+          "spending",
+          "count"
+        ],
+        "properties": {
+          "payee_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "None: transactions without a payee."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "Payees": {
         "type": "object",
         "required": [
@@ -2384,6 +2950,51 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Payee"
+            }
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "date",
+          "amount_minor",
+          "description"
+        ],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "Payroll": {
+        "type": "object",
+        "required": [
+          "as_of",
+          "employers"
+        ],
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date"
+          },
+          "employers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmployerPayroll"
             }
           }
         }

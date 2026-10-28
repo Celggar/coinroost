@@ -6,6 +6,8 @@ pub mod apply;
 pub mod catalog;
 pub mod coverage;
 pub mod imports;
+pub mod payroll;
+pub mod reports;
 pub mod rules;
 pub mod session;
 pub mod summary;

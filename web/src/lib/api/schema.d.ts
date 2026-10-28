@@ -167,6 +167,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What each employer owes at a date: one report per employer, or the reason it has none. */
+        get: operations["payroll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profiles": {
         parameters: {
             query?: never;
@@ -176,6 +193,57 @@ export interface paths {
         };
         /** The bank export formats the server can read, by name. */
         get: operations["list_profiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Spending per category. */
+        get: operations["by_category"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Spending and income per month. */
+        get: operations["monthly"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/payees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The payees most spent on. */
+        get: operations["by_payee"];
         put?: never;
         post?: never;
         delete?: never;
@@ -478,6 +546,14 @@ export interface components {
         BankProfiles: {
             items: components["schemas"]["BankProfile"][];
         };
+        ByCategory: {
+            /** @description Per currency, most spent first; ties by category id, uncategorized last. */
+            items: components["schemas"]["CategorySpending"][];
+        };
+        ByPayee: {
+            /** @description Per currency, most spent first; ties by payee id, no payee last. */
+            items: components["schemas"]["PayeeSpending"][];
+        };
         Categories: {
             items: components["schemas"]["Category"][];
         };
@@ -494,6 +570,21 @@ export interface components {
          * @enum {string}
          */
         CategoryKind: "expense" | "income" | "transfer";
+        CategorySpending: {
+            /**
+             * Format: uuid
+             * @description None: transactions without a category.
+             */
+            category_id?: string | null;
+            currency: string;
+            /** Format: int64 */
+            spending: number;
+            /**
+             * Format: int64
+             * @description How many transactions.
+             */
+            count: number;
+        };
         Conditions: {
             /** @description Text the description contains, compared in upper case; kept exactly as written, spaces included. */
             description_contains?: string | null;
@@ -539,6 +630,72 @@ export interface components {
         };
         /** @enum {string} */
         Direction: "in" | "out";
+        EmployerPayroll: {
+            /** Format: uuid */
+            employer_id: string;
+            name: string;
+            /** Format: uuid */
+            account_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description What a fortnight is worth today.
+             */
+            amount_minor: number;
+            /** @description When the deposits could not be read (no deposit counted), why; the other fields then stay empty. */
+            error?: string | null;
+            /** @description Due and unpaid, oldest first. */
+            owed: components["schemas"]["FortnightView"][];
+            /**
+             * Format: int64
+             * @description `amount_minor` times the owed fortnights.
+             */
+            owed_total_minor: number;
+            ahead: components["schemas"]["FortnightView"][];
+            /** @description Due after the last data of the account. */
+            unknown: components["schemas"]["FortnightView"][];
+            /** @description Deposits that counted as a fortnight's pay. */
+            paid: number;
+            next_due?: components["schemas"]["FortnightView"] | null;
+            /**
+             * Format: date
+             * @description The date "owed" is measured at: `as_of`, or the account's last data when earlier.
+             */
+            data_until?: string | null;
+            /** @description From the first fortnight to the last one due or paid. */
+            history: components["schemas"]["FortnightLine"][];
+        };
+        FortnightLine: {
+            fortnight: components["schemas"]["FortnightView"];
+            status: components["schemas"]["FortnightStatus"];
+            /**
+             * Format: int64
+             * @description Days late (zero or below: on time); for an owed fortnight, days due at the last data.
+             */
+            days?: number | null;
+            payment?: components["schemas"]["Payment"] | null;
+            label?: components["schemas"]["FortnightView"] | null;
+        };
+        /** @enum {string} */
+        FortnightStatus: "owed" | "no_data" | "late" | "on_time" | "ahead";
+        /** @description A salary fortnight: the 1st to the 15th (half 1) or the 16th to the end of the month (half 2). */
+        FortnightView: {
+            /** Format: int32 */
+            year: number;
+            /** Format: int32 */
+            month: number;
+            /** Format: int32 */
+            half: number;
+            /** Format: date */
+            first_day: string;
+            /** Format: date */
+            last_day: string;
+            /**
+             * Format: date
+             * @description The day after it ends.
+             */
+            due_on: string;
+        };
         /** @description Days with no imported file between two imported ranges. */
         Gap: {
             /**
@@ -638,6 +795,19 @@ export interface components {
             household_id: string;
             email: string;
         };
+        MonthTotals: {
+            /** @description `YYYY-MM`. */
+            month: string;
+            currency: string;
+            /** Format: int64 */
+            spending: number;
+            /** Format: int64 */
+            income: number;
+        };
+        Monthly: {
+            /** @description Months with money in or out, oldest first; then by currency. */
+            months: components["schemas"]["MonthTotals"][];
+        };
         NewAccount: {
             name: string;
             kind: components["schemas"]["AccountKind"];
@@ -718,8 +888,34 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        PayeeSpending: {
+            /**
+             * Format: uuid
+             * @description None: transactions without a payee.
+             */
+            payee_id?: string | null;
+            currency: string;
+            /** Format: int64 */
+            spending: number;
+            /** Format: int64 */
+            count: number;
+        };
         Payees: {
             items: components["schemas"]["Payee"][];
+        };
+        Payment: {
+            /** Format: uuid */
+            transaction_id: string;
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            amount_minor: number;
+            description: string;
+        };
+        Payroll: {
+            /** Format: date */
+            as_of: string;
+            employers: components["schemas"]["EmployerPayroll"][];
         };
         PreviewRow: {
             /** Format: date */
@@ -1434,6 +1630,38 @@ export interface operations {
             };
         };
     };
+    payroll: {
+        parameters: {
+            query?: {
+                /** @description The day to measure at (today in UTC when absent): send the person's today. */
+                as_of?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each employer's fortnights */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payroll"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_profiles: {
         parameters: {
             query?: never;
@@ -1454,6 +1682,137 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    by_category: {
+        parameters: {
+            query: {
+                /** @description First date included. */
+                from: string;
+                /** @description Last date included. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per category and currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ByCategory"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The period is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    monthly: {
+        parameters: {
+            query: {
+                /** @description First date included. */
+                from: string;
+                /** @description Last date included. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per month and currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Monthly"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The period is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    by_payee: {
+        parameters: {
+            query: {
+                /** @description First date included. */
+                from: string;
+                /** @description Last date included. */
+                to: string;
+                /** @description At most this many per currency (default 10, at most 100). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per payee and currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ByPayee"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The period or the limit is not valid */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

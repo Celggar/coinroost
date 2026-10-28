@@ -4,6 +4,7 @@
 //! the web app, a static build, from a directory.
 
 pub mod auth;
+pub mod employers;
 pub mod error;
 mod import;
 mod pairing;
@@ -73,6 +74,8 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::coverage::router())
         .merge(routes::transfers::router())
         .merge(routes::summary::router())
+        .merge(routes::payroll::router())
+        .merge(routes::reports::router())
 }
 
 /// The HTTP API. A path under `/api/` that is not in the contract answers a problem+json 404.

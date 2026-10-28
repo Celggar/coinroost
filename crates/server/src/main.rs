@@ -6,19 +6,20 @@
 //! never from the command line, where other users could see it.
 //! `coinroost-server rules load <set.json> --household <id>`: loads a rule set (categories, payees and rules by
 //! name) into a household; loading it again changes nothing.
+//! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
 //! `coinroost-server openapi`: prints the API contract (`OpenAPI` 3.1, JSON).
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, openapi, rule_set};
+use coinroost_server::{AppState, MIGRATOR, SHELL, app, auth, employers, openapi, rule_set};
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
-       | rules load <set.json> --household <id> | openapi";
+       | rules load <set.json> --household <id> | payroll load <employers.json> --household <id> | openapi";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -35,6 +36,10 @@ async fn main() -> ExitCode {
         },
         ["rules", "load", file, "--household", id] => match Uuid::parse_str(id) {
             Ok(id) => load_rules(file, id).await,
+            Err(e) => Err(format!("--household: {e}")),
+        },
+        ["payroll", "load", file, "--household", id] => match Uuid::parse_str(id) {
+            Ok(id) => load_employers(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
         _ => Err(USAGE.to_owned()),
@@ -128,6 +133,15 @@ async fn load_rules(file: &str, household: Uuid) -> Result<(), String> {
         report.rules_added,
         report.rules_changed
     );
+    Ok(())
+}
+
+async fn load_employers(file: &str, household: Uuid) -> Result<(), String> {
+    let text = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+    let employers = employers::EmployersFile::from_json(&text).map_err(|e| format!("{file}: {e}"))?;
+    let db = connect().await?;
+    let report = employers::load(&db, household, &employers).await?;
+    println!("employers added {}, changed {}", report.added, report.changed);
     Ok(())
 }
 

@@ -451,6 +451,7 @@ name = "coinroost-cli"
 version = "0.1.0"
 dependencies = [
  "coinroost-normalizer",
+ "coinroost-payroll",
  "coinroost-rules",
  "coinroost-transfers",
  "serde",
@@ -473,6 +474,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "coinroost-payroll"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "time",
+ "toml",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "coinroost-rules"
 version = "0.1.0"
 dependencies = [
@@ -490,6 +502,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "coinroost-normalizer",
+ "coinroost-payroll",
  "coinroost-rules",
  "coinroost-transfers",
  "http-body-util",

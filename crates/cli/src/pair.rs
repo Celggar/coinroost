@@ -29,7 +29,7 @@ struct Evidence {
     account: String,
 }
 
-fn date(text: &str) -> Option<Date> {
+pub(crate) fn date(text: &str) -> Option<Date> {
     let mut parts = text.splitn(3, '-').map(str::parse::<u16>);
     let (Some(Ok(year)), Some(Ok(month)), Some(Ok(day))) = (parts.next(), parts.next(), parts.next()) else {
         return None;
@@ -38,7 +38,10 @@ fn date(text: &str) -> Option<Date> {
     Date::from_calendar_date(i32::from(year), month, u8::try_from(day).ok()?).ok()
 }
 
-fn lines<T: for<'de> Deserialize<'de>>(reader: impl BufRead, source: &str) -> Result<Vec<T>, String> {
+pub(crate) fn lines<T: for<'de> Deserialize<'de>>(
+    reader: impl BufRead,
+    source: &str,
+) -> Result<Vec<T>, String> {
     reader
         .lines()
         .enumerate()

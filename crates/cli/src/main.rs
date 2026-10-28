@@ -4,9 +4,11 @@
 //! `coinroost profiles`: lists the built-in profiles.
 //! `coinroost categorize --rules <set.json> [--payee-text <locale.toml>]`: sorts transactions read as JSON lines.
 //! `coinroost pair [--evidence <transfers.jsonl>]`: pairs the two legs of transfers read as JSON lines.
+//! `coinroost payroll --employer <file> --as-of <date> [--data-until <date>]`: what an employer owes.
 
 mod categorize;
 mod pair;
+mod payroll;
 
 use std::process::ExitCode;
 
@@ -19,7 +21,8 @@ pub(crate) const USAGE: &str = "usage: coinroost normalize --profile <id> --name
        coinroost tables <file.pdf>
        coinroost profiles
        coinroost categorize --rules <set.json> [--payee-text <locale.toml>] < transactions.jsonl
-       coinroost pair [--evidence <transfers.jsonl>] < legs.jsonl";
+       coinroost pair [--evidence <transfers.jsonl>] < legs.jsonl
+       coinroost payroll --employer <employer.json> --as-of <date> [--data-until <date>] [--words <locale.toml>] < deposits.jsonl";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -30,10 +33,10 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
-        Some(command @ ("categorize" | "pair")) => match if command == "pair" {
-            pair::run(&args[1..])
-        } else {
-            categorize::run(&args[1..])
+        Some(command @ ("categorize" | "pair" | "payroll")) => match match command {
+            "pair" => pair::run(&args[1..]),
+            "payroll" => payroll::run(&args[1..]),
+            _ => categorize::run(&args[1..]),
         } {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {
