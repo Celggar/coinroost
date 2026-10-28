@@ -451,6 +451,7 @@ name = "coinroost-cli"
 version = "0.1.0"
 dependencies = [
  "coinroost-normalizer",
+ "coinroost-payroll",
  "coinroost-rules",
  "coinroost-transfers",
  "serde",
@@ -468,6 +469,17 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.1",
+ "toml",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "coinroost-payroll"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "time",
  "toml",
  "unicode-normalization",
 ]

@@ -1,0 +1,46 @@
+# Words a bank description uses to name the fortnight a salary payment is for, such as "II Qna de Septiembre 2025"
+# or "Q1 Febrero". Matched on the description with accents, case and punctuation dropped.
+
+# A half word, then any number of joiners, then a month word, then optionally a year (with a year joiner before it).
+joiners = ["qna", "quincena", "de", "del"]
+year_joiners = ["de", "del"]
+
+[halves]
+primera = 1
+1era = 1
+1ra = 1
+q1 = 1
+i = 1
+segunda = 2
+2da = 2
+q2 = 2
+ii = 2
+
+[months]
+enero = 1
+ene = 1
+febrero = 2
+feb = 2
+marzo = 3
+mar = 3
+abril = 4
+abr = 4
+mayo = 5
+may = 5
+junio = 6
+jun = 6
+julio = 7
+jul = 7
+agosto = 8
+ago = 8
+septiembre = 9
+setiembre = 9
+sept = 9
+sep = 9
+set = 9
+octubre = 10
+oct = 10
+noviembre = 11
+nov = 11
+diciembre = 12
+dic = 12
