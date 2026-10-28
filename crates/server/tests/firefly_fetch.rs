@@ -62,8 +62,11 @@ async fn fetch_reads_everything_with_only_get() {
             snapshot.counts["tags"],
             snapshot.counts["webhooks"]
         ),
-        (14, 3, 1)
+        (14, 3, 0)
     );
+    // Webhooks are switched off in this Firefly: recorded as such, not as an empty list.
+    assert_eq!(manifest["unavailable"], serde_json::json!(["webhooks"]));
+    assert_eq!(snapshot.unavailable, ["webhooks"]);
     assert_eq!(snapshot.version, "6.6.3");
 
     // The folder holds real data when it is real: the owner alone reads it.
@@ -94,4 +97,15 @@ async fn fetch_refuses_what_it_should_not_trust() {
         .await
         .unwrap_err();
     assert!(secure.contains("http://"), "{secure}");
+}
+
+#[tokio::test]
+async fn a_firefly_with_webhooks_allowed_gives_them_like_any_list() {
+    let firefly = TestFirefly::with_webhooks().await;
+    let out = scratch().join("snapshot");
+    fetch::fetch(&firefly.url, TOKEN, &out).await.unwrap();
+    let snapshot = Snapshot::load(&out).unwrap();
+    assert_eq!(snapshot.counts["webhooks"], 1);
+    assert!(snapshot.unavailable.is_empty(), "{:?}", snapshot.unavailable);
+    assert!(out.join("pages/webhooks/1.json").exists());
 }

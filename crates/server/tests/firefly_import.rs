@@ -78,10 +78,15 @@ async fn month_end_balances_match_firefly_after_the_import(db: PgPool) {
         "{report}"
     );
     assert!(report.contains("accounts 5 (5 created)"), "{report}");
-    for gap in ["tags", "budgets", "bills", "piggy-banks", "rules", "webhooks"] {
-        let line = report.lines().find(|l| l.trim_start().starts_with(gap)).unwrap();
-        assert!(line.contains("GAP"), "{line}");
+    let line = |kind: &str| report.lines().find(|l| l.trim_start().starts_with(kind)).unwrap();
+    for gap in ["tags", "budgets", "bills", "piggy-banks", "rules"] {
+        assert!(line(gap).contains("GAP"), "{}", line(gap));
     }
+    assert!(
+        line("webhooks").contains("off in this Firefly"),
+        "{}",
+        line("webhooks")
+    );
     assert!(
         report.contains("tags on 2, budgets on 1, bills on 1, notes on 2"),
         "{report}"

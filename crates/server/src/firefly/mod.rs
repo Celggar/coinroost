@@ -46,10 +46,11 @@ pub const KINDS: [Kind; 17] = [
     ),
     kind("tags", "/api/v1/tags", "", None),
     kind("budgets", "/api/v1/budgets", "", None),
+    // Firefly requires both dates and excludes both bounds: start after 1970-01-02, end before 2038-01-17.
     kind(
         "budget-limits",
         "/api/v1/budget-limits",
-        "start=1970-01-02&end=2038-01-16",
+        "start=1970-01-03&end=2038-01-16",
         None,
     ),
     kind("bills", "/api/v1/bills", "", None),
