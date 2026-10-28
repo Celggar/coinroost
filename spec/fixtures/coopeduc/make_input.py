@@ -2,8 +2,13 @@
 
 Standard library only, deterministic output. Layout follows the real export: a header block, then one line per
 transaction with date, reference, detail, debit, credit and balance; the table header repeats on every page.
-Run: python3 spec/fixtures/coopeduc/make_input.py
+Run: python3 spec/fixtures/coopeduc/make_input.py [--word-gap N <folder>]
+
+With `--word-gap N`, the words of every text run are separated by a TJ offset of N thousandths of an em
+instead of a space glyph, and the first letter of each word is kerned by 15. Some statement generators
+write text that way; with N = 250 the gap (2 points at 8 points) is too narrow to separate words.
 """
+import sys
 from pathlib import Path
 
 FONT_SIZE = 8
@@ -47,6 +52,18 @@ def escape(text: str) -> bytes:
 
 def show(x: float, y: float, text: str) -> bytes:
     return b"BT /F1 %d Tf %.2f %.2f Td (" % (FONT_SIZE, x, y) + escape(text) + b") Tj ET\n"
+
+
+def show_with_offsets(offset: int):
+    def show_words(x: float, y: float, text: str) -> bytes:
+        parts = []
+        for i, word in enumerate(text.split(" ")):
+            if i:
+                parts.append(b"-%d" % offset)
+            parts.append(b"(" + escape(word[:1]) + b")" + (b" -15 (" + escape(word[1:]) + b")" if len(word) > 1 else b""))
+        return b"BT /F1 %d Tf %.2f %.2f Td [" % (FONT_SIZE, x, y) + b" ".join(parts) + b"] TJ ET\n"
+
+    return show_words
 
 
 def right(x_end: float, y: float, text: str) -> bytes:
@@ -110,5 +127,8 @@ def build() -> bytes:
 
 if __name__ == "__main__":
     target = Path(__file__).with_name("input.pdf")
+    if sys.argv[1:2] == ["--word-gap"]:
+        show = show_with_offsets(int(sys.argv[2]))
+        target = Path(sys.argv[3]) / "input.pdf"
     target.write_bytes(build())
     print(f"wrote {target} ({target.stat().st_size} bytes)")

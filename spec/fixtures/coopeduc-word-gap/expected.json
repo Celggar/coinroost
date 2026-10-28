@@ -1,0 +1,105 @@
+{
+  "input": "input.pdf",
+  "namespace": "coopeduc",
+  "profile": "coopeduc",
+  "result": {
+    "ambiguities": 0,
+    "errors": [],
+    "fatal": null,
+    "rows": 13,
+    "structural": 0,
+    "transactions": [
+      {
+        "amount": "250.00",
+        "amount_minor": 25000,
+        "date": "2025-01-02",
+        "description": "DEPOSITOENEFECTIVO",
+        "external_id": "37f95291377ccba6e81d85508a114e28"
+      },
+      {
+        "amount": "1000.00",
+        "amount_minor": 100000,
+        "date": "2025-01-05",
+        "description": "ACH-BANCOEJEMPLO-JANEDOEEXAMPLE",
+        "external_id": "7da85b860463bdf07ec099676dfe9470"
+      },
+      {
+        "amount": "-40.00",
+        "amount_minor": -4000,
+        "date": "2025-01-09",
+        "description": "RETIROCAJEROAUTOMATICO",
+        "external_id": "051cb804a5b064f386ca6fc213113ebe"
+      },
+      {
+        "amount": "-40.00",
+        "amount_minor": -4000,
+        "date": "2025-01-09",
+        "description": "RETIROCAJEROAUTOMATICO",
+        "external_id": "7716b1b162ab1a037486804d963eb7f6"
+      },
+      {
+        "amount": "-125.35",
+        "amount_minor": -12535,
+        "date": "2025-01-15",
+        "description": "CUOTAPRESTAMOPERSONAL",
+        "external_id": "5887ce3624af6fac6f08b58e7c203104"
+      },
+      {
+        "amount": "1.07",
+        "amount_minor": 107,
+        "date": "2025-01-31",
+        "description": "INTERESESDEAHORRO",
+        "external_id": "f188504b10203bb5ac6aa294e4c0c413"
+      },
+      {
+        "amount": "-1500.00",
+        "amount_minor": -150000,
+        "date": "2025-02-03",
+        "description": "TRANSFERENCIAACUENTAPROPIA",
+        "external_id": "c5c8d3579e0f3d49dbbd6f7e610ffeb5"
+      },
+      {
+        "amount": "-12.50",
+        "amount_minor": -1250,
+        "date": "2025-02-14",
+        "description": "PAGOSEGURODEVIDA",
+        "external_id": "d66d0b4a2e12f217a182bc171ad788c1"
+      },
+      {
+        "amount": "0.44",
+        "amount_minor": 44,
+        "date": "2025-02-28",
+        "description": "INTERESESDEAHORRO",
+        "external_id": "78aee8e70b345516adbef6833e6eb5e8"
+      },
+      {
+        "amount": "2345.67",
+        "amount_minor": 234567,
+        "date": "2025-03-03",
+        "description": "DEPOSITOCHEQUEAJENO",
+        "external_id": "8884c3ccb828f963e6c5db9ef062c2f1"
+      },
+      {
+        "amount": "-3.00",
+        "amount_minor": -300,
+        "date": "2025-03-10",
+        "description": "COMISIONMANEJODECUENTA",
+        "external_id": "8f1acb8baf991de62351383a9a98e9cb"
+      },
+      {
+        "amount": "3.00",
+        "amount_minor": 300,
+        "date": "2025-03-17",
+        "description": "REVERSODECOMISION",
+        "external_id": "ed266d4424fc7a2fb89509dcf6cb707a"
+      },
+      {
+        "amount": "2.36",
+        "amount_minor": 236,
+        "date": "2025-03-31",
+        "description": "INTERESESDEAHORRO",
+        "external_id": "609426a530b5c9135693c24bbc595dcb"
+      }
+    ]
+  }
+}

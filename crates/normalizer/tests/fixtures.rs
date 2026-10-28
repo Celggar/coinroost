@@ -43,5 +43,8 @@ fn every_fixture_matches_its_expected_output() {
         assert_eq!(got, wanted, "fixture {dir:?}");
         checked += 1;
     }
-    assert!(checked >= 2, "expected at least two fixtures, checked {checked}");
+    assert!(
+        checked >= 3,
+        "expected at least three fixtures, checked {checked}"
+    );
 }

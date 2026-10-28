@@ -1,5 +1,7 @@
 //! PDF exports: page text from glyph positions, then one table row per transaction line.
 
+#[cfg(feature = "pdf")]
+mod glyphs;
 mod layout;
 
 pub use layout::{Glyph, page_text};
@@ -20,8 +22,7 @@ pub fn read_lines(bytes: &[u8]) -> Result<Vec<String>, String> {
     let pages = document.page_count().map_err(|e| e.to_string())?;
     let mut lines = Vec::new();
     for page in 0..pages {
-        let chars = document.extract_chars(page).map_err(|e| e.to_string())?;
-        let glyphs: Vec<Glyph> = chars.iter().map(glyph).collect();
+        let glyphs = glyphs::page_glyphs(&document, page)?;
         lines.extend(split_lines(&page_text(&glyphs)).into_iter().map(str::to_owned));
     }
     Ok(lines)
@@ -31,25 +32,6 @@ pub fn read_lines(bytes: &[u8]) -> Result<Vec<String>, String> {
 #[cfg(not(feature = "pdf"))]
 pub fn read_lines(_bytes: &[u8]) -> Result<Vec<String>, String> {
     Err("this build has no PDF support".to_owned())
-}
-
-/// A glyph box as the layout rules expect it: from the origin along the advance, from the descent to one
-/// em above it, with the y axis flipped so that top is smaller than bottom.
-#[cfg(feature = "pdf")]
-fn glyph(c: &pdf_oxide::layout::TextChar) -> Glyph {
-    let upright = match c.matrix {
-        Some([a, b, c, d, _, _]) => a * d > 0.0 && b * c <= 0.0,
-        None => c.rotation_degrees.abs() < f32::EPSILON,
-    };
-    let baseline = f64::from(c.origin_y) + f64::from(c.descent);
-    Glyph {
-        text: c.char.to_string(),
-        x0: f64::from(c.origin_x),
-        x1: f64::from(c.origin_x) + f64::from(c.advance_width),
-        top: -(baseline + f64::from(c.font_size)),
-        bottom: -baseline,
-        upright,
-    }
 }
 
 /// Turns statement lines into a table, keeping only lines that start a transaction. A line that starts one
