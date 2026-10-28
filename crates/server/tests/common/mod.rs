@@ -3,6 +3,8 @@
 
 #![allow(dead_code)]
 
+pub mod sorting;
+
 use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode, header};
