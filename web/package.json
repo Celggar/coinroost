@@ -27,10 +27,10 @@
 		"openapi-typescript": "7.13.0",
 		"prettier": "3.9.10",
 		"prettier-plugin-svelte": "4.1.1",
-		"svelte": "5.57.3",
+		"svelte": "5.57.2",
 		"svelte-check": "4.7.7",
 		"typescript": "6.0.3",
-		"vite": "8.3.5"
+		"vite": "8.3.4"
 	},
 	"overrides": {
 		"openapi-typescript": {
