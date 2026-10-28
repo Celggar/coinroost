@@ -242,6 +242,48 @@ async fn payees_and_payroll_match_the_api(db: PgPool) {
     );
 }
 
+/// A client of the 2025 revisions shakes hands and then names the agreed version; a 2026-07-28 client skips the
+/// handshake and sends the standard headers and the version in `_meta` on every request.
+#[sqlx::test]
+async fn clients_of_both_protocol_generations_are_served(db: PgPool) {
+    let book = book(&Api::new(db.clone())).await;
+    let mcp = Mcp::new(&db);
+    let bearer = format!("Bearer {}", book.token);
+    let hello = json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": "2026-07-28", "capabilities": {}, "clientInfo": { "name": "test", "version": "1" } } });
+    let (status, answer) = mcp.post("localhost", &[("authorization", &bearer)], &hello).await;
+    assert_eq!(
+        (status, &answer["result"]["protocolVersion"]),
+        (StatusCode::OK, &json!("2025-11-25"))
+    );
+    let agreed = [
+        ("authorization", bearer.as_str()),
+        ("mcp-protocol-version", "2025-11-25"),
+    ];
+    let ready = json!({ "jsonrpc": "2.0", "method": "notifications/initialized" });
+    assert_eq!(
+        mcp.post("localhost", &agreed, &ready).await.0,
+        StatusCode::ACCEPTED
+    );
+
+    let meta = json!({ "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                       "io.modelcontextprotocol/clientInfo": { "name": "test", "version": "1" },
+                       "io.modelcontextprotocol/clientCapabilities": {} });
+    let call = json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                       "params": { "name": "about", "arguments": {}, "_meta": meta } });
+    let headers = [
+        ("authorization", bearer.as_str()),
+        ("mcp-protocol-version", "2026-07-28"),
+        ("mcp-method", "tools/call"),
+        ("mcp-name", "about"),
+    ];
+    let (status, answer) = mcp.post("localhost", &headers, &call).await;
+    assert_eq!(status, StatusCode::OK, "{answer}");
+    let about: Value =
+        serde_json::from_str(answer["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(about["email"], book.user.email.as_str());
+}
+
 #[sqlx::test]
 async fn only_a_bearer_from_outside_a_browser_gets_in(db: PgPool) {
     let book = book(&Api::new(db.clone())).await;

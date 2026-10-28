@@ -1,6 +1,6 @@
 //! `coinroost-server serve`: applies the schema and serves the API on `COINROOST_BIND` (default `127.0.0.1:8080`)
 //! with the database at `DATABASE_URL`, the web app built in `COINROOST_WEB_DIR` when it is set, and `/mcp` for MCP
-//! clients, which accepts the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; default `localhost,127.0.0.1`).
+//! clients, which accepts the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; loopback when unset or empty).
 //! `coinroost-server migrate`: creates the database if it does not exist, applies the schema and exits.
 //! `coinroost-server user add <email> [--household <id>]`: adds a user, to a new household unless one is given.
 //! The password is read from the terminal (or from the first line of standard input when it is not a terminal),
@@ -106,7 +106,7 @@ async fn serve() -> Result<(), String> {
         .map_err(|e| format!("{bind}: {e}"))?;
     let address = listener.local_addr().map_err(|e| e.to_string())?;
     let hosts: Vec<String> = std::env::var("COINROOST_MCP_HOSTS")
-        .unwrap_or_else(|_| "localhost,127.0.0.1".to_owned())
+        .unwrap_or_default()
         .split(',')
         .map(|h| h.trim().to_owned())
         .filter(|h| !h.is_empty())
