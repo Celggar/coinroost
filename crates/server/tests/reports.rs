@@ -8,6 +8,9 @@ use common::{Api, User};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
+/// Date, account, signed cents, category and payee of a synthetic transaction.
+type Row<'a> = (&'a str, &'a str, i64, Option<&'a str>, Option<&'a str>);
+
 struct Book {
     groceries: String,
     dining: String,
@@ -35,7 +38,7 @@ async fn book(api: &Api, user: &User) -> Book {
     };
     let salary = make(api, user, "/api/v1/categories", category("Salary", "income")).await;
     let own = make(api, user, "/api/v1/categories", category("Own", "transfer")).await;
-    let rows: [(&str, &str, i64, Option<&str>, Option<&str>); 11] = [
+    let rows: [Row; 11] = [
         (
             "2026-04-03",
             &checking,
