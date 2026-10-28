@@ -48,6 +48,13 @@ pub fn token_file(dir: &Path, token: &str, mode: u32) -> PathBuf {
 
 type Seen = Arc<Mutex<Vec<(Method, String)>>>;
 
+#[derive(Clone)]
+struct Fake {
+    seen: Seen,
+    /// Off by default, as in Firefly: the webhook list then answers 404.
+    webhooks: bool,
+}
+
 pub struct TestFirefly {
     pub url: String,
     seen: Seen,
@@ -55,8 +62,21 @@ pub struct TestFirefly {
 
 impl TestFirefly {
     pub async fn start() -> TestFirefly {
+        TestFirefly::launch(false).await
+    }
+
+    /// A Firefly whose administrator allowed webhooks.
+    pub async fn with_webhooks() -> TestFirefly {
+        TestFirefly::launch(true).await
+    }
+
+    async fn launch(webhooks: bool) -> TestFirefly {
         let seen: Seen = Arc::default();
-        let app = Router::new().fallback(any(answer)).with_state(seen.clone());
+        let fake = Fake {
+            seen: seen.clone(),
+            webhooks,
+        };
+        let app = Router::new().fallback(any(answer)).with_state(fake);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = format!("http://{}", listener.local_addr().unwrap());
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
@@ -161,7 +181,7 @@ fn outside_dates(query: &HashMap<String, String>) -> bool {
     date("start") <= "1970-01-02" || date("end") >= "2038-01-17"
 }
 
-fn route(path: &str, query: &HashMap<String, String>) -> Response {
+fn route(path: &str, query: &HashMap<String, String>, webhooks: bool) -> Response {
     let rest = path.trim_start_matches("/api/v1/");
     let found = match rest.split('/').collect::<Vec<_>>().as_slice() {
         ["about"] => load("about.json"),
@@ -181,8 +201,8 @@ fn route(path: &str, query: &HashMap<String, String>) -> Response {
                 }
             }
         }
-        // Webhooks are off unless an administrator allows them, and then Firefly 6.6.3 answers 404 for the list.
-        ["webhooks"] => {
+        // Webhooks are off unless an administrator allows them; while off, Firefly 6.6.3 answers 404 for the list.
+        ["webhooks"] if !webhooks => {
             return (
                 StatusCode::NOT_FOUND,
                 axum::Json(json!({ "message": "Resource not found" })),
@@ -204,12 +224,12 @@ fn route(path: &str, query: &HashMap<String, String>) -> Response {
     axum::Json(found).into_response()
 }
 
-async fn answer(State(seen): State<Seen>, request: Request) -> Response {
+async fn answer(State(fake): State<Fake>, request: Request) -> Response {
     let target = request
         .uri()
         .path_and_query()
         .map_or_else(String::new, ToString::to_string);
-    seen.lock().unwrap().push((request.method().clone(), target));
+    fake.seen.lock().unwrap().push((request.method().clone(), target));
     if request.method() != Method::GET {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
@@ -230,5 +250,5 @@ async fn answer(State(seen): State<Seen>, request: Request) -> Response {
     }
     let query: HashMap<String, String> =
         serde_urlencoded::from_str(request.uri().query().unwrap_or("")).unwrap();
-    route(request.uri().path(), &query)
+    route(request.uri().path(), &query, fake.webhooks)
 }

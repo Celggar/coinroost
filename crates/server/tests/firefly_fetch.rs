@@ -98,3 +98,14 @@ async fn fetch_refuses_what_it_should_not_trust() {
         .unwrap_err();
     assert!(secure.contains("http://"), "{secure}");
 }
+
+#[tokio::test]
+async fn a_firefly_with_webhooks_allowed_gives_them_like_any_list() {
+    let firefly = TestFirefly::with_webhooks().await;
+    let out = scratch().join("snapshot");
+    fetch::fetch(&firefly.url, TOKEN, &out).await.unwrap();
+    let snapshot = Snapshot::load(&out).unwrap();
+    assert_eq!(snapshot.counts["webhooks"], 1);
+    assert!(snapshot.unavailable.is_empty(), "{:?}", snapshot.unavailable);
+    assert!(out.join("pages/webhooks/1.json").exists());
+}
