@@ -133,6 +133,7 @@ pub struct Change {
     pub date: Date,
     pub description: String,
     pub amount_minor: i64,
+    pub currency: String,
     pub before: Sorted,
     pub after: Sorted,
     /// Whether a person set the category or the payee: those stay.
@@ -150,6 +151,7 @@ type Candidate = (
     Option<String>,
     Option<Uuid>,
     i64,
+    String,
     Uuid,
 );
 
@@ -165,7 +167,7 @@ pub async fn changes(db: &mut PgConnection, household_id: Uuid) -> ApiResult<Vec
             .collect();
     let candidates: Vec<Candidate> = sqlx::query_as(
         "select t.id, t.date, t.description, t.category_id, t.category_set_by, t.payee_id, t.payee_set_by,
-                t.rule_id, l.amount_minor, l.account_id
+                t.rule_id, l.amount_minor, l.currency, l.account_id
          from transactions t join legs l on l.transaction_id = t.id
          where t.household_id = $1
            and (t.category_set_by is distinct from 'manual' or t.payee_set_by is distinct from 'manual')
@@ -176,7 +178,9 @@ pub async fn changes(db: &mut PgConnection, household_id: Uuid) -> ApiResult<Vec
     .fetch_all(&mut *db)
     .await?;
     let mut changes = Vec::new();
-    for (id, date, description, category, category_by, payee, payee_by, rule, amount, account) in candidates {
+    for (id, date, description, category, category_by, payee, payee_by, rule, amount, currency, account) in
+        candidates
+    {
         let category_manual = category_by.as_deref() == Some("manual");
         let payee_manual = payee_by.as_deref() == Some("manual");
         let decision = sorter.decide(&description, amount, account)?;
@@ -211,6 +215,7 @@ pub async fn changes(db: &mut PgConnection, household_id: Uuid) -> ApiResult<Vec
                 date,
                 description,
                 amount_minor: amount,
+                currency,
                 before,
                 after,
                 category_manual,

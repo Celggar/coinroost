@@ -55,7 +55,9 @@ pub struct RuleChange {
     transaction_id: Uuid,
     date: Date,
     description: String,
+    /// Signed minor units in `currency`.
     amount_minor: i64,
+    currency: String,
     before: Sorting,
     after: Sorting,
 }
@@ -81,6 +83,7 @@ fn view(changes: &[Change]) -> Vec<RuleChange> {
             date: c.date,
             description: c.description.clone(),
             amount_minor: c.amount_minor,
+            currency: c.currency.clone(),
             before: Sorting::from(&c.before),
             after: Sorting::from(&c.after),
         })

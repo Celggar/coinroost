@@ -2253,6 +2253,7 @@
           "date",
           "description",
           "amount_minor",
+          "currency",
           "before",
           "after"
         ],
@@ -2270,7 +2271,11 @@
           },
           "amount_minor": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Signed minor units in `currency`."
+          },
+          "currency": {
+            "type": "string"
           },
           "before": {
             "$ref": "#/components/schemas/Sorting"

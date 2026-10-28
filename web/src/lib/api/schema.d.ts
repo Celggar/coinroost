@@ -191,15 +191,67 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The household's rules, in the order they are tried. */
+        /** The household's rules, first one first. */
         get: operations["list_rules"];
         put?: never;
-        /** Adds a rule at a position. */
+        /** Adds a rule at a position. Transactions already there keep their category and payee. */
         post: operations["create_rule"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rules/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Applies the rules again: writes exactly the changes of the preview whose tag comes in `If-Match`. */
+        post: operations["apply_rules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What applying the rules again would change. Writes nothing. */
+        post: operations["preview_rules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a rule; the ones after it move up. Transactions it sorted keep their category and payee. */
+        delete: operations["delete_rule"];
+        options?: never;
+        head?: never;
+        /** Changes a rule, or moves it. Transactions already there keep their category and payee. */
+        patch: operations["update_rule"];
         trace?: never;
     };
     "/api/v1/sessions": {
@@ -254,6 +306,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transactions/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Sets a transaction's category or payee by hand. */
+        patch: operations["update_transaction"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -300,12 +369,13 @@ export interface components {
         Accounts: {
             items: components["schemas"]["Account"][];
         };
-        /** @description What a matching rule sets; at least one. */
         Actions: {
             /** Format: uuid */
             category_id?: string | null;
             /** Format: uuid */
             payee_id?: string | null;
+            /** @description The matched text is a payment channel: the payee is the name that follows it in the description. */
+            payee_from_text?: boolean;
         };
         /**
          * Format: binary
@@ -323,22 +393,34 @@ export interface components {
         BankProfiles: {
             items: components["schemas"]["BankProfile"][];
         };
-        /** @description Conditions; every one that is set must hold, and at least one must be set. */
+        Categories: {
+            items: components["schemas"]["Category"][];
+        };
+        Category: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            kind: components["schemas"]["CategoryKind"];
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description What a category holds: spending, income, or money moved between the household's own accounts.
+         * @enum {string}
+         */
+        CategoryKind: "expense" | "income" | "transfer";
         Conditions: {
-            /** @description Case-insensitive text the description must contain. */
+            /** @description Text the description contains, compared in upper case; kept exactly as written, spaces included. */
             description_contains?: string | null;
             direction?: components["schemas"]["Direction"] | null;
             /** Format: uuid */
             account_id?: string | null;
             /**
              * Format: int64
-             * @description Smallest magnitude, in minor units, included.
+             * @description Magnitude in minor units, both ends included.
              */
             amount_min?: number | null;
-            /**
-             * Format: int64
-             * @description Largest magnitude, in minor units, included.
-             */
+            /** Format: int64 */
             amount_max?: number | null;
         };
         Coverage: {
@@ -471,17 +553,6 @@ export interface components {
             household_id: string;
             email: string;
         };
-        /** @description A category or a payee. */
-        Named: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            /** Format: date-time */
-            created_at: string;
-        };
-        NamedList: {
-            items: components["schemas"]["Named"][];
-        };
         NewAccount: {
             name: string;
             kind: components["schemas"]["AccountKind"];
@@ -492,6 +563,11 @@ export interface components {
             /** @description Id of the bank profile its exports are read with (`GET /api/v1/profiles` lists them). */
             profile?: string | null;
             detection?: components["schemas"]["Detection"];
+        };
+        NewCategory: {
+            name: string;
+            /** @description `expense` when absent. */
+            kind?: components["schemas"]["CategoryKind"];
         };
         NewLeg: {
             /** Format: uuid */
@@ -515,7 +591,7 @@ export interface components {
             name: string;
             /**
              * Format: int32
-             * @description Where it goes, 1 being first; the rules from there on move down one. Last when absent.
+             * @description Where it goes, 1 being first; last when absent.
              */
             position?: number | null;
             enabled?: boolean;
@@ -538,6 +614,16 @@ export interface components {
             category_id?: string | null;
             /** @description One leg, or two for a transfer. */
             legs: components["schemas"]["NewLeg"][];
+        };
+        Payee: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        Payees: {
+            items: components["schemas"]["Payee"][];
         };
         PreviewRow: {
             /** Format: date */
@@ -597,8 +683,60 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        RuleChange: {
+            /** Format: uuid */
+            transaction_id: string;
+            /** Format: date */
+            date: string;
+            description: string;
+            /**
+             * Format: int64
+             * @description Signed minor units in `currency`.
+             */
+            amount_minor: number;
+            currency: string;
+            before: components["schemas"]["Sorting"];
+            after: components["schemas"]["Sorting"];
+        };
+        RulePreview: {
+            /** @description Every transaction applying the rules would change, oldest first. */
+            changes: components["schemas"]["RuleChange"][];
+            /** @description The same tag as the `ETag` header: send it back in `If-Match` to apply. */
+            tag: string;
+        };
+        /** @description The fields to change; the others stay. */
+        RuleUpdate: {
+            name?: string | null;
+            /**
+             * Format: int32
+             * @description Moves the rule there; the rules in between shift by one.
+             */
+            position?: number | null;
+            enabled?: boolean | null;
+            when?: components["schemas"]["Conditions"] | null;
+            then?: components["schemas"]["Actions"] | null;
+        };
         Rules: {
             items: components["schemas"]["Rule"][];
+        };
+        RulesApplied: {
+            applied: number;
+        };
+        /**
+         * @description Who set a category or a payee.
+         * @enum {string}
+         */
+        SetBy: "rule" | "manual";
+        /** @description A transaction's category and payee, and the rule that set them. */
+        Sorting: {
+            /** Format: uuid */
+            category_id?: string | null;
+            /** Format: uuid */
+            payee_id?: string | null;
+            /** @description A payee read from the text that the household does not have yet; applying creates it. */
+            new_payee?: string | null;
+            /** Format: uuid */
+            rule_id?: string | null;
         };
         Transaction: {
             /** Format: uuid */
@@ -608,11 +746,31 @@ export interface components {
             description: string;
             /** Format: uuid */
             payee_id?: string | null;
+            payee_set_by?: components["schemas"]["SetBy"] | null;
             /** Format: uuid */
             category_id?: string | null;
+            category_set_by?: components["schemas"]["SetBy"] | null;
+            /**
+             * Format: uuid
+             * @description The rule that set the category or payee, while it exists.
+             */
+            rule_id?: string | null;
             /** Format: date-time */
             created_at: string;
             legs: components["schemas"]["Leg"][];
+        };
+        /** @description The fields to change; the others stay. What a person sets here, rules never change. */
+        TransactionUpdate: {
+            /**
+             * Format: uuid
+             * @description A category; `null` leaves the transaction without one, and rules may sort it again.
+             */
+            category_id?: string | null;
+            /**
+             * Format: uuid
+             * @description A payee; `null` leaves the transaction without one, and rules may name it again.
+             */
+            payee_id?: string | null;
         };
         Transactions: {
             items: components["schemas"]["Transaction"][];
@@ -779,7 +937,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedList"];
+                    "application/json": components["schemas"]["Categories"];
                 };
             };
             /** @description No valid session */
@@ -802,7 +960,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewName"];
+                "application/json": components["schemas"]["NewCategory"];
             };
         };
         responses: {
@@ -812,7 +970,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Named"];
+                    "application/json": components["schemas"]["Category"];
                 };
             };
             /** @description No valid session */
@@ -1026,7 +1184,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedList"];
+                    "application/json": components["schemas"]["Payees"];
                 };
             };
             /** @description No valid session */
@@ -1059,7 +1217,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Named"];
+                    "application/json": components["schemas"]["Payee"];
                 };
             };
             /** @description No valid session */
@@ -1191,6 +1349,180 @@ export interface operations {
             };
         };
     };
+    apply_rules: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The `ETag` of the preview being applied */
+                "If-Match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How many transactions changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulesApplied"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The changes are not the previewed ones any more */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No `If-Match` */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_rules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The changes, tagged with `ETag` */
+            200: {
+                headers: {
+                    /** @description Tag of this list of changes */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulePreview"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The rule */
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such rule */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The rule */
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description The rule as it is now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rule"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such rule */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A value is not valid or refers to nothing */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     log_in: {
         parameters: {
             query?: never;
@@ -1260,6 +1592,8 @@ export interface operations {
                 from?: string;
                 /** @description Last date included. */
                 to?: string;
+                /** @description Only transactions without a category. */
+                uncategorized?: boolean;
                 /** @description At most this many, newest first (default 100, at most 1000). */
                 limit?: number;
             };
@@ -1330,6 +1664,60 @@ export interface operations {
                 };
             };
             /** @description The legs or a reference are not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_transaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The transaction */
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransactionUpdate"];
+            };
+        };
+        responses: {
+            /** @description The transaction as it is now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Transaction"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such transaction */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The category or payee does not exist */
             422: {
                 headers: {
                     [name: string]: unknown;
