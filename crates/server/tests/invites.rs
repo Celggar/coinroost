@@ -2,7 +2,7 @@
 
 mod common;
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use axum::http::StatusCode;
 use coinroost_server::{auth, invites};
@@ -232,25 +232,50 @@ async fn a_short_password_or_a_taken_email_leaves_the_link_usable(db: PgPool) {
     );
 }
 
+/// Both acceptances pass the first check before either uses the link: the test holds the link's row until both
+/// wait on it, so only the statement that uses the link can stop the second.
 #[sqlx::test]
 async fn two_acceptances_at_once_make_one_user(db: PgPool) {
-    let api = Api::new(db);
+    let api = Api::new(db.clone());
     let token = link(&api, None).await;
     let enrollment = enroll(&api, &token).await;
     let now = code(&enrollment, 0);
-    let (first, second) = tokio::join!(
-        accept(&api, &token, "first@example.com", &now),
-        accept(&api, &token, "second@example.com", &now)
-    );
-    let mut statuses = [first.0, second.0];
-    statuses.sort();
+    let mut hold = db.begin().await.unwrap();
+    sqlx::query("select 1 from invites for update")
+        .execute(&mut *hold)
+        .await
+        .unwrap();
+    let racers: Vec<_> = ["first@example.com", "second@example.com"]
+        .into_iter()
+        .map(|email| {
+            let (api, token, now) = (Api::new(db.clone()), token.clone(), now.clone());
+            tokio::spawn(async move { accept(&api, &token, email, &now).await })
+        })
+        .collect();
+    let mut waiting = 0;
+    for _ in 0..400 {
+        waiting = sqlx::query_scalar::<_, i64>(
+            "select count(*) from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'",
+        )
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        if waiting == 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
     assert_eq!(
-        statuses,
-        [StatusCode::CREATED, StatusCode::NOT_FOUND],
-        "{} / {}",
-        first.1,
-        second.1
+        waiting, 2,
+        "the two acceptances never waited on the link together"
     );
+    hold.rollback().await.unwrap();
+    let mut statuses = Vec::new();
+    for racer in racers {
+        statuses.push(racer.await.unwrap().0);
+    }
+    statuses.sort();
+    assert_eq!(statuses, [StatusCode::CREATED, StatusCode::NOT_FOUND]);
     assert_eq!(users(&api).await, 1);
 }
 
