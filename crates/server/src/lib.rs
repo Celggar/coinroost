@@ -9,6 +9,7 @@ pub mod employers;
 pub mod error;
 pub mod firefly;
 mod import;
+pub mod invites;
 pub mod mcp;
 mod pairing;
 mod routes;
@@ -69,6 +70,7 @@ fn api() -> OpenApiRouter<AppState> {
     OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::system::router())
         .merge(routes::session::router())
+        .merge(routes::invites::router())
         .merge(routes::accounts::router())
         .merge(routes::catalog::router())
         .merge(routes::rules::router())

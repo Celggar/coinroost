@@ -6,6 +6,7 @@ pub mod apply;
 pub mod catalog;
 pub mod coverage;
 pub mod imports;
+pub mod invites;
 pub mod payroll;
 pub mod removal;
 pub mod reports;

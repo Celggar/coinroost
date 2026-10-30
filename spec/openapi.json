@@ -454,6 +454,158 @@
         }
       }
     },
+    "/api/v1/invites/accept": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "Uses the link once: creates the user with the email, password and authenticator secret, and logs them in.",
+        "operationId": "accept",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The user exists and is logged in; the token is also set as a cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewSession"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The link was used, expired or does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A user with that email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Wrong code, short password, no email, or no authenticator step yet; the link still works",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/invites/check": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "Whether a setup link still works. A used, expired or unknown link answers 404 the same way.",
+        "operationId": "check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The link works",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteState"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The link was used, expired or does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
+    "/api/v1/invites/enrollment": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "The link's authenticator secret, made by the server the first time and the same on every later call.",
+        "operationId": "enrollment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "What the authenticator app needs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteEnrollment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The link was used, expired or does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1781,6 +1933,32 @@
   },
   "components": {
     "schemas": {
+      "AcceptInvite": {
+        "type": "object",
+        "required": [
+          "token",
+          "email",
+          "password",
+          "code"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "description": "At least 12 characters."
+          },
+          "code": {
+            "type": "string",
+            "description": "The 6-digit code the authenticator app shows now for the link's secret."
+          }
+        },
+        "additionalProperties": false
+      },
       "Account": {
         "type": "object",
         "required": [
@@ -2332,6 +2510,23 @@
           }
         }
       },
+      "EnrollmentRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "email"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "description": "The email the person will log in with; it only labels the entry in their authenticator app."
+          }
+        },
+        "additionalProperties": false
+      },
       "FortnightLine": {
         "type": "object",
         "required": [
@@ -2626,6 +2821,58 @@
             "description": "Rows that could not be read; they were not imported."
           }
         }
+      },
+      "InviteEnrollment": {
+        "type": "object",
+        "required": [
+          "uri",
+          "secret",
+          "qr_svg"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "The `otpauth://` URI an authenticator app enrolls from."
+          },
+          "secret": {
+            "type": "string",
+            "description": "The same secret in base32, for apps where it is typed in."
+          },
+          "qr_svg": {
+            "type": "string",
+            "description": "A QR code of `uri`, as an SVG image."
+          }
+        }
+      },
+      "InviteState": {
+        "type": "object",
+        "required": [
+          "expires_at",
+          "new_household"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "new_household": {
+            "type": "boolean",
+            "description": "True when accepting it makes a new household; false when it joins an existing one."
+          }
+        }
+      },
+      "InviteToken": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The token from the link's fragment (after `#`)."
+          }
+        },
+        "additionalProperties": false
       },
       "Leg": {
         "type": "object",

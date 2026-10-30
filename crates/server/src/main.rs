@@ -10,6 +10,8 @@
 //! `coinroost-server payroll load <employers.json> --household <id>`: loads employers by name; again, nothing changes.
 //! `coinroost-server accounts load <accounts.toml> --household <id>`: sets each listed account's profile and the
 //! detection that tells its exports apart, by namespace (accounts made by a migration have none); again, nothing changes.
+//! `coinroost-server invite add [--household <id>] [--url <base>]`: prints a single-use setup link (one hour) for a
+//! new user, of a new household unless one is given; the link is `<base>/setup#<token>`.
 //! `coinroost-server token add <email> --name <label> [--read-only]`: prints a new API token for the user, once.
 //! `coinroost-server token revoke <email> --name <label>`: revokes the user's live token of that name.
 //! `coinroost-server firefly fetch --out <dir>`: reads a Firefly III ledger with GET requests only into a new
@@ -24,7 +26,7 @@ use std::process::ExitCode;
 
 use coinroost_server::tokens::{self, Scope};
 use coinroost_server::{
-    AppState, MIGRATOR, SHELL, account_rules, app, auth, employers, firefly, mcp, openapi, rule_set,
+    AppState, MIGRATOR, SHELL, account_rules, app, auth, employers, firefly, invites, mcp, openapi, rule_set,
 };
 use sqlx::migrate::MigrateDatabase;
 use sqlx::postgres::PgPoolOptions;
@@ -33,6 +35,7 @@ use uuid::Uuid;
 const USAGE: &str = "usage: coinroost-server serve | migrate | user add <email> [--household <id>]
        | rules load <set.json> --household <id> | payroll load <employers.json> --household <id>
        | accounts load <accounts.toml> --household <id>
+       | invite add [--household <id>] [--url <base>]
        | token add <email> --name <label> [--read-only] | token revoke <email> --name <label> | openapi
        | firefly fetch --out <dir> | firefly import <dir> --household <id> --accounts <map.json>
        | firefly check <dir> --household <id> --accounts <map.json>";
@@ -62,6 +65,7 @@ async fn main() -> ExitCode {
             Ok(id) => load_accounts(file, id).await,
             Err(e) => Err(format!("--household: {e}")),
         },
+        ["invite", "add", rest @ ..] => add_invite(rest).await,
         ["token", "add", email, "--name", name] => add_token(email, name, Scope::Write).await,
         ["token", "add", email, "--name", name, "--read-only"] => add_token(email, name, Scope::Read).await,
         ["token", "revoke", email, "--name", name] => revoke_token(email, name).await,
@@ -215,6 +219,29 @@ fn read_password() -> Result<String, String> {
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).map_err(|e| e.to_string())?;
     Ok(line.trim_end_matches(['\r', '\n']).to_owned())
+}
+
+async fn add_invite(options: &[&str]) -> Result<(), String> {
+    let (mut household, mut base) = (None, "");
+    for pair in options.chunks(2) {
+        match pair {
+            ["--household", id] => {
+                household = Some(Uuid::parse_str(id).map_err(|e| format!("--household: {e}"))?);
+            }
+            ["--url", url] => base = url.trim_end_matches('/'),
+            _ => return Err(USAGE.to_owned()),
+        }
+    }
+    let db = connect().await?;
+    let invite = invites::create(&db, household).await.map_err(|e| e.to_string())?;
+    let expires = invite
+        .expires_at
+        .format(&time::format_description::well_known::Rfc3339)
+        .map_err(|e| e.to_string())?;
+    eprintln!("a setup link for one new user; it works once, until {expires}, and is shown only now:");
+    println!("invite {base}/setup#{}", invite.token);
+    println!("expires {expires}");
+    Ok(())
 }
 
 async fn add_token(email: &str, name: &str, scope: Scope) -> Result<(), String> {

@@ -39,6 +39,12 @@ pub struct NewSession {
     expires_at: OffsetDateTime,
 }
 
+impl NewSession {
+    pub fn new(token: String, expires_at: OffsetDateTime) -> NewSession {
+        NewSession { token, expires_at }
+    }
+}
+
 /// Starts a session. Every failure answers 401 the same way, whatever was wrong.
 #[utoipa::path(post, path = "/api/v1/sessions", tag = "session", security(()), request_body = LogIn,
     responses(
@@ -47,7 +53,7 @@ pub struct NewSession {
 async fn log_in(State(state): State<AppState>, Json(body): Json<LogIn>) -> ApiResult<Response> {
     let (token, expires_at) = auth::login(&state.db, &body.email, &body.password, &body.code).await?;
     let cookie = auth::session_cookie(&token);
-    let body = Json(NewSession { token, expires_at });
+    let body = Json(NewSession::new(token, expires_at));
     Ok((StatusCode::CREATED, [(header::SET_COOKIE, cookie)], body).into_response())
 }
 

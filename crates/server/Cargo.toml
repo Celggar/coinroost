@@ -25,6 +25,7 @@ http-body-util = "0.1"
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "tokio"] }
 iso_currency = "0.7.1"
+qrcodegen = "1.8.0"
 rand = "0.10.3"
 # The MCP SDK, pinned: releases come weekly and a new one waits a week before it is taken.
 rmcp = { version = "=3.5.1", default-features = false, features = ["server", "macros", "transport-streamable-http-server"] }

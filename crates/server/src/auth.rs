@@ -152,18 +152,46 @@ pub async fn create_user(
     email: &str,
     password: &str,
 ) -> ApiResult<(Uuid, Vec<u8>)> {
-    let email = email.trim().to_lowercase();
-    let secret: [u8; 20] = rand::random();
+    let secret = new_secret();
+    let enrolled = Enrolled {
+        secret: &secret,
+        last_step: 0,
+    };
+    let id = insert_user(db, household_id, email, &hash_password(password)?, enrolled).await?;
+    Ok((id, secret))
+}
+
+/// A secret for an authenticator app: 160 random bits, the size RFC 4226 recommends.
+pub fn new_secret() -> Vec<u8> {
+    rand::random::<[u8; 20]>().to_vec()
+}
+
+/// The authenticator a new user starts with: its secret and the last step a code was accepted for.
+pub struct Enrolled<'a> {
+    pub secret: &'a [u8],
+    pub last_step: i64,
+}
+
+/// Stores a user whose password is already hashed ([`hash_password`]).
+pub async fn insert_user(
+    db: impl PgExecutor<'_>,
+    household_id: Uuid,
+    email: &str,
+    password_hash: &str,
+    enrolled: Enrolled<'_>,
+) -> ApiResult<Uuid> {
     let (id,): (Uuid,) = sqlx::query_as(
-        "insert into users (household_id, email, password_hash, totp_secret) values ($1, $2, $3, $4) returning id",
+        "insert into users (household_id, email, password_hash, totp_secret, totp_last_step)
+         values ($1, $2, $3, $4, $5) returning id",
     )
     .bind(household_id)
-    .bind(&email)
-    .bind(hash_password(password)?)
-    .bind(secret.as_slice())
+    .bind(email.trim().to_lowercase())
+    .bind(password_hash)
+    .bind(enrolled.secret)
+    .bind(enrolled.last_step)
     .fetch_one(db)
     .await?;
-    Ok((id, secret.to_vec()))
+    Ok(id)
 }
 
 /// A user added from the console, and what their authenticator app needs.
@@ -195,8 +223,20 @@ pub async fn enroll(
         household_id,
         user_id,
         uri: enrollment_uri(&account, &secret)?,
-        secret_base32: totp(&secret, &account)?.secret().to_base32(),
+        secret_base32: secret_base32(&secret)?,
     })
+}
+
+/// The secret in base32, for apps where it is typed in.
+pub fn secret_base32(secret: &[u8]) -> ApiResult<String> {
+    Ok(totp(secret, "user")?.secret().to_base32())
+}
+
+/// The time step a code matches now (one step of drift either way), or `None` when it does not match.
+pub fn code_step(secret: &[u8], code: &str) -> ApiResult<Option<i64>> {
+    Ok(totp(secret, "user")?
+        .check(code.trim(), now_seconds())
+        .and_then(|step| i64::try_from(step).ok()))
 }
 
 /// The `otpauth://` URI an authenticator app enrolls from.
@@ -255,9 +295,7 @@ pub async fn login(
     let password_ok = Argon2::default()
         .verify_password(password.as_bytes(), password_hash.as_str())
         .is_ok();
-    let step = totp(&secret, email)?
-        .check(code.trim(), now_seconds())
-        .and_then(|step| i64::try_from(step).ok());
+    let step = code_step(&secret, code)?;
     let code_ok = step.is_some_and(|step| step > last_step);
     if !(password_ok && code_ok) {
         sqlx::query(
@@ -284,6 +322,11 @@ pub async fn login(
     if claimed.rows_affected() == 0 {
         return Err(ApiError::Unauthorized);
     }
+    new_session(db, user_id).await
+}
+
+/// Opens a session for the user and returns its token, which is stored only as its hash.
+pub async fn new_session(db: impl PgExecutor<'_>, user_id: Uuid) -> ApiResult<(String, OffsetDateTime)> {
     let token = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 32]>());
     let expires_at = OffsetDateTime::now_utc() + time::Duration::days(SESSION_DAYS);
     sqlx::query("insert into sessions (token_hash, user_id, expires_at) values ($1, $2, $3)")
