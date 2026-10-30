@@ -16,9 +16,26 @@ api.use({
 	}
 });
 
+// Whether the first account can still be made from the web, asked alongside the first session check so the login
+// does not wait for a second round trip. Each answer is used once: the next login asks again.
+let firstAccount: Promise<boolean> | undefined;
+
+function askFirstAccount(): Promise<boolean> {
+	return api.GET('/api/v1/first-account').then(({ data }) => data?.open ?? false);
+}
+
+export function firstAccountOpen(): Promise<boolean> {
+	const answer = firstAccount ?? askFirstAccount();
+	firstAccount = undefined;
+	return answer;
+}
+
 export async function refresh(): Promise<void> {
+	if (!session.checked) firstAccount ??= askFirstAccount();
 	const { data } = await api.GET('/api/v1/me');
 	session.user = data ?? null;
+	// Someone is logged in, so the app has users: an answer asked before is stale.
+	if (data) firstAccount = undefined;
 	session.checked = true;
 }
 
