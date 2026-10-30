@@ -1,7 +1,8 @@
 <script lang="ts">
 	// Six digit slots drawn over one real input, so pasting and the one-time-code autofill land in a single field;
 	// the slots are decoration and hidden from screen readers. The field keeps digits only, six at most (a pasted
-	// "123 456" becomes "123456"); the server takes spaces and dashes too.
+	// "123 456" becomes "123456"); the server takes spaces and dashes too. A digit pops in and fades out with its
+	// `{#key}` block, hence the global transitions; the ring moves from slot to slot by fading.
 	import { pop, shake as shakeRow, vanish } from '#lib/motion.ts';
 
 	let {
@@ -37,7 +38,7 @@
 			{#if i === 3}<span class="dash" aria-hidden="true"></span>{/if}
 			<span class="slot" class:active={i === active} aria-hidden="true">
 				{#key digit}
-					{#if digit}<span in:pop out:vanish>{digit}</span>{/if}
+					{#if digit}<span in:pop|global out:vanish|global>{digit}</span>{/if}
 				{/key}
 				{#if i === active && !digit}<span class="caret"></span>{/if}
 			</span>
@@ -72,6 +73,7 @@
 		margin-top: 2px;
 	}
 	.slot {
+		position: relative;
 		flex: 1 1 0;
 		min-width: 0;
 		max-width: 48px;
@@ -84,18 +86,36 @@
 		font-size: 1.375rem;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
-		transition:
-			border-color var(--duration-short) var(--ease-standard),
-			box-shadow var(--duration-short) var(--ease-standard);
 	}
 	.slot > :global(*) {
 		grid-area: 1 / 1;
 	}
-	.slot.active {
-		border-color: var(--focus);
+	/* The ring of the active slot is a layer of its own, so only its opacity changes. */
+	.slot::after {
+		content: '';
+		position: absolute;
+		inset: -1px;
+		border: 1px solid var(--focus);
+		border-radius: 10px;
 		box-shadow:
 			0 0 0 2px var(--ring-gap, var(--surface)),
 			0 0 0 4px var(--focus);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--duration-short) var(--ease-standard);
+	}
+	.slot.active::after {
+		opacity: 1;
+	}
+	/* Forced colors drop shadows: the system draws the ring as an outline. */
+	@media (forced-colors: active) {
+		.slot::after {
+			display: none;
+		}
+		.slot.active {
+			outline: 2px solid Highlight;
+			outline-offset: 2px;
+		}
 	}
 	.dash {
 		flex: none;

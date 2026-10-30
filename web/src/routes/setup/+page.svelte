@@ -2,16 +2,16 @@
 	// A single-use setup link: the token is the part after `#`, which the browser never sends in a request; the
 	// API gets it in request bodies only. Step 1 asks for the email and password, step 2 shows the authenticator
 	// secret the server made for this link and checks a code with it; then the person is in. Steps slide in from
-	// the side they come from, and the card grows or shrinks to the new step.
+	// the side they come from, and the card grows or shrinks to the new step (the shell's job).
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
 	import CodeField from '#lib/auth/CodeField.svelte';
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { followHeight, pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
+	import { DURATION, pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh } from '#lib/session.svelte.ts';
 
 	type Step = 'checking' | 'invalid' | 'account' | 'code';
@@ -30,6 +30,7 @@
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 	let passwordField: PasswordField | undefined = $state();
 	let codeField: CodeField | undefined = $state();
+	let introEnded: (() => void) | undefined;
 
 	const qr = $derived(enrollment ? `data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}` : '');
 	const grouped = $derived(enrollment?.secret.match(/.{1,4}/g)?.join(' ') ?? '');
@@ -41,6 +42,21 @@
 
 	function fail(text: string) {
 		error = { text, n: error.n + 1 };
+	}
+
+	/** Back to an earlier step with a message: the step's alert region is on the page, empty, before the message
+	 * lands in it, so screen readers announce it. */
+	async function backWith(next: Step, text: string) {
+		error = { text: '', n: error.n + 1 };
+		const arrived = new Promise<void>((resolve) => (introEnded = resolve));
+		go(next);
+		await tick();
+		await Promise.race([
+			arrived,
+			new Promise((resolve) => setTimeout(resolve, DURATION.medium * 2))
+		]);
+		introEnded = undefined;
+		fail(text);
 	}
 
 	onMount(async () => {
@@ -55,6 +71,7 @@
 
 	async function toCode(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		passwordField?.hide();
 		busy = true;
 		const {
@@ -78,6 +95,7 @@
 
 	async function finish(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		busy = true;
 		const { error: failure, response } = await api.POST('/api/v1/invites/accept', {
 			body: { token, email, password, code }
@@ -92,8 +110,7 @@
 		if (response.status === 404) {
 			go('invalid');
 		} else if (response.status === 409) {
-			fail(t('setup.taken'));
-			go('account');
+			await backWith('account', t('setup.taken'));
 		} else if (response.status === 422) {
 			fail(t('setup.wrong_code'));
 			codeField?.shake();
@@ -119,12 +136,17 @@
 	<title>{t('app.title', { page: t('setup.title') })}</title>
 </svelte:head>
 
-<AuthShell>
+<AuthShell compact>
 	<h1>{t('setup.title')}</h1>
-	<div class="steps" use:followHeight>
+	<div class="steps">
 		<div class="cell">
 			{#key step}
-				<div class="step" in:stepIn={{ direction }} out:stepOut={{ direction }}>
+				<div
+					class="step"
+					in:stepIn={{ direction }}
+					out:stepOut={{ direction }}
+					onintroend={() => introEnded?.()}
+				>
 					{#if step === 'checking'}
 						<p class="checking">
 							<span class="spinner" aria-hidden="true"></span>{t('setup.checking')}
@@ -149,7 +171,9 @@
 							/>
 							<div class="actions">
 								<FormAlert {...error} />
-								<button type="submit" class="primary" disabled={busy}>{t('setup.continue')}</button>
+								<button type="submit" class="primary" aria-disabled={busy} data-flip
+									>{t('setup.continue')}</button
+								>
 							</div>
 						</form>
 					{:else if enrollment}
@@ -189,7 +213,7 @@
 							/>
 							<div class="actions">
 								<FormAlert {...error} />
-								<button type="submit" class="primary" disabled={busy}>
+								<button type="submit" class="primary" aria-disabled={busy} data-flip>
 									{#key busy}
 										<span in:pop={{ start: 0.9 }} out:vanish>
 											{busy ? t('setup.busy') : t('setup.finish')}
@@ -197,7 +221,7 @@
 									{/key}
 								</button>
 							</div>
-							<button type="button" class="back" onclick={back}>{t('setup.back')}</button>
+							<button type="button" class="back" onclick={back} data-flip>{t('setup.back')}</button>
 						</form>
 					{/if}
 				</div>
@@ -207,17 +231,9 @@
 </AuthShell>
 
 <style>
-	/* Room around the steps so focus rings are not clipped while a step slides; the step label sits right under
-	   the title, as in the design. */
+	/* The step label sits right under the title, as in the design. */
 	.steps {
-		margin: -22px -8px -8px;
-		padding: 8px;
-		overflow: clip;
-	}
-	@media (prefers-reduced-motion: no-preference) {
-		.steps {
-			transition: height var(--duration-medium) var(--ease-standard);
-		}
+		margin-top: -20px;
 	}
 	.cell {
 		display: grid;
@@ -231,7 +247,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		margin: 0;
+		margin: 6px 0 0;
 		color: var(--muted);
 	}
 	.spinner {
@@ -302,12 +318,10 @@
 		background: color-mix(in oklab, var(--accent) 12%, transparent);
 		color: var(--link);
 		font-weight: 600;
+		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 	}
 	.copy > :global(*) {
 		grid-area: 1 / 1;
-	}
-	.copy:hover {
-		background: color-mix(in oklab, var(--accent) 20%, transparent);
 	}
 	.open {
 		font-weight: 600;
@@ -327,8 +341,6 @@
 		color: var(--link);
 		text-decoration: underline;
 		text-underline-offset: 3px;
-	}
-	.back:hover {
-		background: transparent;
+		--state-layer: transparent;
 	}
 </style>

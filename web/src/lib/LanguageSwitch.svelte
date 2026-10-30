@@ -61,9 +61,6 @@
 		font-size: 0.95rem;
 		color: var(--muted);
 		cursor: pointer;
-		transition:
-			background-color var(--duration-short) var(--ease-standard),
-			color var(--duration-short) var(--ease-standard);
 	}
 	label.chosen {
 		color: var(--text);
@@ -82,5 +79,12 @@
 	label:has(input:focus-visible) {
 		outline: 3px solid var(--focus);
 		outline-offset: 2px;
+	}
+	/* Forced colors drop the chosen pill's background: an outline marks it instead. */
+	@media (forced-colors: active) {
+		label.chosen {
+			outline: 1px solid CanvasText;
+			outline-offset: -1px;
+		}
 	}
 </style>

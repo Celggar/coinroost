@@ -5,50 +5,19 @@
 	// Glass is kept nearly opaque (80 %) because no iPhone browser honors prefers-reduced-transparency: the card has
 	// to pass contrast on its own. The QR and fields sit on solid surfaces, never on the glass itself. Everything
 	// arrives with a one-time CSS animation (Svelte intros depend on how the page mounted); with reduced motion it
-	// only fades.
+	// only fades. The card's height follows what the page puts in it, so it grows and shrinks instead of jumping.
+	// `compact` drops the tagline on a phone, for a page whose card needs the room.
 	import type { Snippet } from 'svelte';
 	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import AuthLines from '#lib/auth/AuthLines.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { followContent } from '#lib/motion.ts';
 
-	let { children }: { children: Snippet } = $props();
-
-	// Wide screens get long waves across the page; phones get two short bands, top and bottom.
-	const wide = [
-		'M-40 620 C 220 520, 380 700, 640 560 S 1040 380, 1320 470',
-		'M-40 660 C 240 560, 400 740, 660 600 S 1060 420, 1320 510',
-		'M-40 700 C 260 600, 420 780, 680 640 S 1080 460, 1320 550',
-		'M-40 160 C 200 260, 420 60, 700 180 S 1100 300, 1320 200',
-		'M-40 200 C 220 300, 440 100, 720 220 S 1120 340, 1320 240'
-	];
-	const narrow = [
-		'M-20 92 C 70 140, 150 40, 250 90 S 360 150, 410 110',
-		'M-20 122 C 80 170, 160 70, 260 120 S 370 180, 410 140',
-		'M-20 760 C 60 700, 150 800, 240 740 S 350 680, 410 720',
-		'M-20 792 C 70 732, 160 832, 250 772 S 360 712, 410 752'
-	];
+	let { children, compact = false }: { children: Snippet; compact?: boolean } = $props();
 </script>
 
 <div class="shell">
-	<svg
-		class="lines wide"
-		aria-hidden="true"
-		viewBox="0 0 1280 800"
-		preserveAspectRatio="xMidYMid slice"
-	>
-		{#each wide as d, i (d)}
-			<path {d} pathLength="1" style:animation-delay="{i * 70}ms" />
-		{/each}
-	</svg>
-	<svg
-		class="lines narrow"
-		aria-hidden="true"
-		viewBox="0 0 390 844"
-		preserveAspectRatio="xMidYMid slice"
-	>
-		{#each narrow as d, i (d)}
-			<path {d} pathLength="1" style:animation-delay="{i * 70}ms" />
-		{/each}
-	</svg>
+	<AuthLines />
 
 	<div class="language"><LanguageSwitch /></div>
 
@@ -62,13 +31,17 @@
 				</svg>
 				{t('app.name')}
 			</p>
-			<p class="tagline">{t('auth.tagline')}</p>
+			<p class="tagline" class:compact>{t('auth.tagline')}</p>
 		</div>
 		<div class="stage">
 			<div class="glow first" aria-hidden="true"></div>
 			<div class="glow second" aria-hidden="true"></div>
 			<section class="glass">
-				{@render children()}
+				<div class="fit" use:followContent>
+					<div class="content">
+						{@render children()}
+					</div>
+				</div>
 			</section>
 		</div>
 	</div>
@@ -112,29 +85,12 @@
 		}
 	}
 
-	.lines {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		z-index: -1;
-		fill: none;
-		stroke: var(--line);
-		stroke-width: 2;
-		opacity: var(--line-opacity);
-	}
-	.lines path {
-		animation: fade-in var(--duration-long) var(--ease-standard) backwards;
-	}
-	.narrow {
-		display: none;
-	}
-
 	.language {
 		position: absolute;
 		top: 24px;
 		right: 32px;
 		z-index: 1;
+		animation: fade-in var(--duration-long) var(--ease-enter) 120ms backwards;
 	}
 
 	.layout {
@@ -143,7 +99,8 @@
 		min-height: 100dvh;
 		max-width: 1280px;
 		margin: 0 auto;
-		padding: 96px 112px;
+		/* 112 px at 1280 wide, down to 32 px at 900, so the brand column keeps room for the tagline. */
+		padding: 96px clamp(32px, 21vw - 157px, 112px);
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
 		align-items: center;
@@ -199,7 +156,7 @@
 		aspect-ratio: 1;
 		border-radius: 50%;
 		pointer-events: none;
-		animation: fade-in 1100ms var(--ease-standard) backwards;
+		animation: fade-in 560ms var(--ease-enter) backwards;
 	}
 	.glow.first {
 		left: -22%;
@@ -233,6 +190,16 @@
 		-webkit-backdrop-filter: blur(16px) saturate(160%);
 		backdrop-filter: blur(16px) saturate(160%);
 		animation: fade-in var(--duration-long) var(--ease-enter) 160ms backwards;
+	}
+	/* The box that follows the content: the only height that animates (≤300 ms). The 8 px of room keep focus rings
+	   and a sliding step from being cut at its edges. */
+	.fit {
+		position: relative;
+		margin: -8px;
+		padding: 8px;
+		overflow: clip;
+	}
+	.content {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: 20px;
@@ -273,6 +240,10 @@
 	.glass :global(button.primary > *) {
 		grid-area: 1 / 1;
 	}
+	/* Busy keeps its full color, so the label that says what is happening stays readable. */
+	.glass :global(button.primary[aria-disabled='true']) {
+		cursor: progress;
+	}
 	.glass :global(.actions) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -281,14 +252,15 @@
 	/* Moving entrances only for people who have not asked for less motion; the others get the fades above. */
 	@media (prefers-reduced-motion: no-preference) {
 		.brand > *,
-		.glass {
+		.glass,
+		.language {
 			animation-name: rise-in;
+		}
+		.fit {
+			transition: height var(--duration-medium) var(--ease-standard);
 		}
 		.glow {
 			animation-name: glow-in;
-		}
-		.lines path {
-			animation: draw 1600ms var(--ease-standard) backwards;
 		}
 	}
 
@@ -303,22 +275,21 @@
 	}
 
 	@media (max-width: 899px) {
-		.wide {
-			display: none;
-		}
-		.narrow {
-			display: block;
-		}
 		.language {
 			top: 56px;
-			right: 16px;
+			/* Lines up with the edge of the centered column on a tablet. */
+			right: max(16px, calc((100% - 480px) / 2));
 		}
 		.layout {
 			grid-template-columns: minmax(0, 1fr);
 			align-content: start;
 			align-items: start;
 			gap: 16px;
+			max-width: 512px;
 			padding: 56px 16px 24px;
+		}
+		.tagline.compact {
+			display: none;
 		}
 		.brand {
 			gap: 16px;
@@ -374,17 +345,6 @@
 		from {
 			opacity: 0;
 			transform: scale(0.8);
-		}
-	}
-	/* The dash only lives while the line draws: a scaled SVG with pathLength draws dashes wrong in Chromium. */
-	@keyframes draw {
-		from {
-			stroke-dasharray: 1;
-			stroke-dashoffset: 1;
-		}
-		to {
-			stroke-dasharray: 1;
-			stroke-dashoffset: 0;
 		}
 	}
 </style>

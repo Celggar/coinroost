@@ -20,6 +20,7 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		passwordField?.hide();
 		busy = true;
 		const { error: failure, response } = await api.POST('/api/v1/sessions', {
@@ -70,7 +71,7 @@
 		/>
 		<div class="actions">
 			<FormAlert {...error} />
-			<button type="submit" class="primary" disabled={busy}>
+			<button type="submit" class="primary" aria-disabled={busy} data-flip>
 				{#key busy}
 					<span in:pop={{ start: 0.9 }} out:vanish>{busy ? t('login.busy') : t('login.title')}</span
 					>

@@ -81,11 +81,9 @@
 		color: var(--link);
 		font-weight: 600;
 		font-size: 0.9rem;
+		--state-layer: color-mix(in oklab, var(--accent) 12%, transparent);
 	}
 	.reveal > :global(*) {
 		grid-area: 1 / 1;
-	}
-	.reveal:hover {
-		background: color-mix(in oklab, var(--accent) 12%, transparent);
 	}
 </style>

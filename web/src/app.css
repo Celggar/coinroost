@@ -130,22 +130,48 @@ button,
 	padding: 8px 14px;
 	cursor: pointer;
 	min-height: 44px;
+	position: relative;
+	isolation: isolate;
 	transition:
 		transform var(--duration-short) var(--ease-standard),
-		background-color var(--duration-short) var(--ease-standard),
-		border-color var(--duration-short) var(--ease-standard),
 		opacity var(--duration-short) var(--ease-standard);
 }
 
-button:hover:not(:disabled, .secondary),
-.button:hover {
-	background: var(--accent-hover);
-	border-color: var(--accent-hover);
+/* Hover is a layer of the hover color under the label (Material 3 state layers), so only its opacity animates. A
+   button sets `--state-layer` to tint differently, or to transparent for none. */
+button::before,
+.button::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: var(--state-layer, var(--accent-hover));
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--duration-short) var(--ease-standard);
+}
+
+button:hover:not(:disabled, [aria-disabled='true'])::before,
+.button:hover::before {
+	opacity: 1;
+}
+
+button.secondary {
+	--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+/* Forced colors paint their own states; the layer would only hide the label. */
+@media (forced-colors: active) {
+	button::before,
+	.button::before {
+		display: none;
+	}
 }
 
 /* A press gives way a little. */
 @media (prefers-reduced-motion: no-preference) {
-	button:active:not(:disabled),
+	button:active:not(:disabled, [aria-disabled='true']),
 	.button:active {
 		transform: scale(0.97);
 	}
@@ -172,9 +198,6 @@ select {
 	padding: 8px 10px;
 	min-height: 44px;
 	width: 100%;
-	transition:
-		border-color var(--duration-short) var(--ease-standard),
-		box-shadow var(--duration-short) var(--ease-standard);
 }
 
 /* Grid tracks are minmax(0, 1fr) so a wide child (a table, a file input) scrolls inside its box instead of
