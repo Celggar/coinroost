@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { goto } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
 	import { i18n, t, type Key } from '#lib/i18n.svelte.ts';
@@ -34,6 +34,18 @@
 		}
 	});
 
+	// Pages cross-fade into each other where the browser has view transitions (SvelteKit's recipe), so nothing
+	// appears or disappears in one frame.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
+
 	async function leave() {
 		await logOut();
 		await goto('/login');
@@ -60,7 +72,7 @@
 {/if}
 
 {#if onPublic || session.user}
-	<main>{@render children()}</main>
+	<main class:public={onPublic}>{@render children()}</main>
 {:else}
 	<main><p class="hint">{t('app.loading')}</p></main>
 {/if}

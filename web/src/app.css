@@ -1,12 +1,17 @@
 :root {
-	--bg: #fafaf7;
+	/* Neutrals: Tailwind 4.3.3 `mist`; accent: Tailwind `green`. Pairs measured for WCAG AA on --surface and --bg:
+	   text 17:1, muted 7.3:1, field border 4.6:1, accent with its text 4.95:1 (hover 7.1:1). */
+	--bg: #f9fbfb;
 	--surface: #ffffff;
-	--text: #1c1b18;
-	--muted: #5c5a52;
-	--border: #d9d6cc;
-	--accent: #8a5a00;
+	--text: #161b1d;
+	--muted: #4b585b;
+	--border: #d0d6d8;
+	--field-border: #67787c;
+	--accent: #008236;
+	--accent-hover: #016630;
 	--accent-text: #ffffff;
-	--focus: #1d4ed8;
+	--link: #016630;
+	--focus: #008236;
 	--ok: #1f6f3f;
 	--ok-bg: #e3f2e8;
 	--warn: #7a4b00;
@@ -17,28 +22,38 @@
 	/* Charts: income and spending are categorical slots 1 and 2, checked for color blindness against --surface. */
 	--chart-income: #2a78d6;
 	--chart-spending: #eb6834;
-	--chart-grid: #e8e6df;
-	--chart-axis: #b9b6aa;
+	--chart-grid: #e3e7e8;
+	--chart-axis: #9ca8ab;
+	/* Motion: Material 3 easing and duration tokens. Things enter decelerating and leave accelerating, faster. */
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+	--ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+	--duration-short: 150ms;
+	--duration-exit: 200ms;
+	--duration-medium: 300ms;
+	--duration-long: 500ms;
 	color-scheme: light dark;
+	/* The system font stack: San Francisco on Apple devices, Segoe UI on Windows, Roboto on Android, Noto or
+	   Liberation on Linux (system-ui is left out: on some Linux setups it resolves to a font with no bold). */
 	font-family:
-		system-ui,
-		-apple-system,
-		'Segoe UI',
-		Roboto,
+		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Liberation Sans', Arial,
 		sans-serif;
 	line-height: 1.5;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #15140f;
-		--surface: #1f1e18;
-		--text: #f1efe6;
-		--muted: #b3afa1;
-		--border: #3b392f;
-		--accent: #e0a63a;
-		--accent-text: #15140f;
-		--focus: #8ab4ff;
+		--bg: #090b0c;
+		--surface: #161b1d;
+		--text: #f9fbfb;
+		--muted: #9ca8ab;
+		--border: #394447;
+		--field-border: #9ca8ab;
+		--accent: #05df72;
+		--accent-hover: #7bf1a8;
+		--accent-text: #032e15;
+		--link: #05df72;
+		--focus: #05df72;
 		--ok: #8fd3a6;
 		--ok-bg: #18311f;
 		--warn: #f2c66d;
@@ -47,8 +62,8 @@
 		--bad-bg: #3d1717;
 		--chart-income: #3987e5;
 		--chart-spending: #d95926;
-		--chart-grid: #2e2d26;
-		--chart-axis: #4a483d;
+		--chart-grid: #22292b;
+		--chart-axis: #4b585b;
 	}
 }
 
@@ -72,6 +87,12 @@ main {
 	padding: 16px;
 }
 
+/* The login and setup pages draw their own full-screen frame. */
+main.public {
+	max-width: none;
+	padding: 0;
+}
+
 h1 {
 	font-size: 1.5rem;
 	margin: 8px 0 16px;
@@ -84,7 +105,7 @@ h2 {
 }
 
 a {
-	color: var(--accent);
+	color: var(--link);
 }
 
 :focus-visible {
@@ -109,11 +130,31 @@ button,
 	padding: 8px 14px;
 	cursor: pointer;
 	min-height: 44px;
+	transition:
+		transform var(--duration-short) var(--ease-standard),
+		background-color var(--duration-short) var(--ease-standard),
+		border-color var(--duration-short) var(--ease-standard),
+		opacity var(--duration-short) var(--ease-standard);
+}
+
+button:hover:not(:disabled, .secondary),
+.button:hover {
+	background: var(--accent-hover);
+	border-color: var(--accent-hover);
+}
+
+/* A press gives way a little. */
+@media (prefers-reduced-motion: no-preference) {
+	button:active:not(:disabled),
+	.button:active {
+		transform: scale(0.97);
+	}
 }
 
 button.secondary {
 	background: transparent;
-	color: var(--accent);
+	color: var(--link);
+	border-color: var(--field-border);
 }
 
 button:disabled {
@@ -126,11 +167,14 @@ select {
 	font: inherit;
 	color: var(--text);
 	background: var(--surface);
-	border: 1px solid var(--border);
+	border: 1px solid var(--field-border);
 	border-radius: var(--radius);
 	padding: 8px 10px;
 	min-height: 44px;
 	width: 100%;
+	transition:
+		border-color var(--duration-short) var(--ease-standard),
+		box-shadow var(--duration-short) var(--ease-standard);
 }
 
 /* Grid tracks are minmax(0, 1fr) so a wide child (a table, a file input) scrolls inside its box instead of
@@ -262,4 +306,11 @@ th.number {
 	overflow: hidden;
 	clip-path: inset(50%);
 	white-space: nowrap;
+}
+
+/* Page and language changes cross-fade (opacity only, which reduced motion keeps). */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: var(--duration-medium);
+	animation-timing-function: var(--ease-standard);
 }

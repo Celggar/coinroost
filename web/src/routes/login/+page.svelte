@@ -2,30 +2,38 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, problem } from '#lib/api/client.ts';
-	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import AuthShell from '#lib/auth/AuthShell.svelte';
+	import CodeField from '#lib/auth/CodeField.svelte';
+	import FormAlert from '#lib/auth/FormAlert.svelte';
+	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { pop, vanish } from '#lib/motion.ts';
 	import { refresh } from '#lib/session.svelte.ts';
 
 	let email = $state('');
 	let password = $state('');
 	let code = $state('');
-	let error = $state('');
+	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
+	let passwordField: PasswordField | undefined = $state();
+	let codeField: CodeField | undefined = $state();
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		passwordField?.hide();
 		busy = true;
-		error = '';
 		const { error: failure, response } = await api.POST('/api/v1/sessions', {
 			body: { email, password, code }
 		});
 		busy = false;
 		if (failure || !response.ok) {
-			error =
+			const text =
 				response?.status === 401
 					? t('login.wrong')
 					: problem(failure, response?.status, t('login.failed'));
+			error = { text, n: error.n + 1 };
 			code = '';
+			codeField?.shake();
 			return;
 		}
 		await refresh();
@@ -38,49 +46,36 @@
 	<title>{t('app.title', { page: t('login.title') })}</title>
 </svelte:head>
 
-<section class="login card">
-	<div class="heading">
-		<h1>{t('app.name')}</h1>
-		<LanguageSwitch />
+<AuthShell>
+	<div>
+		<h1>{t('login.title')}</h1>
+		<p class="lead">{t('login.subtitle')}</p>
 	</div>
 	<form class="stack" onsubmit={submit}>
 		<label>
 			{t('login.email')}
 			<input type="email" autocomplete="username" required bind:value={email} />
 		</label>
-		<label>
-			{t('login.password')}
-			<input type="password" autocomplete="current-password" required bind:value={password} />
-		</label>
-		<label>
-			{t('login.code')}
-			<span class="hint">{t('login.code_hint')}</span>
-			<input
-				inputmode="numeric"
-				autocomplete="one-time-code"
-				pattern={'[0-9]{6}'}
-				maxlength="6"
-				required
-				bind:value={code}
-			/>
-		</label>
-		{#if error}<p class="alert" role="alert">{error}</p>{/if}
-		<button type="submit" disabled={busy}>{busy ? t('login.busy') : t('login.title')}</button>
+		<PasswordField
+			bind:this={passwordField}
+			label={t('login.password')}
+			autocomplete="current-password"
+			bind:value={password}
+		/>
+		<CodeField
+			bind:this={codeField}
+			label={t('login.code')}
+			hint={t('login.code_hint')}
+			bind:value={code}
+		/>
+		<div class="actions">
+			<FormAlert {...error} />
+			<button type="submit" class="primary" disabled={busy}>
+				{#key busy}
+					<span in:pop={{ start: 0.9 }} out:vanish>{busy ? t('login.busy') : t('login.title')}</span
+					>
+				{/key}
+			</button>
+		</div>
 	</form>
-</section>
-
-<style>
-	.login {
-		max-width: 420px;
-		margin: 10vh auto 0;
-	}
-	.heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-	}
-	h1 {
-		margin: 0;
-	}
-</style>
+</AuthShell>

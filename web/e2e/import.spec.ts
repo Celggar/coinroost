@@ -273,7 +273,7 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 test('switches to English and remembers it after a reload', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');
-	await page.getByLabel(say('language.label')).selectOption('en');
+	await page.getByRole('radio', { name: 'English' }).check();
 	const heading = page.getByRole('heading', { name: english('accounts.title'), exact: true });
 	await expect(heading).toBeVisible();
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -291,7 +291,8 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		locale: 'es-PA'
 	});
 	const pages: [string, string][] = [
-		['/login', say('app.name')],
+		['/login', say('login.title')],
+		['/setup', say('setup.title')],
 		['/', say('dashboard.title')],
 		['/import', say('import.title')],
 		['/coverage', say('coverage.title')],

@@ -317,5 +317,12 @@
 	"setup.back": "Change email or password",
 	"setup.taken": "A user with that email already exists.",
 	"setup.failed": "Could not set up your access",
-	"setup.wrong_code": "The code does not match. Wait for the next one (they change every 30 seconds) and try again."
+	"setup.wrong_code": "The code does not match. Wait for the next one (they change every 30 seconds) and try again.",
+	"auth.tagline": "Your household's finances, on your own server.",
+	"login.subtitle": "Email, password and the code from your app.",
+	"password.show": "Show",
+	"password.hide": "Hide",
+	"password.shown": "The password is visible on screen",
+	"setup.copy_short": "Copy",
+	"setup.copied_short": "Copied"
 }

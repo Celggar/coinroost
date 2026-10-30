@@ -1,43 +1,62 @@
 <script lang="ts">
 	// A single-use setup link: the token is the part after `#`, which the browser never sends in a request; the
 	// API gets it in request bodies only. Step 1 asks for the email and password, step 2 shows the authenticator
-	// secret the server made for this link and checks a code with it; then the person is in.
+	// secret the server made for this link and checks a code with it; then the person is in. Steps slide in from
+	// the side they come from, and the card grows or shrinks to the new step.
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import AuthShell from '#lib/auth/AuthShell.svelte';
+	import CodeField from '#lib/auth/CodeField.svelte';
+	import FormAlert from '#lib/auth/FormAlert.svelte';
+	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { followHeight, pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh } from '#lib/session.svelte.ts';
 
 	type Step = 'checking' | 'invalid' | 'account' | 'code';
+	const order: Step[] = ['checking', 'invalid', 'account', 'code'];
 
 	let step = $state<Step>('checking');
+	let direction = $state(1);
 	let token = '';
 	let email = $state('');
 	let password = $state('');
 	let code = $state('');
 	let enrollment = $state<Schemas['InviteEnrollment'] | null>(null);
-	let error = $state('');
+	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
 	let copied = $state(false);
+	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
+	let passwordField: PasswordField | undefined = $state();
+	let codeField: CodeField | undefined = $state();
 
 	const qr = $derived(enrollment ? `data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}` : '');
 	const grouped = $derived(enrollment?.secret.match(/.{1,4}/g)?.join(' ') ?? '');
 
+	function go(next: Step) {
+		direction = order.indexOf(next) >= order.indexOf(step) ? 1 : -1;
+		step = next;
+	}
+
+	function fail(text: string) {
+		error = { text, n: error.n + 1 };
+	}
+
 	onMount(async () => {
 		token = decodeURIComponent(location.hash.slice(1));
 		if (!token) {
-			step = 'invalid';
+			go('invalid');
 			return;
 		}
 		const { response } = await api.POST('/api/v1/invites/check', { body: { token } });
-		step = response.ok ? 'account' : 'invalid';
+		go(response.ok ? 'account' : 'invalid');
 	});
 
 	async function toCode(event: SubmitEvent) {
 		event.preventDefault();
+		passwordField?.hide();
 		busy = true;
-		error = '';
 		const {
 			data,
 			error: failure,
@@ -47,19 +66,19 @@
 		});
 		busy = false;
 		if (response.status === 404) {
-			step = 'invalid';
+			go('invalid');
 		} else if (data) {
 			enrollment = data;
-			step = 'code';
+			error = { text: '', n: error.n + 1 };
+			go('code');
 		} else {
-			error = problem(failure, response.status, t('setup.failed'));
+			fail(problem(failure, response.status, t('setup.failed')));
 		}
 	}
 
 	async function finish(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
-		error = '';
 		const { error: failure, response } = await api.POST('/api/v1/invites/accept', {
 			body: { token, email, password, code }
 		});
@@ -71,20 +90,28 @@
 		}
 		code = '';
 		if (response.status === 404) {
-			step = 'invalid';
+			go('invalid');
 		} else if (response.status === 409) {
-			error = t('setup.taken');
-			step = 'account';
+			fail(t('setup.taken'));
+			go('account');
 		} else if (response.status === 422) {
-			error = t('setup.wrong_code');
+			fail(t('setup.wrong_code'));
+			codeField?.shake();
 		} else {
-			error = problem(failure, response.status, t('setup.failed'));
+			fail(problem(failure, response.status, t('setup.failed')));
 		}
+	}
+
+	function back() {
+		error = { text: '', n: error.n + 1 };
+		go('account');
 	}
 
 	async function copy() {
 		await navigator.clipboard.writeText(enrollment?.secret ?? '');
 		copied = true;
+		clearTimeout(copiedTimer);
+		copiedTimer = setTimeout(() => (copied = false), 2000);
 	}
 </script>
 
@@ -92,109 +119,216 @@
 	<title>{t('app.title', { page: t('setup.title') })}</title>
 </svelte:head>
 
-<section class="setup card">
-	<div class="heading">
-		<h1>{t('setup.title')}</h1>
-		<LanguageSwitch />
+<AuthShell>
+	<h1>{t('setup.title')}</h1>
+	<div class="steps" use:followHeight>
+		<div class="cell">
+			{#key step}
+				<div class="step" in:stepIn={{ direction }} out:stepOut={{ direction }}>
+					{#if step === 'checking'}
+						<p class="checking">
+							<span class="spinner" aria-hidden="true"></span>{t('setup.checking')}
+						</p>
+					{:else if step === 'invalid'}
+						<h2 class="step-label">{t('setup.invalid_title')}</h2>
+						<p class="lead">{t('setup.invalid')}</p>
+					{:else if step === 'account'}
+						<form class="stack" onsubmit={toCode}>
+							<h2 class="step-label">{t('setup.step_account')}</h2>
+							<label>
+								{t('login.email')}
+								<input type="email" autocomplete="username" required bind:value={email} />
+							</label>
+							<PasswordField
+								bind:this={passwordField}
+								label={t('login.password')}
+								hint={t('setup.password_hint')}
+								autocomplete="new-password"
+								minlength={12}
+								bind:value={password}
+							/>
+							<div class="actions">
+								<FormAlert {...error} />
+								<button type="submit" class="primary" disabled={busy}>{t('setup.continue')}</button>
+							</div>
+						</form>
+					{:else if enrollment}
+						<form class="stack" onsubmit={finish}>
+							<div>
+								<h2 class="step-label">{t('setup.step_code')}</h2>
+								<p class="lead">{t('setup.scan')}</p>
+							</div>
+							<div class="qr" in:pop|global={{ delay: 150, start: 0.85 }}>
+								<img src={qr} alt={t('setup.qr_alt')} width="212" height="212" />
+							</div>
+							<div class="key">
+								<span class="key-label">{t('setup.key')}</span>
+								<div class="key-box">
+									<code data-testid="setup-key">{grouped}</code>
+									<button type="button" class="copy" aria-label={t('setup.copy')} onclick={copy}>
+										{#key copied}
+											<span in:pop={{ start: 0.8 }} out:vanish>
+												{copied ? t('setup.copied_short') : t('setup.copy_short')}
+											</span>
+										{/key}
+									</button>
+								</div>
+								<span class="visually-hidden" aria-live="polite"
+									>{copied ? t('setup.copied') : ''}</span
+								>
+								<a class="open" href={enrollment.uri}>{t('setup.open_app')}</a>
+							</div>
+							<hr />
+							<!-- The email again, hidden, so a password manager saves the code with the right account. -->
+							<input type="email" autocomplete="username" value={email} hidden readonly />
+							<CodeField
+								bind:this={codeField}
+								label={t('login.code')}
+								hint={t('setup.code_hint')}
+								bind:value={code}
+							/>
+							<div class="actions">
+								<FormAlert {...error} />
+								<button type="submit" class="primary" disabled={busy}>
+									{#key busy}
+										<span in:pop={{ start: 0.9 }} out:vanish>
+											{busy ? t('setup.busy') : t('setup.finish')}
+										</span>
+									{/key}
+								</button>
+							</div>
+							<button type="button" class="back" onclick={back}>{t('setup.back')}</button>
+						</form>
+					{/if}
+				</div>
+			{/key}
+		</div>
 	</div>
-
-	{#if step === 'checking'}
-		<p class="hint">{t('setup.checking')}</p>
-	{:else if step === 'invalid'}
-		<h2>{t('setup.invalid_title')}</h2>
-		<p>{t('setup.invalid')}</p>
-	{:else if step === 'account'}
-		<form class="stack" onsubmit={toCode}>
-			<h2>{t('setup.step_account')}</h2>
-			<label>
-				{t('login.email')}
-				<input type="email" autocomplete="username" required bind:value={email} />
-			</label>
-			<label>
-				{t('login.password')}
-				<span class="hint">{t('setup.password_hint')}</span>
-				<input
-					type="password"
-					autocomplete="new-password"
-					minlength="12"
-					required
-					bind:value={password}
-				/>
-			</label>
-			{#if error}<p class="alert" role="alert">{error}</p>{/if}
-			<button type="submit" disabled={busy}>{t('setup.continue')}</button>
-		</form>
-	{:else if enrollment}
-		<form class="stack" onsubmit={finish}>
-			<h2>{t('setup.step_code')}</h2>
-			<p>{t('setup.scan')}</p>
-			<img class="qr" src={qr} alt={t('setup.qr_alt')} width="200" height="200" />
-			<div class="key">
-				<span class="hint">{t('setup.key')}</span>
-				<code data-testid="setup-key">{grouped}</code>
-				<button type="button" class="secondary" onclick={copy}>
-					{copied ? t('setup.copied') : t('setup.copy')}
-				</button>
-				<a href={enrollment.uri}>{t('setup.open_app')}</a>
-			</div>
-			<!-- The email again, hidden, so a password manager saves the code with the right account. -->
-			<input type="email" autocomplete="username" value={email} hidden readonly />
-			<label>
-				{t('login.code')}
-				<span class="hint">{t('setup.code_hint')}</span>
-				<input
-					inputmode="numeric"
-					autocomplete="one-time-code"
-					pattern={'[0-9]{6}'}
-					maxlength="6"
-					required
-					bind:value={code}
-				/>
-			</label>
-			{#if error}<p class="alert" role="alert">{error}</p>{/if}
-			<button type="submit" disabled={busy}>{busy ? t('setup.busy') : t('setup.finish')}</button>
-			<button type="button" class="secondary" onclick={() => (step = 'account')}>
-				{t('setup.back')}
-			</button>
-		</form>
-	{/if}
-</section>
+</AuthShell>
 
 <style>
-	.setup {
-		max-width: 460px;
-		margin: 8vh auto 0;
+	/* Room around the steps so focus rings are not clipped while a step slides; the step label sits right under
+	   the title, as in the design. */
+	.steps {
+		margin: -22px -8px -8px;
+		padding: 8px;
+		overflow: clip;
 	}
-	.heading {
+	@media (prefers-reduced-motion: no-preference) {
+		.steps {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
+	.cell {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.step {
+		grid-area: 1 / 1;
+		min-width: 0;
+	}
+	.checking {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0;
+		color: var(--muted);
+	}
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		border: 2px solid var(--field-border);
+		border-top-color: var(--accent);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.spinner {
+			animation: spin 800ms linear infinite;
+		}
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(1turn);
+		}
+	}
+	.qr {
+		justify-self: center;
+		padding: 8px;
+		border-radius: 16px;
+		background: #ffffff;
+		border: 1px solid #d0d6d8;
+		line-height: 0;
+	}
+	.qr img {
+		display: block;
+		width: 212px;
+		height: 212px;
+	}
+	.key {
+		display: grid;
+		gap: 6px;
+	}
+	.key-label {
+		font-weight: 600;
+	}
+	.key-box {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
-	}
-	h1 {
-		margin: 0;
-	}
-	h2 {
-		font-size: 1rem;
-		margin: 16px 0 0;
-	}
-	.qr {
-		align-self: center;
-		background: #fff;
-		border-radius: var(--radius);
-	}
-	.key {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px;
-	}
-	.key .hint {
-		flex-basis: 100%;
+		min-height: 48px;
+		padding: 0 4px 0 12px;
+		border: 1px solid var(--field-border);
+		border-radius: 10px;
+		background: var(--surface);
 	}
 	code {
-		font-size: 1.05rem;
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono',
+			monospace;
+		font-size: 1rem;
 		letter-spacing: 0.04em;
-		word-break: break-all;
+		overflow-wrap: anywhere;
+		user-select: all;
+	}
+	.copy {
+		flex: none;
+		display: grid;
+		place-items: center;
+		min-height: 40px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 8px;
+		background: color-mix(in oklab, var(--accent) 12%, transparent);
+		color: var(--link);
+		font-weight: 600;
+	}
+	.copy > :global(*) {
+		grid-area: 1 / 1;
+	}
+	.copy:hover {
+		background: color-mix(in oklab, var(--accent) 20%, transparent);
+	}
+	.open {
+		font-weight: 600;
+		text-underline-offset: 3px;
+		justify-self: start;
+	}
+	hr {
+		width: 100%;
+		margin: 0;
+		border: 0;
+		border-top: 1px solid color-mix(in oklab, var(--field-border) 35%, transparent);
+	}
+	.back {
+		justify-self: center;
+		border: 0;
+		background: transparent;
+		color: var(--link);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.back:hover {
+		background: transparent;
 	}
 </style>

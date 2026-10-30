@@ -317,5 +317,12 @@
 	"setup.back": "Cambiar correo o contraseña",
 	"setup.taken": "Ya existe un usuario con ese correo.",
 	"setup.failed": "No se pudo crear el acceso",
-	"setup.wrong_code": "El código no coincide. Espera el siguiente (cambian cada 30 segundos) y vuelve a intentarlo."
+	"setup.wrong_code": "El código no coincide. Espera el siguiente (cambian cada 30 segundos) y vuelve a intentarlo.",
+	"auth.tagline": "Las finanzas de tu hogar, en tu propio servidor.",
+	"login.subtitle": "Correo, contraseña y el código de tu app.",
+	"password.show": "Mostrar",
+	"password.hide": "Ocultar",
+	"password.shown": "La contraseña se ve en pantalla",
+	"setup.copy_short": "Copiar",
+	"setup.copied_short": "Copiada"
 }
