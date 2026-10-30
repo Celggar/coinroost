@@ -341,7 +341,7 @@
 	"login.use_recovery": "¿Perdiste tu teléfono? Usa un código de recuperación",
 	"login.use_code": "Usar el código de la app",
 	"login.recovery_code": "Código de recuperación",
-	"login.recovery_hint": "Uno de los 10 que guardaste, como abcde-12345. Cada uno sirve una vez.",
+	"login.recovery_hint": "Uno de los 10 que guardaste, como abcde‑12345. Cada uno sirve una vez.",
 	"login.recovery_wrong": "El correo, la contraseña o el código de recuperación no es correcto.",
 	"authenticator.title": "Configura tu nuevo autenticador",
 	"authenticator.lead": "Entraste con un código de recuperación, así que el autenticador anterior dejó de servir. Agrega este a tu app y escribe el código que muestre.",

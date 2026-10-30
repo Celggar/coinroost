@@ -2,7 +2,7 @@
 	// The person's recovery codes: how many are left and when they were made, and a new set on demand. Making one asks
 	// for the code the authenticator shows now (the server counts wrong ones toward the login lockout), shows the new
 	// codes once and retires the old ones.
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CodeField from '#lib/auth/CodeField.svelte';
 	import FormAlert from '#lib/auth/FormAlert.svelte';
@@ -21,6 +21,17 @@
 	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
 	let codeField: CodeField | undefined = $state();
+	let regenerateButton: HTMLButtonElement | undefined = $state();
+	let freshTitle: HTMLHeadingElement | undefined = $state();
+
+	/** The view that came in takes the focus: the button that was pressed left with the old one. */
+	async function show(next: typeof mode) {
+		mode = next;
+		await tick();
+		if (next === 'confirm') codeField?.focus();
+		else if (next === 'show') freshTitle?.focus();
+		else regenerateButton?.focus();
+	}
 
 	const made = (iso: string) =>
 		new Intl.DateTimeFormat(tag(), { day: 'numeric', month: 'short', year: 'numeric' }).format(
@@ -37,7 +48,7 @@
 	function ask() {
 		code = '';
 		error = { text: '', n: error.n + 1 };
-		mode = 'confirm';
+		show('confirm');
 	}
 
 	async function regenerate(event: SubmitEvent) {
@@ -54,8 +65,8 @@
 		busy = false;
 		if (data) {
 			fresh = data;
-			mode = 'show';
 			await load();
+			await show('show');
 			return;
 		}
 		code = '';
@@ -71,7 +82,7 @@
 
 	function done() {
 		fresh = null;
-		mode = 'view';
+		show('view');
 	}
 
 	onMount(load);
@@ -110,7 +121,9 @@
 		{#key mode}
 			<div class="mode" in:rise={{ delay: 150 }} out:swapOut>
 				{#if mode === 'view'}
-					<button type="button" class="primary" onclick={ask}>{t('security.regenerate')}</button>
+					<button type="button" class="primary" onclick={ask} bind:this={regenerateButton}
+						>{t('security.regenerate')}</button
+					>
 				{:else if mode === 'confirm'}
 					<form class="stack" onsubmit={regenerate}>
 						<p class="hint">{t('security.regenerate_note')}</p>
@@ -135,7 +148,7 @@
 				{:else if fresh}
 					<div class="stack">
 						<div>
-							<h3>{t('security.new_title')}</h3>
+							<h3 tabindex="-1" bind:this={freshTitle}>{t('security.new_title')}</h3>
 							<p class="hint">{t('security.new_lead')}</p>
 						</div>
 						<RecoveryCodes
@@ -163,6 +176,10 @@
 	}
 	h3 {
 		font-size: 1.05rem;
+	}
+	/* Focused by the page when the new codes arrive, so a screen reader starts there; it is not a control. */
+	h3:focus {
+		outline: none;
 	}
 	p {
 		margin: 0;

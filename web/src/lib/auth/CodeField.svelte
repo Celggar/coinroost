@@ -24,6 +24,13 @@
 		value = digitsOnly;
 	}
 
+	let field: HTMLInputElement | undefined = $state();
+
+	/** Puts the caret in the field, for a page that just swapped it in. */
+	export function focus() {
+		field?.focus();
+	}
+
 	/** Shakes the slots, next to the message that says the code was wrong. */
 	export function shake() {
 		shakeRow(row);
@@ -44,6 +51,7 @@
 			</span>
 		{/each}
 		<input
+			bind:this={field}
 			{id}
 			type="text"
 			inputmode="numeric"

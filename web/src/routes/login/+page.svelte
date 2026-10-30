@@ -2,6 +2,7 @@
 	// The login: email, password and the authenticator's code, or, for a lost phone, one of the recovery codes. A
 	// recovery code leads to setting up a new authenticator before anything else.
 	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { api, problem } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
@@ -17,6 +18,7 @@
 	let code = $state('');
 	let recoveryCode = $state('');
 	let recovering = $state(false);
+	let recoveryField: HTMLInputElement | undefined = $state();
 	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
 	let passwordField: PasswordField | undefined = $state();
@@ -50,9 +52,13 @@
 		await goto(next?.startsWith('/') && !next.startsWith('//') ? next : '/');
 	}
 
-	function switchSecond() {
+	/** Swaps the second step; the button that was pressed leaves with the old one, so the caret goes to the new field. */
+	async function switchSecond() {
 		recovering = !recovering;
 		error = { text: '', n: error.n + 1 };
+		await tick();
+		if (recovering) recoveryField?.focus();
+		else codeField?.focus();
 	}
 </script>
 
@@ -93,6 +99,7 @@
 								autocapitalize="none"
 								spellcheck="false"
 								required
+								bind:this={recoveryField}
 								bind:value={recoveryCode}
 							/>
 						</label>
@@ -141,6 +148,7 @@
 		border: 0;
 		background: transparent;
 		color: var(--link);
+		text-align: start;
 		text-decoration: underline;
 		text-underline-offset: 3px;
 		--state-layer: transparent;

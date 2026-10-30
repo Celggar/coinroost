@@ -16,7 +16,8 @@
 		{ href: '/rules', label: 'nav.rules' },
 		{ href: '/transfers', label: 'nav.transfers' },
 		{ href: '/coverage', label: 'nav.coverage' },
-		{ href: '/accounts', label: 'nav.accounts' }
+		{ href: '/accounts', label: 'nav.accounts' },
+		{ href: '/security', label: 'nav.security' }
 	];
 	// Pages a person opens without a session: the login and a setup link.
 	const onPublic = $derived(page.url.pathname === '/login' || page.url.pathname === '/setup');
@@ -73,11 +74,6 @@
 			{/each}
 		</nav>
 		<LanguageSwitch />
-		<a
-			class="security"
-			href="/security"
-			aria-current={page.url.pathname === '/security' ? 'page' : undefined}>{t('nav.security')}</a
-		>
 		<button class="secondary" onclick={leave}>{t('nav.log_out')}</button>
 	</header>
 {/if}
@@ -124,12 +120,6 @@
 		border-radius: var(--radius);
 		text-decoration: none;
 	}
-	.security {
-		padding: 10px 10px;
-		border-radius: var(--radius);
-		text-decoration: none;
-	}
-	.security[aria-current='page'],
 	nav a[aria-current='page'] {
 		background: var(--bg);
 		color: var(--text);

@@ -131,7 +131,7 @@
 		flex: none;
 		display: grid;
 		place-items: center;
-		min-height: 40px;
+		min-height: 44px;
 		padding: 0 12px;
 		border: 0;
 		border-radius: 8px;

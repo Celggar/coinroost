@@ -28,8 +28,11 @@ async function logInWithRecovery(page: Page, code: string) {
 	await page.getByLabel(say('login.email')).fill(email);
 	await page.getByLabel(say('login.password')).fill(password);
 	const field = page.getByLabel(say('login.recovery_code'));
-	if (!(await field.isVisible()))
+	if (!(await field.isVisible())) {
 		await page.getByRole('button', { name: say('login.use_recovery'), exact: true }).click();
+		// The pressed button leaves with the old field: the caret goes to the new one.
+		await expect(field).toBeFocused();
+	}
 	await field.fill(code);
 	await page.getByRole('button', { name: say('login.title'), exact: true }).click();
 }
@@ -92,6 +95,7 @@ test('recovery codes let a person back in and make them set up a new authenticat
 
 	// A new set, after the app's next code; the old set stops working.
 	await page.getByRole('button', { name: say('security.regenerate'), exact: true }).click();
+	await expect(page.getByLabel(say('login.code'), { exact: true })).toBeFocused();
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(fresh, Date.now() + 30_000));
 	await page.getByRole('button', { name: say('security.confirm'), exact: true }).click();
 	await expect(page.getByRole('heading', { name: say('security.new_title') })).toBeVisible();
