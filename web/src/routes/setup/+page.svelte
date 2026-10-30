@@ -50,7 +50,8 @@
 	});
 
 	/** The server's QR as a PNG: Safari offers to add a long-pressed QR to Passwords only for raster images (WWDC21
-	 * 10105). Whole device pixels per module keep it sharp; what is left over widens the white border. */
+	 * 10105). Whole device pixels per module keep it sharp; what is left over widens the white border. Where the
+	 * screen's scale is fractional the image is scaled by a fraction of a pixel, so it is drawn pixelated (CSS). */
 	async function rasterize(svg: string): Promise<string> {
 		const modules = Number(/viewBox="0 0 (\d+)/.exec(svg)?.[1] ?? 0);
 		const image = new Image();
@@ -328,6 +329,7 @@
 		display: block;
 		width: 212px;
 		height: 212px;
+		image-rendering: pixelated;
 	}
 	.key {
 		display: grid;
