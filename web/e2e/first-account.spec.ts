@@ -57,6 +57,9 @@ test('the first person makes the owner account, and then sign-up is closed', asy
 	await expect(page).toHaveURL(/\/setup#/);
 	await expect(page.getByText(say('setup.first_lead'))).toBeVisible();
 	expect(await page.evaluate(() => 'sawLogin' in window)).toBe(false);
+	// A reload keeps the link (it is in the address) and still words it as the first account.
+	await page.reload();
+	await expect(page.getByText(say('setup.first_lead'))).toBeVisible();
 
 	await toCodeStep(page);
 	const qr = page.getByRole('img', { name: say('setup.qr_alt') });
