@@ -4,8 +4,8 @@
 //!   link's fragment and in request bodies (never a path or query, which proxies log); only its SHA-256 is stored.
 //! - A link works for [`INVITE_HOURS`] and once. Opening it, the server generates the authenticator secret and keeps
 //!   it with the link; the browser only shows it. Acceptance needs a code from that secret, the email and a password,
-//!   and in one transaction marks the link used, creates the user (in the link's household, or a new one) and opens
-//!   a session.
+//!   and in one transaction marks the link used, creates the user (in the link's household, or a new one), makes
+//!   their recovery codes (NIST SP 800-63B-4: issued at enrollment) and opens a session.
 //! - A wrong code leaves the link usable; after [`MAX_ATTEMPTS`] wrong codes it stops working. A used, expired,
 //!   exhausted or unknown link gets the same answer.
 //! - The first account: while there are no users, anyone who reaches the app can get a link for a new household
@@ -17,12 +17,13 @@ use std::fmt::Write as _;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use qrcodegen::{QrCode, QrCodeEcc};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::auth::{self, Enrolled};
 use crate::error::{ApiError, ApiResult};
+use crate::recovery;
 
 pub const INVITE_HOURS: i64 = 1;
 pub const MAX_ATTEMPTS: i32 = 5;
@@ -130,9 +131,16 @@ pub struct Acceptance<'a> {
     pub code: &'a str,
 }
 
-/// Uses the link: creates the user and opens a session. A wrong code counts against the link and leaves it usable;
-/// a bad password or a taken email does not count and also leaves it usable.
-pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<(String, OffsetDateTime)> {
+/// A link just used: the new user's session, and their recovery codes, shown once.
+pub struct Accepted {
+    pub token: String,
+    pub expires_at: OffsetDateTime,
+    pub recovery: recovery::NewSet,
+}
+
+/// Uses the link: creates the user, makes their recovery codes and opens a session. A wrong code counts against the
+/// link and leaves it usable; a bad password or a taken email does not count and also leaves it usable.
+pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<Accepted> {
     let invite = live(db, token).await?;
     if !who.email.trim().get(1..).is_some_and(|rest| rest.contains('@')) {
         return Err(ApiError::Invalid("an email address is needed".to_owned()));
@@ -152,17 +160,7 @@ pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<
     };
     let mut tx = db.begin().await?;
     if invite.first_account {
-        // Held to the commit, as every user insert takes it: no other user can appear between this check and ours.
-        sqlx::query("select pg_advisory_xact_lock($1)")
-            .bind(auth::USERS_LOCK)
-            .execute(&mut *tx)
-            .await?;
-        let someone: bool = sqlx::query_scalar("select exists (select 1 from users)")
-            .fetch_one(&mut *tx)
-            .await?;
-        if someone {
-            return Err(ApiError::NotFound);
-        }
+        still_first(&mut tx).await?;
     }
     // The one statement that uses the link: a second acceptance, even a concurrent one, finds nothing.
     let claimed: Option<(Option<Uuid>,)> = sqlx::query_as(
@@ -189,9 +187,30 @@ pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<
         .bind(user_id)
         .execute(&mut *tx)
         .await?;
-    let session = auth::new_session(&mut *tx, user_id).await?;
+    let recovery = recovery::issue(&mut tx, user_id).await?;
+    let (token, expires_at) = auth::new_session(&mut *tx, user_id).await?;
     tx.commit().await?;
-    Ok(session)
+    Ok(Accepted {
+        token,
+        expires_at,
+        recovery,
+    })
+}
+
+/// For a first-account link: `NotFound` once any user exists. Takes [`auth::USERS_LOCK`] and holds it to the commit,
+/// as every user insert does, so no other user can appear between this check and the caller's insert.
+async fn still_first(tx: &mut PgConnection) -> ApiResult<()> {
+    sqlx::query("select pg_advisory_xact_lock($1)")
+        .bind(auth::USERS_LOCK)
+        .execute(&mut *tx)
+        .await?;
+    let someone: bool = sqlx::query_scalar("select exists (select 1 from users)")
+        .fetch_one(&mut *tx)
+        .await?;
+    if someone {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
 }
 
 /// A QR code of `text` as an SVG image, with the quiet zone of four modules the standard asks for.

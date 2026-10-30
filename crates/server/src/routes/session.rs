@@ -12,7 +12,7 @@ use utoipa_axum::routes;
 use uuid::Uuid;
 
 use crate::AppState;
-use crate::auth::{self, Session};
+use crate::auth::{self, AnySession, Second};
 use crate::error::{ApiError, ApiResult, Problem};
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -27,8 +27,15 @@ pub fn router() -> OpenApiRouter<AppState> {
 pub struct LogIn {
     email: String,
     password: String,
-    /// The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine.
-    code: String,
+    /// The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. Send this or
+    /// `recovery_code`, not both.
+    #[serde(default)]
+    code: Option<String>,
+    /// One of the user's recovery codes (`xxxxx-xxxxx`; case, spaces and dashes do not matter), in place of `code`
+    /// when the authenticator app is lost. It works once, ends the user's other sessions and retires the
+    /// authenticator: the new session may only set up a new one until it is confirmed (see `GET /api/v1/me`).
+    #[serde(default)]
+    recovery_code: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -45,13 +52,24 @@ impl NewSession {
     }
 }
 
-/// Starts a session. Every failure answers 401 the same way, whatever was wrong.
+/// Starts a session. Every failure answers 401 the same way, whatever was wrong; a body with both or neither of
+/// `code` and `recovery_code` answers 422.
 #[utoipa::path(post, path = "/api/v1/sessions", tag = "session", security(()), request_body = LogIn,
     responses(
         (status = CREATED, description = "Logged in; the token is also set as a cookie", body = NewSession),
-        (status = UNAUTHORIZED, description = "Not logged in", body = Problem)))]
+        (status = UNAUTHORIZED, description = "Not logged in", body = Problem),
+        (status = UNPROCESSABLE_ENTITY, description = "Both or neither of the two second steps", body = Problem)))]
 async fn log_in(State(state): State<AppState>, Json(body): Json<LogIn>) -> ApiResult<Response> {
-    let (token, expires_at) = auth::login(&state.db, &body.email, &body.password, &body.code).await?;
+    let second = match (&body.code, &body.recovery_code) {
+        (Some(code), None) => Second::Code(code),
+        (None, Some(code)) => Second::Recovery(code),
+        _ => {
+            return Err(ApiError::Invalid(
+                "send the authenticator's `code` or a `recovery_code`, one of the two".to_owned(),
+            ));
+        }
+    };
+    let (token, expires_at) = auth::login(&state.db, &body.email, &body.password, second).await?;
     let cookie = auth::session_cookie(&token);
     let body = Json(NewSession::new(token, expires_at));
     Ok((StatusCode::CREATED, [(header::SET_COOKIE, cookie)], body).into_response())
@@ -64,7 +82,7 @@ async fn log_in(State(state): State<AppState>, Json(body): Json<LogIn>) -> ApiRe
         (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
 async fn log_out(
     State(state): State<AppState>,
-    _session: Session,
+    _session: AnySession,
     headers: HeaderMap,
 ) -> ApiResult<Response> {
     let token = auth::session_token(&headers).ok_or(ApiError::Unauthorized)?;
@@ -84,14 +102,17 @@ pub struct Me {
     user_id: Uuid,
     household_id: Uuid,
     email: String,
+    /// True after a login with a recovery code, until a new authenticator is confirmed
+    /// (`POST /api/v1/me/authenticator`); until then every other route answers 403.
+    reenroll_required: bool,
 }
 
-/// The user and household of the current session.
+/// The user and household of the current session; it also answers a session that must set up a new authenticator.
 #[utoipa::path(get, path = "/api/v1/me", tag = "session",
     responses(
         (status = OK, description = "The session's user", body = Me),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
-async fn me(State(state): State<AppState>, session: Session) -> ApiResult<Json<Me>> {
+async fn me(State(state): State<AppState>, session: AnySession) -> ApiResult<Json<Me>> {
     let (email,): (String,) = sqlx::query_as("select email from users where id = $1")
         .bind(session.user_id)
         .fetch_one(&state.db)
@@ -100,5 +121,6 @@ async fn me(State(state): State<AppState>, session: Session) -> ApiResult<Json<M
         user_id: session.user_id,
         household_id: session.household_id,
         email,
+        reenroll_required: session.reenroll_required,
     }))
 }

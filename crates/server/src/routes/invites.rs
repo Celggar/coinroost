@@ -15,7 +15,6 @@ use crate::AppState;
 use crate::auth;
 use crate::error::{ApiResult, Problem};
 use crate::invites::{self, Acceptance};
-use crate::routes::session::NewSession;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -103,11 +102,23 @@ pub struct AcceptInvite {
     code: String,
 }
 
-/// Uses the link once: creates the user with the email, password and authenticator secret, and logs them in.
+#[derive(Serialize, ToSchema)]
+pub struct AcceptedInvite {
+    /// Also set as the `coinroost_session` cookie; clients without cookies send it as a bearer token.
+    token: String,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
+    /// The new user's recovery codes, `xxxxx-xxxxx`, each good for one login without the authenticator app. Shown
+    /// only in this answer; a new set can be made later (`POST /api/v1/me/recovery-codes`).
+    recovery_codes: Vec<String>,
+}
+
+/// Uses the link once: creates the user with the email, password and authenticator secret, makes their recovery
+/// codes, and logs them in.
 #[utoipa::path(post, path = "/api/v1/invites/accept", tag = "invites", security(()), request_body = AcceptInvite,
     responses(
         (status = CREATED, description = "The user exists and is logged in; the token is also set as a cookie",
-            body = NewSession),
+            body = AcceptedInvite),
         (status = NOT_FOUND, description = "The link was used, expired or does not exist", body = Problem),
         (status = CONFLICT, description = "A user with that email already exists", body = Problem),
         (status = UNPROCESSABLE_ENTITY, description = "Wrong code, short password, no email, or no authenticator \
@@ -118,8 +129,12 @@ async fn accept(State(state): State<AppState>, Json(body): Json<AcceptInvite>) -
         password: &body.password,
         code: &body.code,
     };
-    let (token, expires_at) = invites::accept(&state.db, &body.token, who).await?;
-    let cookie = auth::session_cookie(&token);
-    let body = Json(NewSession::new(token, expires_at));
+    let accepted = invites::accept(&state.db, &body.token, who).await?;
+    let cookie = auth::session_cookie(&accepted.token);
+    let body = Json(AcceptedInvite {
+        token: accepted.token,
+        expires_at: accepted.expires_at,
+        recovery_codes: accepted.recovery.codes,
+    });
     Ok((StatusCode::CREATED, [(header::SET_COOKIE, cookie)], body).into_response())
 }

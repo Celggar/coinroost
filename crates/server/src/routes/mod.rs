@@ -12,6 +12,7 @@ pub mod payroll;
 pub mod removal;
 pub mod reports;
 pub mod rules;
+pub mod security;
 pub mod session;
 pub mod summary;
 pub mod system;

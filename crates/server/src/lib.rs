@@ -12,6 +12,7 @@ mod import;
 pub mod invites;
 pub mod mcp;
 mod pairing;
+pub mod recovery;
 mod routes;
 pub mod rule_set;
 mod sorting;
@@ -74,6 +75,7 @@ fn api() -> OpenApiRouter<AppState> {
     OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::system::router())
         .merge(routes::session::router())
+        .merge(routes::security::router())
         .merge(routes::first_account::router())
         .merge(routes::invites::router())
         .merge(routes::accounts::router())

@@ -525,7 +525,7 @@
         "tags": [
           "invites"
         ],
-        "summary": "Uses the link once: creates the user with the email, password and authenticator secret, and logs them in.",
+        "summary": "Uses the link once: creates the user with the email, password and authenticator secret, makes their recovery\ncodes, and logs them in.",
         "operationId": "accept",
         "requestBody": {
           "content": {
@@ -543,7 +543,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NewSession"
+                  "$ref": "#/components/schemas/AcceptedInvite"
                 }
               }
             }
@@ -677,7 +677,7 @@
         "tags": [
           "session"
         ],
-        "summary": "The user and household of the current session.",
+        "summary": "The user and household of the current session; it also answers a session that must set up a new authenticator.",
         "operationId": "me",
         "responses": {
           "200": {
@@ -692,6 +692,191 @@
           },
           "401": {
             "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/authenticator": {
+      "post": {
+        "tags": [
+          "security"
+        ],
+        "summary": "The new authenticator to set up after a login with a recovery code: made by the server on the first call and the\nsame on later ones.",
+        "operationId": "new_authenticator",
+        "responses": {
+          "200": {
+            "description": "What the authenticator app needs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewAuthenticator"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller's authenticator works; nothing to set up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/authenticator/confirm": {
+      "post": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Makes the new authenticator the caller's, given a current code from it; the old one stays retired and the\ncaller's sessions work fully again.",
+        "operationId": "confirm_authenticator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurrentCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "The new authenticator is the caller's"
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller's authenticator works; nothing to set up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The code does not match, or no new authenticator was made yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/recovery-codes": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "summary": "How many recovery codes the caller has left. The codes themselves are shown only once, when they are made.",
+        "operationId": "recovery_status",
+        "responses": {
+          "200": {
+            "description": "The caller's set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "security"
+        ],
+        "summary": "Makes a new set of recovery codes; the old set stops working. Asks for a current authenticator code first, and a\nwrong one counts toward the login lockout.",
+        "operationId": "regenerate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurrentCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new set, shown once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Locked after too many wrong codes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The code does not match",
             "content": {
               "application/json": {
                 "schema": {
@@ -1369,7 +1554,7 @@
         "tags": [
           "session"
         ],
-        "summary": "Starts a session. Every failure answers 401 the same way, whatever was wrong.",
+        "summary": "Starts a session. Every failure answers 401 the same way, whatever was wrong; a body with both or neither of\n`code` and `recovery_code` answers 422.",
         "operationId": "log_in",
         "requestBody": {
           "content": {
@@ -1394,6 +1579,16 @@
           },
           "401": {
             "description": "Not logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Both or neither of the two second steps",
             "content": {
               "application/json": {
                 "schema": {
@@ -2025,6 +2220,31 @@
         },
         "additionalProperties": false
       },
+      "AcceptedInvite": {
+        "type": "object",
+        "required": [
+          "token",
+          "expires_at",
+          "recovery_codes"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Also set as the `coinroost_session` cookie; clients without cookies send it as a bearer token."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recovery_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The new user's recovery codes, `xxxxx-xxxxx`, each good for one login without the authenticator app. Shown\nonly in this answer; a new set can be made later (`POST /api/v1/me/recovery-codes`)."
+          }
+        }
+      },
       "Account": {
         "type": "object",
         "required": [
@@ -2402,6 +2622,19 @@
             "description": "Every account, the most behind first."
           }
         }
+      },
+      "CurrentCode": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine."
+          }
+        },
+        "additionalProperties": false
       },
       "DateRange": {
         "type": "object",
@@ -3027,8 +3260,7 @@
         "type": "object",
         "required": [
           "email",
-          "password",
-          "code"
+          "password"
         ],
         "properties": {
           "email": {
@@ -3038,8 +3270,18 @@
             "type": "string"
           },
           "code": {
-            "type": "string",
-            "description": "The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. Send this or\n`recovery_code`, not both."
+          },
+          "recovery_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One of the user's recovery codes (`xxxxx-xxxxx`; case, spaces and dashes do not matter), in place of `code`\nwhen the authenticator app is lost. It works once, ends the user's other sessions and retires the\nauthenticator: the new session may only set up a new one until it is confirmed (see `GET /api/v1/me`)."
           }
         },
         "additionalProperties": false
@@ -3049,7 +3291,8 @@
         "required": [
           "user_id",
           "household_id",
-          "email"
+          "email",
+          "reenroll_required"
         ],
         "properties": {
           "user_id": {
@@ -3062,6 +3305,10 @@
           },
           "email": {
             "type": "string"
+          },
+          "reenroll_required": {
+            "type": "boolean",
+            "description": "True after a login with a recovery code, until a new authenticator is confirmed\n(`POST /api/v1/me/authenticator`); until then every other route answers 403."
           }
         }
       },
@@ -3141,6 +3388,28 @@
           }
         },
         "additionalProperties": false
+      },
+      "NewAuthenticator": {
+        "type": "object",
+        "required": [
+          "uri",
+          "secret",
+          "qr_svg"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "The `otpauth://` URI an authenticator app enrolls from."
+          },
+          "secret": {
+            "type": "string",
+            "description": "The same secret in base32, for apps where it is typed in."
+          },
+          "qr_svg": {
+            "type": "string",
+            "description": "A QR code of `uri`, as an SVG image."
+          }
+        }
       },
       "NewCategory": {
         "type": "object",
@@ -3553,6 +3822,53 @@
           "no_counterpart",
           "several_candidates"
         ]
+      },
+      "RecoveryCodes": {
+        "type": "object",
+        "required": [
+          "codes",
+          "created_at"
+        ],
+        "properties": {
+          "codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The new codes, `xxxxx-xxxxx`, each good for one login. Shown only in this answer."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RecoveryStatus": {
+        "type": "object",
+        "required": [
+          "remaining",
+          "size"
+        ],
+        "properties": {
+          "remaining": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many unused codes are left (out of `size`)."
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many codes a set has."
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the set was made; null when the user has none."
+          }
+        }
       },
       "RowFailure": {
         "type": "object",

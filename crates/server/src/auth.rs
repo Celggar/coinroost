@@ -3,6 +3,9 @@
 //! - Passwords are hashed with Argon2id at OWASP's recommended cost (19 MiB, 2 passes, 1 lane).
 //! - A login needs the password and a current TOTP code (RFC 6238: SHA-1, 6 digits, 30-second steps, one step of
 //!   clock drift either way). A code is accepted once: the step it matched must be later than the last one used.
+//! - Instead of a code, a login may carry one of the user's recovery codes (see [`crate::recovery`]). That retires
+//!   the authenticator: until a new one is confirmed, its codes are refused and the user's sessions are limited to
+//!   setting up the new one ([`AnySession`]); every other route answers 403.
 //! - Five failed logins in a row lock the user for 15 minutes. Every failure, whatever its cause (unknown email,
 //!   wrong password, wrong code, locked), gets the same answer, and an unknown email still costs a hash, so the
 //!   answer does not tell which emails exist.
@@ -27,7 +30,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::error::{ApiError, ApiResult};
-use crate::tokens;
+use crate::{recovery, tokens};
 
 pub const SESSION_COOKIE: &str = "coinroost_session";
 pub const SESSION_DAYS: i64 = 7;
@@ -37,7 +40,8 @@ const MIN_PASSWORD_CHARS: usize = 12;
 const TOTP_STEP: u64 = 30;
 
 /// The caller of a request: a user with a live session, and their household. Every query a handler runs is
-/// scoped to `household_id`.
+/// scoped to `household_id`. A user who must set up a new authenticator first is refused here with 403, so every
+/// route is closed to them unless it takes an [`AnySession`] instead.
 #[derive(Clone, Copy, Debug)]
 pub struct Session {
     pub user_id: Uuid,
@@ -52,28 +56,60 @@ where
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Session, ApiError> {
+        let caller = AnySession::from_request_parts(parts, state).await?;
+        if caller.reenroll_required {
+            return Err(ApiError::Forbidden(
+                "a recovery code was used: set up a new authenticator first".to_owned(),
+            ));
+        }
+        Ok(Session {
+            user_id: caller.user_id,
+            household_id: caller.household_id,
+        })
+    }
+}
+
+/// Any live session, also one whose user logged in with a recovery code and must set up a new authenticator
+/// (`reenroll_required`). Only the routes that finish that step take it: who is calling, logging out, and the new
+/// authenticator. API tokens are separate credentials and are never limited this way.
+#[derive(Clone, Copy, Debug)]
+pub struct AnySession {
+    pub user_id: Uuid,
+    pub household_id: Uuid,
+    pub reenroll_required: bool,
+}
+
+impl<S> FromRequestParts<S> for AnySession
+where
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<AnySession, ApiError> {
         let state = AppState::from_ref(state);
         if let Some(token) = bearer(&parts.headers).filter(|t| t.starts_with(tokens::PREFIX)) {
             return api_token(&state, &token, &parts.method).await;
         }
         let token = session_token(&parts.headers).ok_or(ApiError::Unauthorized)?;
-        let row: Option<(Uuid, Uuid)> = sqlx::query_as(
-            "select u.id, u.household_id from sessions s join users u on u.id = s.user_id
+        let row: Option<(Uuid, Uuid, bool)> = sqlx::query_as(
+            "select u.id, u.household_id, u.reenroll_required from sessions s join users u on u.id = s.user_id
              where s.token_hash = $1 and s.expires_at > now()",
         )
         .bind(token_hash(&token))
         .fetch_optional(&state.db)
         .await?;
-        let (user_id, household_id) = row.ok_or(ApiError::Unauthorized)?;
-        Ok(Session {
+        let (user_id, household_id, reenroll_required) = row.ok_or(ApiError::Unauthorized)?;
+        Ok(AnySession {
             user_id,
             household_id,
+            reenroll_required,
         })
     }
 }
 
 /// The caller of an API token: its user, if the token is live, and only for reading when it is a read token.
-async fn api_token(state: &AppState, token: &str, method: &Method) -> Result<Session, ApiError> {
+async fn api_token(state: &AppState, token: &str, method: &Method) -> Result<AnySession, ApiError> {
     let row: Option<(Uuid, Uuid, String)> = sqlx::query_as(
         "with used as (update api_tokens set last_used_at = now() where token_hash = $1 and revoked_at is null
                        returning user_id, scope)
@@ -88,9 +124,10 @@ async fn api_token(state: &AppState, token: &str, method: &Method) -> Result<Ses
             "this token may only read: ask for a write token".to_owned(),
         ));
     }
-    Ok(Session {
+    Ok(AnySession {
         user_id,
         household_id,
+        reenroll_required: false,
     })
 }
 
@@ -254,7 +291,7 @@ pub fn code_step(secret: &[u8], code: &str) -> ApiResult<Option<i64>> {
 }
 
 /// The hyphen-minus and the Unicode hyphens and dashes a copied code may carry between its groups.
-const DASHES: [char; 6] = ['-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}'];
+pub(crate) const DASHES: [char; 6] = ['-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}'];
 
 /// The `otpauth://` URI an authenticator app enrolls from.
 pub fn enrollment_uri(email: &str, secret: &[u8]) -> ApiResult<String> {
@@ -287,23 +324,40 @@ fn now_seconds() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
+/// The second step of a login: a code from the authenticator app, or one of the user's recovery codes.
+#[derive(Clone, Copy, Debug)]
+pub enum Second<'a> {
+    Code(&'a str),
+    Recovery(&'a str),
+}
+
+/// What passed the second step.
+enum Passed {
+    Step(i64),
+    Recovery(Uuid),
+}
+
 /// A new session for the user, or `Unauthorized` for any failed check.
 pub async fn login(
     db: &PgPool,
     email: &str,
     password: &str,
-    code: &str,
+    second: Second<'_>,
 ) -> ApiResult<(String, OffsetDateTime)> {
-    let row: Option<(Uuid, String, Vec<u8>, i64, bool)> = sqlx::query_as(
-        "select id, password_hash, totp_secret, totp_last_step, coalesce(locked_until > now(), false)
+    let row: Option<(Uuid, String, Vec<u8>, i64, bool, bool)> = sqlx::query_as(
+        "select id, password_hash, totp_secret, totp_last_step, coalesce(locked_until > now(), false),
+         reenroll_required
          from users where email = $1",
     )
     .bind(email.trim().to_lowercase())
     .fetch_optional(db)
     .await?;
-    let Some((user_id, password_hash, secret, last_step, locked)) = row else {
+    let Some((user_id, password_hash, secret, last_step, locked, reenroll_required)) = row else {
         // Same cost as a real check, so timing does not reveal unknown emails.
         let _ = Argon2::default().verify_password(password.as_bytes(), DUMMY_HASH.as_str());
+        if let Second::Recovery(code) = second {
+            recovery::matching(db, None, code).await?;
+        }
         return Err(ApiError::Unauthorized);
     };
     if locked {
@@ -312,22 +366,48 @@ pub async fn login(
     let password_ok = Argon2::default()
         .verify_password(password.as_bytes(), password_hash.as_str())
         .is_ok();
-    let step = code_step(&secret, code)?;
-    let code_ok = step.is_some_and(|step| step > last_step);
-    if !(password_ok && code_ok) {
-        sqlx::query(
-            "update users set failed_logins = failed_logins + 1,
-             locked_until = case when failed_logins + 1 >= $2 then now() + make_interval(mins => $3) end
-             where id = $1",
-        )
-        .bind(user_id)
-        .bind(MAX_FAILED_LOGINS)
-        .bind(i32::try_from(LOCK_MINUTES).unwrap_or(15))
-        .execute(db)
-        .await?;
+    let passed = match second {
+        // A retired authenticator's codes fail like any wrong code.
+        Second::Code(code) => code_step(&secret, code)?
+            .filter(|step| !reenroll_required && *step > last_step)
+            .map(Passed::Step),
+        Second::Recovery(code) => recovery::matching(db, Some(user_id), code)
+            .await?
+            .map(Passed::Recovery),
+    };
+    let Some(passed) = passed.filter(|_| password_ok) else {
+        record_failure(db, user_id).await?;
         return Err(ApiError::Unauthorized);
+    };
+    match passed {
+        Passed::Step(step) => {
+            if !claim_step(db, user_id, step).await? {
+                return Err(ApiError::Unauthorized);
+            }
+            new_session(db, user_id).await
+        }
+        Passed::Recovery(code_id) => recovery::recover(db, user_id, code_id).await,
     }
-    // Claims the step; a concurrent login with the same code finds it taken.
+}
+
+/// Counts a failed check against the user: the fifth in a row locks them for [`LOCK_MINUTES`].
+pub(crate) async fn record_failure(db: impl PgExecutor<'_>, user_id: Uuid) -> ApiResult<()> {
+    sqlx::query(
+        "update users set failed_logins = failed_logins + 1,
+         locked_until = case when failed_logins + 1 >= $2 then now() + make_interval(mins => $3) end
+         where id = $1",
+    )
+    .bind(user_id)
+    .bind(MAX_FAILED_LOGINS)
+    .bind(i32::try_from(LOCK_MINUTES).unwrap_or(15))
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// Claims the time step a code matched and clears the failure count; false when that step (or a later one) was
+/// already used, so a concurrent check with the same code finds it taken.
+pub(crate) async fn claim_step(db: impl PgExecutor<'_>, user_id: Uuid, step: i64) -> ApiResult<bool> {
     let claimed = sqlx::query(
         "update users set totp_last_step = $2, failed_logins = 0, locked_until = null
          where id = $1 and totp_last_step < $2",
@@ -336,10 +416,7 @@ pub async fn login(
     .bind(step)
     .execute(db)
     .await?;
-    if claimed.rows_affected() == 0 {
-        return Err(ApiError::Unauthorized);
-    }
-    new_session(db, user_id).await
+    Ok(claimed.rows_affected() == 1)
 }
 
 /// Opens a session for the user and returns its token, which is stored only as its hash.
@@ -355,8 +432,9 @@ pub async fn new_session(db: impl PgExecutor<'_>, user_id: Uuid) -> ApiResult<(S
     Ok((token, expires_at))
 }
 
-/// An Argon2id hash of a random password, checked against when the email is unknown.
-static DUMMY_HASH: LazyLock<String> = LazyLock::new(|| {
+/// An Argon2id hash of a random password, checked against when the email is unknown (and in place of missing
+/// recovery codes).
+pub(crate) static DUMMY_HASH: LazyLock<String> = LazyLock::new(|| {
     let password = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 16]>());
     Argon2::default()
         .hash_password(password.as_bytes())
