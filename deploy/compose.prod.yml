@@ -42,6 +42,7 @@ services:
       COINROOST_BIND: 0.0.0.0:8080
       COINROOST_WEB_DIR: /srv/web
       COINROOST_MCP_HOSTS: ${COINROOST_MCP_HOSTS:-}
+      COINROOST_FIRST_ACCOUNT: ${COINROOST_FIRST_ACCOUNT:-closed}
     # Loopback only: Docker writes its own firewall rules, so a port published on every interface bypasses ufw.
     # A reverse proxy on this host reaches it here.
     ports:
