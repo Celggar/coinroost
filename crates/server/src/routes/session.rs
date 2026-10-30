@@ -27,7 +27,7 @@ pub fn router() -> OpenApiRouter<AppState> {
 pub struct LogIn {
     email: String,
     password: String,
-    /// The 6-digit code the authenticator app shows now.
+    /// The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine.
     code: String,
 }
 

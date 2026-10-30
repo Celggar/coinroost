@@ -1954,7 +1954,7 @@
           },
           "code": {
             "type": "string",
-            "description": "The 6-digit code the authenticator app shows now for the link's secret."
+            "description": "The 6-digit code the authenticator app shows now for the link's secret; spaces or dashes between its groups\nare fine."
           }
         },
         "additionalProperties": false
@@ -2939,7 +2939,7 @@
           },
           "code": {
             "type": "string",
-            "description": "The 6-digit code the authenticator app shows now."
+            "description": "The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine."
           }
         },
         "additionalProperties": false

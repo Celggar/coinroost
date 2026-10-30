@@ -232,12 +232,23 @@ pub fn secret_base32(secret: &[u8]) -> ApiResult<String> {
     Ok(totp(secret, "user")?.secret().to_base32())
 }
 
-/// The time step a code matches now (one step of drift either way), or `None` when it does not match.
+/// The time step a code matches now (one step of drift either way), or `None` when it does not match. The code may
+/// come as people copy it, with spaces or dashes ("123 456", "123-456"); anything but six digits after that is wrong.
 pub fn code_step(secret: &[u8], code: &str) -> ApiResult<Option<i64>> {
+    let digits: String = code
+        .chars()
+        .filter(|c| !c.is_whitespace() && !DASHES.contains(c))
+        .collect();
+    if digits.len() != 6 || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return Ok(None);
+    }
     Ok(totp(secret, "user")?
-        .check(code.trim(), now_seconds())
+        .check(&digits, now_seconds())
         .and_then(|step| i64::try_from(step).ok()))
 }
+
+/// The hyphen-minus and the Unicode hyphens and dashes a copied code may carry between its groups.
+const DASHES: [char; 6] = ['-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}'];
 
 /// The `otpauth://` URI an authenticator app enrolls from.
 pub fn enrollment_uri(email: &str, secret: &[u8]) -> ApiResult<String> {

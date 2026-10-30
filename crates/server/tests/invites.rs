@@ -184,6 +184,34 @@ async fn an_unknown_or_missing_token_is_refused(db: PgPool) {
     assert_eq!(users(&api).await, 0);
 }
 
+/// The code may come with a space or a dash between its groups, as people copy it; a code with a letter in it is a
+/// wrong code and counts against the link.
+#[sqlx::test]
+async fn the_code_may_carry_spaces_or_dashes(db: PgPool) {
+    let api = Api::new(db);
+    for split in [" ", "-"] {
+        let token = link(&api, None).await;
+        let enrollment = enroll(&api, &token).await;
+        let now = code(&enrollment, 0);
+        let email = format!("split{}@example.com", split.trim().len());
+        let (status, body) = accept(
+            &api,
+            &token,
+            &email,
+            &format!("{}{split}{}", &now[..3], &now[3..]),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CREATED, "{split:?}: {body}");
+    }
+
+    let token = link(&api, None).await;
+    let enrollment = enroll(&api, &token).await;
+    let now = code(&enrollment, 0);
+    let (status, _) = accept(&api, &token, EMAIL, &format!("{}a{}", &now[..2], &now[3..])).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(attempts(&api, &token).await, 1);
+}
+
 #[sqlx::test]
 async fn wrong_codes_count_and_five_end_the_link(db: PgPool) {
     let api = Api::new(db);

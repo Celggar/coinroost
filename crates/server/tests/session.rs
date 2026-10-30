@@ -128,6 +128,39 @@ async fn login_needs_password_and_current_code(db: PgPool) {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
+/// A code is taken as people copy it, with a space or a dash between its groups; anything that is not six digits
+/// after that is a wrong code, and counts toward the lock like one.
+#[sqlx::test]
+async fn login_takes_the_code_with_spaces_or_dashes(db: PgPool) {
+    let api = Api::new(db);
+    let household = auth::create_household(&api.db, "Copied").await.unwrap();
+    for (email, split) in [("space@example.com", " "), ("dash@example.com", "-")] {
+        let (_, secret) = auth::create_user(&api.db, household, email, PASSWORD)
+            .await
+            .unwrap();
+        let code = auth::current_code(&secret).unwrap();
+        let copied = format!("{}{split}{}", &code[..3], &code[3..]);
+        let body = json!({ "email": email, "password": PASSWORD, "code": copied });
+        let (status, body) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
+        assert_eq!(status, StatusCode::CREATED, "{copied}: {body}");
+    }
+
+    let (_, secret) = auth::create_user(&api.db, household, "odd@example.com", PASSWORD)
+        .await
+        .unwrap();
+    let code = auth::current_code(&secret).unwrap();
+    for odd in [format!("{code}7"), format!("{}a{}", &code[..2], &code[3..])] {
+        let body = json!({ "email": "odd@example.com", "password": PASSWORD, "code": odd });
+        let (status, _) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED, "{odd}");
+    }
+    let failed: i32 = sqlx::query_scalar("select failed_logins from users where email = 'odd@example.com'")
+        .fetch_one(&api.db)
+        .await
+        .unwrap();
+    assert_eq!(failed, 2);
+}
+
 /// Five failures in a row lock the user, and a locked user is refused even with the right password and code.
 #[sqlx::test]
 async fn repeated_failures_lock_the_user(db: PgPool) {

@@ -95,7 +95,8 @@ pub struct AcceptInvite {
     email: String,
     /// At least 12 characters.
     password: String,
-    /// The 6-digit code the authenticator app shows now for the link's secret.
+    /// The 6-digit code the authenticator app shows now for the link's secret; spaces or dashes between its groups
+    /// are fine.
     code: String,
 }
 

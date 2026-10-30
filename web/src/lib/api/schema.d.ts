@@ -537,7 +537,10 @@ export interface components {
             email: string;
             /** @description At least 12 characters. */
             password: string;
-            /** @description The 6-digit code the authenticator app shows now for the link's secret. */
+            /**
+             * @description The 6-digit code the authenticator app shows now for the link's secret; spaces or dashes between its groups
+             *     are fine.
+             */
             code: string;
         };
         Account: {
@@ -883,7 +886,7 @@ export interface components {
         LogIn: {
             email: string;
             password: string;
-            /** @description The 6-digit code the authenticator app shows now. */
+            /** @description The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. */
             code: string;
         };
         Me: {
