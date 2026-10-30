@@ -2,8 +2,9 @@
 	// A single-use setup link: the token is the part after `#`, which the browser never sends in a request; the
 	// API gets it in request bodies only. Step 1 asks for the email and password, step 2 shows the authenticator
 	// secret the server made for this link and checks a code with it; then the person is in. Steps slide in from
-	// the side they come from, and the card grows or shrinks to the new step (the shell's job).
-	import { goto } from '$app/navigation';
+	// the side they come from, and the card grows or shrinks to the new step (the shell's job). With no link, a
+	// fresh install that allows it hands out one for its first account.
+	import { goto, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
@@ -24,6 +25,8 @@
 	let password = $state('');
 	let code = $state('');
 	let enrollment = $state<Schemas['InviteEnrollment'] | null>(null);
+	let first = $state(false);
+	let qrPng = $state('');
 	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
 	let copied = $state(false);
@@ -32,8 +35,49 @@
 	let codeField: CodeField | undefined = $state();
 	let introEnded: (() => void) | undefined;
 
+	const QR_SIZE = 212;
 	const qr = $derived(enrollment ? `data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}` : '');
 	const grouped = $derived(enrollment?.secret.match(/.{1,4}/g)?.join(' ') ?? '');
+	const agent = navigator.userAgent;
+	const onPhone = /iPhone|iPod|Android/.test(agent);
+	// The same-device link: Apple's own scheme on Apple devices (iOS 15, macOS 12 and later), the common one on
+	// Android, where authenticator apps register it, and none on other desktops, where nothing handles it.
+	const sameDevice = $derived.by(() => {
+		if (!enrollment) return '';
+		if (/iPhone|iPad|iPod|Macintosh/.test(agent))
+			return enrollment.uri.replace(/^otpauth:/, 'apple-otpauth:');
+		return /Android/.test(agent) ? enrollment.uri : '';
+	});
+
+	/** The server's QR as a PNG: Safari offers to add a long-pressed QR to Passwords only for raster images (WWDC21
+	 * 10105). Whole device pixels per module keep it sharp; what is left over widens the white border. */
+	async function rasterize(svg: string): Promise<string> {
+		const modules = Number(/viewBox="0 0 (\d+)/.exec(svg)?.[1] ?? 0);
+		const image = new Image();
+		image.src = `data:image/svg+xml;base64,${btoa(svg)}`;
+		await image.decode();
+		const canvas = document.createElement('canvas');
+		canvas.width = canvas.height = Math.round(QR_SIZE * Math.max(2, devicePixelRatio));
+		const context = canvas.getContext('2d');
+		if (!context || !modules) return '';
+		const scale = Math.floor(canvas.width / modules);
+		const offset = Math.floor((canvas.width - modules * scale) / 2);
+		context.fillStyle = '#ffffff';
+		context.fillRect(0, 0, canvas.width, canvas.height);
+		context.imageSmoothingEnabled = false;
+		context.drawImage(image, offset, offset, modules * scale, modules * scale);
+		return canvas.toDataURL('image/png');
+	}
+
+	/** A fresh install's first account: the server hands out a setup link, kept in the address so a reload finds it. */
+	async function firstAccountLink(): Promise<string> {
+		const { data: state } = await api.GET('/api/v1/first-account');
+		if (!state?.open) return '';
+		const { data } = await api.POST('/api/v1/first-account');
+		if (!data) return '';
+		replaceState(`#${encodeURIComponent(data.token)}`, {});
+		return data.token;
+	}
 
 	function go(next: Step) {
 		direction = order.indexOf(next) >= order.indexOf(step) ? 1 : -1;
@@ -60,13 +104,14 @@
 	}
 
 	onMount(async () => {
-		token = decodeURIComponent(location.hash.slice(1));
+		token = decodeURIComponent(location.hash.slice(1)) || (await firstAccountLink());
 		if (!token) {
 			go('invalid');
 			return;
 		}
-		const { response } = await api.POST('/api/v1/invites/check', { body: { token } });
-		go(response.ok ? 'account' : 'invalid');
+		const { data } = await api.POST('/api/v1/invites/check', { body: { token } });
+		first = data?.first_account ?? false;
+		go(data ? 'account' : 'invalid');
 	});
 
 	async function toCode(event: SubmitEvent) {
@@ -85,6 +130,7 @@
 		if (response.status === 404) {
 			go('invalid');
 		} else if (data) {
+			qrPng = await rasterize(data.qr_svg).catch(() => '');
 			enrollment = data;
 			error = { text: '', n: error.n + 1 };
 			go('code');
@@ -156,7 +202,10 @@
 						<p class="lead">{t('setup.invalid')}</p>
 					{:else if step === 'account'}
 						<form class="stack" onsubmit={toCode}>
-							<h2 class="step-label">{t('setup.step_account')}</h2>
+							<div>
+								<h2 class="step-label">{t('setup.step_account')}</h2>
+								{#if first}<p class="lead">{t('setup.first_lead')}</p>{/if}
+							</div>
 							<label>
 								{t('login.email')}
 								<input type="email" autocomplete="username" required bind:value={email} />
@@ -180,10 +229,10 @@
 						<form class="stack" onsubmit={finish}>
 							<div>
 								<h2 class="step-label">{t('setup.step_code')}</h2>
-								<p class="lead">{t('setup.scan')}</p>
+								<p class="lead">{onPhone ? t('setup.scan_phone') : t('setup.scan')}</p>
 							</div>
 							<div class="qr" in:pop|global={{ delay: 150, start: 0.85 }}>
-								<img src={qr} alt={t('setup.qr_alt')} width="212" height="212" />
+								<img src={qrPng || qr} alt={t('setup.qr_alt')} width={QR_SIZE} height={QR_SIZE} />
 							</div>
 							<div class="key">
 								<span class="key-label">{t('setup.key')}</span>
@@ -200,7 +249,7 @@
 								<span class="visually-hidden" aria-live="polite"
 									>{copied ? t('setup.copied') : ''}</span
 								>
-								<a class="open" href={enrollment.uri}>{t('setup.open_app')}</a>
+								{#if sameDevice}<a class="open" href={sameDevice}>{t('setup.open_app')}</a>{/if}
 							</div>
 							<hr />
 							<!-- The email again, hidden, so a password manager saves the code with the right account. -->
@@ -323,10 +372,13 @@
 	.copy > :global(*) {
 		grid-area: 1 / 1;
 	}
+	/* A 44 px tall target (Apple's minimum) without moving anything around it. */
 	.open {
 		font-weight: 600;
 		text-underline-offset: 3px;
 		justify-self: start;
+		padding-block: 10px;
+		margin-block: -10px;
 	}
 	hr {
 		width: 100%;

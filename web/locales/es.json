@@ -324,5 +324,7 @@
 	"password.hide": "Ocultar",
 	"password.shown": "La contraseña se ve en pantalla",
 	"setup.copy_short": "Copiar",
-	"setup.copied_short": "Copiada"
+	"setup.copied_short": "Copiada",
+	"setup.first_lead": "Coinroost aún no tiene cuentas: la tuya será la dueña.",
+	"setup.scan_phone": "En este teléfono, toca «Configurar en este dispositivo» o copia la clave; desde otro teléfono, escanea el código."
 }
