@@ -117,11 +117,12 @@
 			outline-offset: 2px;
 		}
 	}
+	/* A border, not a background: forced colors keep borders and drop backgrounds. */
 	.dash {
 		flex: none;
 		width: 12px;
-		height: 2px;
-		background: var(--field-border);
+		height: 0;
+		border-top: 2px solid var(--field-border);
 	}
 	.caret {
 		width: 2px;
