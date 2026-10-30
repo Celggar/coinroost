@@ -1,22 +1,25 @@
 <script lang="ts">
 	// A single-use setup link: the token is the part after `#`, which the browser never sends in a request; the
 	// API gets it in request bodies only. Step 1 asks for the email and password, step 2 shows the authenticator
-	// secret the server made for this link and checks a code with it; then the person is in. Steps slide in from
+	// secret the server made for this link and checks a code with it, step 3 shows the recovery codes the new user
+	// got (once); then the person is in. Steps slide in from
 	// the side they come from, and the card grows or shrinks to the new step (the shell's job). With no link, a
 	// fresh install that allows it hands out one for its first account.
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
+	import Authenticator, { onPhone } from '#lib/auth/Authenticator.svelte';
 	import CodeField from '#lib/auth/CodeField.svelte';
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import PasswordField from '#lib/auth/PasswordField.svelte';
+	import RecoveryCodes from '#lib/auth/RecoveryCodes.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { DURATION, pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh } from '#lib/session.svelte.ts';
 
-	type Step = 'checking' | 'invalid' | 'account' | 'code';
-	const order: Step[] = ['checking', 'invalid', 'account', 'code'];
+	type Step = 'checking' | 'invalid' | 'account' | 'code' | 'codes';
+	const order: Step[] = ['checking', 'invalid', 'account', 'code', 'codes'];
 
 	let step = $state<Step>('checking');
 	let direction = $state(1);
@@ -26,49 +29,12 @@
 	let code = $state('');
 	let enrollment = $state<Schemas['InviteEnrollment'] | null>(null);
 	let first = $state(false);
-	let qrPng = $state('');
+	let recovery = $state<{ codes: string[]; createdAt: string }>({ codes: [], createdAt: '' });
 	let error = $state({ text: '', n: 0 });
 	let busy = $state(false);
-	let copied = $state(false);
-	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 	let passwordField: PasswordField | undefined = $state();
 	let codeField: CodeField | undefined = $state();
 	let introEnded: (() => void) | undefined;
-
-	const QR_SIZE = 212;
-	const qr = $derived(enrollment ? `data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}` : '');
-	const grouped = $derived(enrollment?.secret.match(/.{1,4}/g)?.join(' ') ?? '');
-	const agent = navigator.userAgent;
-	const onPhone = /iPhone|iPod|Android/.test(agent);
-	// The same-device link: Apple's own scheme on Apple devices (iOS 15, macOS 12 and later), the common one on
-	// Android, where authenticator apps register it, and none on other desktops, where nothing handles it.
-	const sameDevice = $derived.by(() => {
-		if (!enrollment) return '';
-		if (/iPhone|iPad|iPod|Macintosh/.test(agent))
-			return enrollment.uri.replace(/^otpauth:/, 'apple-otpauth:');
-		return /Android/.test(agent) ? enrollment.uri : '';
-	});
-
-	/** The server's QR as a PNG: Safari offers to add a long-pressed QR to Passwords only for raster images (WWDC21
-	 * 10105). Whole device pixels per module keep it sharp; what is left over widens the white border. Where the
-	 * screen's scale is fractional the image is scaled by a fraction of a pixel, so it is drawn pixelated (CSS). */
-	async function rasterize(svg: string): Promise<string> {
-		const modules = Number(/viewBox="0 0 (\d+)/.exec(svg)?.[1] ?? 0);
-		const image = new Image();
-		image.src = `data:image/svg+xml;base64,${btoa(svg)}`;
-		await image.decode();
-		const canvas = document.createElement('canvas');
-		canvas.width = canvas.height = Math.round(QR_SIZE * Math.max(2, devicePixelRatio));
-		const context = canvas.getContext('2d');
-		if (!context || !modules) return '';
-		const scale = Math.floor(canvas.width / modules);
-		const offset = Math.floor((canvas.width - modules * scale) / 2);
-		context.fillStyle = '#ffffff';
-		context.fillRect(0, 0, canvas.width, canvas.height);
-		context.imageSmoothingEnabled = false;
-		context.drawImage(image, offset, offset, modules * scale, modules * scale);
-		return canvas.toDataURL('image/png');
-	}
 
 	/** A fresh install's first account: the server hands out a setup link, kept in the address so a reload finds it. */
 	async function firstAccountLink(): Promise<string> {
@@ -131,7 +97,6 @@
 		if (response.status === 404) {
 			go('invalid');
 		} else if (data) {
-			qrPng = await rasterize(data.qr_svg).catch(() => '');
 			enrollment = data;
 			error = { text: '', n: error.n + 1 };
 			go('code');
@@ -144,13 +109,19 @@
 		event.preventDefault();
 		if (busy) return;
 		busy = true;
-		const { error: failure, response } = await api.POST('/api/v1/invites/accept', {
+		const {
+			data,
+			error: failure,
+			response
+		} = await api.POST('/api/v1/invites/accept', {
 			body: { token, email, password, code }
 		});
 		busy = false;
-		if (response.ok) {
-			await refresh();
-			await goto('/', { replaceState: true });
+		if (data) {
+			// The link is spent: a reload now shows it as used, and the codes can be made again in Security.
+			recovery = { codes: data.recovery_codes, createdAt: new Date().toISOString() };
+			error = { text: '', n: error.n + 1 };
+			go('codes');
 			return;
 		}
 		code = '';
@@ -166,16 +137,14 @@
 		}
 	}
 
+	async function enter() {
+		await refresh();
+		await goto('/', { replaceState: true });
+	}
+
 	function back() {
 		error = { text: '', n: error.n + 1 };
 		go('account');
-	}
-
-	async function copy() {
-		await navigator.clipboard.writeText(enrollment?.secret ?? '');
-		copied = true;
-		clearTimeout(copiedTimer);
-		copiedTimer = setTimeout(() => (copied = false), 2000);
 	}
 </script>
 
@@ -226,32 +195,13 @@
 								>
 							</div>
 						</form>
-					{:else if enrollment}
+					{:else if step === 'code' && enrollment}
 						<form class="stack" onsubmit={finish}>
 							<div>
 								<h2 class="step-label">{t('setup.step_code')}</h2>
 								<p class="lead">{onPhone ? t('setup.scan_phone') : t('setup.scan')}</p>
 							</div>
-							<div class="qr" in:pop|global={{ delay: 150, start: 0.85 }}>
-								<img src={qrPng || qr} alt={t('setup.qr_alt')} width={QR_SIZE} height={QR_SIZE} />
-							</div>
-							<div class="key">
-								<span class="key-label">{t('setup.key')}</span>
-								<div class="key-box">
-									<code data-testid="setup-key">{grouped}</code>
-									<button type="button" class="copy" aria-label={t('setup.copy')} onclick={copy}>
-										{#key copied}
-											<span in:pop={{ start: 0.8 }} out:vanish>
-												{copied ? t('setup.copied_short') : t('setup.copy_short')}
-											</span>
-										{/key}
-									</button>
-								</div>
-								<span class="visually-hidden" aria-live="polite"
-									>{copied ? t('setup.copied') : ''}</span
-								>
-								{#if sameDevice}<a class="open" href={sameDevice}>{t('setup.open_app')}</a>{/if}
-							</div>
+							<Authenticator {enrollment} />
 							<hr />
 							<!-- The email again, hidden, so a password manager saves the code with the right account. -->
 							<input type="email" autocomplete="username" value={email} hidden readonly />
@@ -273,6 +223,19 @@
 							</div>
 							<button type="button" class="back" onclick={back} data-flip>{t('setup.back')}</button>
 						</form>
+					{:else if step === 'codes'}
+						<div class="stack">
+							<div>
+								<h2 class="step-label">{t('setup.step_codes')}</h2>
+								<p class="lead">{t('setup.codes_lead')}</p>
+							</div>
+							<RecoveryCodes codes={recovery.codes} {email} createdAt={recovery.createdAt} />
+							<div class="actions">
+								<button type="button" class="primary" onclick={enter} data-flip
+									>{t('setup.codes_done')}</button
+								>
+							</div>
+						</div>
 					{/if}
 				</div>
 			{/key}
@@ -316,71 +279,6 @@
 		to {
 			transform: rotate(1turn);
 		}
-	}
-	.qr {
-		justify-self: center;
-		padding: 8px;
-		border-radius: 16px;
-		background: #ffffff;
-		border: 1px solid #d0d6d8;
-		line-height: 0;
-	}
-	.qr img {
-		display: block;
-		width: 212px;
-		height: 212px;
-		image-rendering: pixelated;
-	}
-	.key {
-		display: grid;
-		gap: 6px;
-	}
-	.key-label {
-		font-weight: 600;
-	}
-	.key-box {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		min-height: 48px;
-		padding: 0 4px 0 12px;
-		border: 1px solid var(--field-border);
-		border-radius: 10px;
-		background: var(--surface);
-	}
-	code {
-		font-family:
-			ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono',
-			monospace;
-		font-size: 1rem;
-		letter-spacing: 0.04em;
-		overflow-wrap: anywhere;
-		user-select: all;
-	}
-	.copy {
-		flex: none;
-		display: grid;
-		place-items: center;
-		min-height: 40px;
-		padding: 0 12px;
-		border: 0;
-		border-radius: 8px;
-		background: color-mix(in oklab, var(--accent) 12%, transparent);
-		color: var(--link);
-		font-weight: 600;
-		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
-	}
-	.copy > :global(*) {
-		grid-area: 1 / 1;
-	}
-	/* A 44 px tall target (Apple's minimum) without moving anything around it. */
-	.open {
-		font-weight: 600;
-		text-underline-offset: 3px;
-		justify-self: start;
-		padding-block: 10px;
-		margin-block: -10px;
 	}
 	hr {
 		width: 100%;

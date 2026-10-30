@@ -70,6 +70,12 @@ test('the first person makes the owner account, and then sign-up is closed', asy
 	const secret = (await page.getByTestId('setup-key').innerText()).replace(/\s/g, '');
 	await page.getByLabel(say('login.code')).fill(totp(secret));
 	await page.getByRole('button', { name: say('setup.finish') }).click();
+	// Step 3: the new user's recovery codes, shown once.
+	await expect(page.getByRole('heading', { name: say('setup.step_codes') })).toBeVisible();
+	await expect(
+		page.getByRole('list', { name: say('recovery.list') }).getByRole('listitem')
+	).toHaveCount(10);
+	await page.getByRole('button', { name: say('setup.codes_done') }).click();
 	await expect(page.getByRole('button', { name: say('nav.log_out') })).toBeVisible();
 
 	await page.getByRole('button', { name: say('nav.log_out') }).click();

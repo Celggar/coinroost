@@ -159,7 +159,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Uses the link once: creates the user with the email, password and authenticator secret, and logs them in. */
+        /**
+         * Uses the link once: creates the user with the email, password and authenticator secret, makes their recovery
+         *     codes, and logs them in.
+         */
         post: operations["accept"];
         delete?: never;
         options?: never;
@@ -208,10 +211,71 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The user and household of the current session. */
+        /** The user and household of the current session; it also answers a session that must set up a new authenticator. */
         get: operations["me"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/authenticator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The new authenticator to set up after a login with a recovery code: made by the server on the first call and the
+         *     same on later ones.
+         */
+        post: operations["new_authenticator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/authenticator/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Makes the new authenticator the caller's, given a current code from it; the old one stays retired and the
+         *     caller's sessions work fully again.
+         */
+        post: operations["confirm_authenticator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many recovery codes the caller has left. The codes themselves are shown only once, when they are made. */
+        get: operations["recovery_status"];
+        put?: never;
+        /**
+         * Makes a new set of recovery codes; the old set stops working. Asks for a current authenticator code first, and a
+         *     wrong one counts toward the login lockout.
+         */
+        post: operations["regenerate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -400,7 +464,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Starts a session. Every failure answers 401 the same way, whatever was wrong. */
+        /**
+         * Starts a session. Every failure answers 401 the same way, whatever was wrong; a body with both or neither of
+         *     `code` and `recovery_code` answers 422.
+         */
         post: operations["log_in"];
         delete?: never;
         options?: never;
@@ -561,6 +628,17 @@ export interface components {
              */
             code: string;
         };
+        AcceptedInvite: {
+            /** @description Also set as the `coinroost_session` cookie; clients without cookies send it as a bearer token. */
+            token: string;
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * @description The new user's recovery codes, `xxxxx-xxxxx`, each good for one login without the authenticator app. Shown
+             *     only in this answer; a new set can be made later (`POST /api/v1/me/recovery-codes`).
+             */
+            recovery_codes: string[];
+        };
         Account: {
             /** Format: uuid */
             id: string;
@@ -690,6 +768,10 @@ export interface components {
             today: string;
             /** @description Every account, the most behind first. */
             items: components["schemas"]["AccountCoverage"][];
+        };
+        CurrentCode: {
+            /** @description The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. */
+            code: string;
         };
         DateRange: {
             /** Format: date */
@@ -916,8 +998,17 @@ export interface components {
         LogIn: {
             email: string;
             password: string;
-            /** @description The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. */
-            code: string;
+            /**
+             * @description The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. Send this or
+             *     `recovery_code`, not both.
+             */
+            code?: string | null;
+            /**
+             * @description One of the user's recovery codes (`xxxxx-xxxxx`; case, spaces and dashes do not matter), in place of `code`
+             *     when the authenticator app is lost. It works once, ends the user's other sessions and retires the
+             *     authenticator: the new session may only set up a new one until it is confirmed (see `GET /api/v1/me`).
+             */
+            recovery_code?: string | null;
         };
         Me: {
             /** Format: uuid */
@@ -925,6 +1016,11 @@ export interface components {
             /** Format: uuid */
             household_id: string;
             email: string;
+            /**
+             * @description True after a login with a recovery code, until a new authenticator is confirmed
+             *     (`POST /api/v1/me/authenticator`); until then every other route answers 403.
+             */
+            reenroll_required: boolean;
         };
         MonthTotals: {
             /** @description `YYYY-MM`. */
@@ -949,6 +1045,14 @@ export interface components {
             /** @description Id of the bank profile its exports are read with (`GET /api/v1/profiles` lists them). */
             profile?: string | null;
             detection?: components["schemas"]["Detection"];
+        };
+        NewAuthenticator: {
+            /** @description The `otpauth://` URI an authenticator app enrolls from. */
+            uri: string;
+            /** @description The same secret in base32, for apps where it is typed in. */
+            secret: string;
+            /** @description A QR code of `uri`, as an SVG image. */
+            qr_svg: string;
         };
         NewCategory: {
             name: string;
@@ -1094,6 +1198,29 @@ export interface components {
          * @enum {string}
          */
         Reason: "no_counterpart" | "several_candidates";
+        RecoveryCodes: {
+            /** @description The new codes, `xxxxx-xxxxx`, each good for one login. Shown only in this answer. */
+            codes: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
+        RecoveryStatus: {
+            /**
+             * Format: int64
+             * @description How many unused codes are left (out of `size`).
+             */
+            remaining: number;
+            /**
+             * Format: int64
+             * @description How many codes a set has.
+             */
+            size: number;
+            /**
+             * Format: date-time
+             * @description When the set was made; null when the user has none.
+             */
+            created_at?: string | null;
+        };
         RowFailure: {
             /** @description Row number in the file, 1 being the header. */
             row: number;
@@ -1729,7 +1856,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NewSession"];
+                    "application/json": components["schemas"]["AcceptedInvite"];
                 };
             };
             /** @description The link was used, expired or does not exist */
@@ -1847,6 +1974,173 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    new_authenticator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What the authenticator app needs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewAuthenticator"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The caller's authenticator works; nothing to set up */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    confirm_authenticator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentCode"];
+            };
+        };
+        responses: {
+            /** @description The new authenticator is the caller's */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The caller's authenticator works; nothing to set up */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The code does not match, or no new authenticator was made yet */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    recovery_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryStatus"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    regenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentCode"];
+            };
+        };
+        responses: {
+            /** @description The new set, shown once */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Locked after too many wrong codes */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The code does not match */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2397,6 +2691,15 @@ export interface operations {
             };
             /** @description Not logged in */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Both or neither of the two second steps */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

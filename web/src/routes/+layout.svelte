@@ -20,6 +20,10 @@
 	];
 	// Pages a person opens without a session: the login and a setup link.
 	const onPublic = $derived(page.url.pathname === '/login' || page.url.pathname === '/setup');
+	// After a recovery code the server lets the session do nothing but set up a new authenticator, so that page is
+	// the only one shown, without the app's bar.
+	const onAuthenticator = $derived(page.url.pathname === '/authenticator');
+	const limited = $derived(session.user?.reenroll_required ?? false);
 
 	$effect(() => {
 		document.documentElement.lang = i18n.locale;
@@ -31,6 +35,8 @@
 		} else if (!session.user && !onPublic) {
 			const next = page.url.pathname + page.url.search;
 			goto(`/login?next=${encodeURIComponent(next)}`, { replaceState: true });
+		} else if (session.user && limited !== onAuthenticator && !onPublic) {
+			goto(limited ? '/authenticator' : '/', { replaceState: true });
 		}
 	});
 
@@ -56,7 +62,7 @@
 	<title>{t('app.name')}</title>
 </svelte:head>
 
-{#if session.user && !onPublic}
+{#if session.user && !onPublic && !limited && !onAuthenticator}
 	<header class="top">
 		<a class="brand" href="/">{t('app.name')}</a>
 		<nav aria-label={t('nav.main')}>
@@ -67,12 +73,17 @@
 			{/each}
 		</nav>
 		<LanguageSwitch />
+		<a
+			class="security"
+			href="/security"
+			aria-current={page.url.pathname === '/security' ? 'page' : undefined}>{t('nav.security')}</a
+		>
 		<button class="secondary" onclick={leave}>{t('nav.log_out')}</button>
 	</header>
 {/if}
 
-{#if onPublic || session.user}
-	<main class:public={onPublic}>{@render children()}</main>
+{#if onPublic || (session.user && limited === onAuthenticator)}
+	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
 	<main><p class="hint">{t('app.loading')}</p></main>
 {/if}
@@ -113,6 +124,12 @@
 		border-radius: var(--radius);
 		text-decoration: none;
 	}
+	.security {
+		padding: 10px 10px;
+		border-radius: var(--radius);
+		text-decoration: none;
+	}
+	.security[aria-current='page'],
 	nav a[aria-current='page'] {
 		background: var(--bg);
 		color: var(--text);

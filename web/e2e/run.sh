@@ -19,9 +19,11 @@ email="e2e-$(date +%s)-$$@example.com"
 password=$(head -c 24 /dev/urandom | base64)
 secret=$(printf '%s\n' "$password" | "$server" user add "$email" | sed -n 's/^secret //p')
 [ -n "$secret" ] || { echo "user add printed no secret" >&2; exit 1; }
-# A setup link for the web enrollment test, which makes its own user in a new household.
+# Setup links for the web enrollment test and the recovery-code test, each of which makes its own user in a new
+# household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
-[ -n "$invite" ] || { echo "invite add printed no link" >&2; exit 1; }
+recovery_invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
+[ -n "$invite" ] && [ -n "$recovery_invite" ] || { echo "invite add printed no link" >&2; exit 1; }
 
 # The connection settings go to psql through the environment, never the command line, where other users see them.
 admin=${DATABASE_URL#*://}
@@ -67,4 +69,4 @@ start "$web/e2e-server-first.log" first open "${DATABASE_URL%/*}/coinroost_e2e_f
 cd "$web"
 npx playwright install chromium >/dev/null
 BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" E2E_INVITE="$invite" \
-  npx playwright test "$@"
+  E2E_RECOVERY_INVITE="$recovery_invite" npx playwright test "$@"

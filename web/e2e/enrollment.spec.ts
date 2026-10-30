@@ -28,6 +28,12 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	await expect(page.getByRole('alert')).toHaveText(say('setup.wrong_code'));
 	await page.getByLabel(say('login.code')).fill(right);
 	await page.getByRole('button', { name: say('setup.finish') }).click();
+	// Step 3: the new user's recovery codes, shown once.
+	await expect(page.getByRole('heading', { name: say('setup.step_codes') })).toBeVisible();
+	await expect(
+		page.getByRole('list', { name: say('recovery.list') }).getByRole('listitem')
+	).toHaveCount(10);
+	await page.getByRole('button', { name: say('setup.codes_done') }).click();
 	await expect(page.getByRole('button', { name: say('nav.log_out') })).toBeVisible();
 
 	await page.getByRole('button', { name: say('nav.log_out') }).click();
