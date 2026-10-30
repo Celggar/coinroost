@@ -132,6 +132,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invites/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Uses the link once: creates the user with the email, password and authenticator secret, and logs them in. */
+        post: operations["accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invites/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Whether a setup link still works. A used, expired or unknown link answers 404 the same way. */
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invites/enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The link's authenticator secret, made by the server the first time and the same on every later call. */
+        post: operations["enrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -481,6 +532,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptInvite: {
+            token: string;
+            email: string;
+            /** @description At least 12 characters. */
+            password: string;
+            /** @description The 6-digit code the authenticator app shows now for the link's secret. */
+            code: string;
+        };
         Account: {
             /** Format: uuid */
             id: string;
@@ -679,6 +738,11 @@ export interface components {
             /** @description From the first fortnight to the last one due or paid. */
             history: components["schemas"]["FortnightLine"][];
         };
+        EnrollmentRequest: {
+            token: string;
+            /** @description The email the person will log in with; it only labels the entry in their authenticator app. */
+            email: string;
+        };
         FortnightLine: {
             fortnight: components["schemas"]["FortnightView"];
             status: components["schemas"]["FortnightStatus"];
@@ -781,6 +845,24 @@ export interface components {
             batch: components["schemas"]["ImportBatch"];
             /** @description Rows that could not be read; they were not imported. */
             row_errors: components["schemas"]["RowFailure"][];
+        };
+        InviteEnrollment: {
+            /** @description The `otpauth://` URI an authenticator app enrolls from. */
+            uri: string;
+            /** @description The same secret in base32, for apps where it is typed in. */
+            secret: string;
+            /** @description A QR code of `uri`, as an SVG image. */
+            qr_svg: string;
+        };
+        InviteState: {
+            /** Format: date-time */
+            expires_at: string;
+            /** @description True when accepting it makes a new household; false when it joins an existing one. */
+            new_household: boolean;
+        };
+        InviteToken: {
+            /** @description The token from the link's fragment (after `#`). */
+            token: string;
         };
         Leg: {
             /** Format: uuid */
@@ -1528,6 +1610,123 @@ export interface operations {
             };
             /** @description The file cannot be read with the account's profile */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvite"];
+            };
+        };
+        responses: {
+            /** @description The user exists and is logged in; the token is also set as a cookie */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewSession"];
+                };
+            };
+            /** @description The link was used, expired or does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A user with that email already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Wrong code, short password, no email, or no authenticator step yet; the link still works */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteToken"];
+            };
+        };
+        responses: {
+            /** @description The link works */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteState"];
+                };
+            };
+            /** @description The link was used, expired or does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    enrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollmentRequest"];
+            };
+        };
+        responses: {
+            /** @description What the authenticator app needs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteEnrollment"];
+                };
+            };
+            /** @description The link was used, expired or does not exist */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

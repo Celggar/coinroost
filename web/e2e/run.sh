@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end test of the web app against a real server. Builds the server, creates the database coinroost_e2e on
 # the PostgreSQL server of DATABASE_URL if it is missing (every run enrolls its own user in its own household, so
-# runs never see each other's data), starts coinroost-server on a free port with web/build, and runs Playwright.
+# runs never see each other's data) and a setup link, starts coinroost-server on a free port with web/build, and runs Playwright.
 # Needs DATABASE_URL and a built web app (npm run build).
 set -euo pipefail
 web=$(cd "$(dirname "$0")/.." && pwd)
@@ -18,6 +18,9 @@ email="e2e-$(date +%s)-$$@example.com"
 password=$(head -c 24 /dev/urandom | base64)
 secret=$(printf '%s\n' "$password" | "$server" user add "$email" | sed -n 's/^secret //p')
 [ -n "$secret" ] || { echo "user add printed no secret" >&2; exit 1; }
+# A setup link for the web enrollment test, which makes its own user in a new household.
+invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
+[ -n "$invite" ] || { echo "invite add printed no link" >&2; exit 1; }
 
 # Playwright empties test-results/ when it starts, so the server log lives next to it.
 log="$web/e2e-server.log"
@@ -35,4 +38,5 @@ done
 
 cd "$web"
 npx playwright install chromium >/dev/null
-BASE_URL="http://$address" E2E_SERVER="$server" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" npx playwright test "$@"
+BASE_URL="http://$address" E2E_SERVER="$server" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" E2E_INVITE="$invite" \
+  npx playwright test "$@"

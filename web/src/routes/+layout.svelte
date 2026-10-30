@@ -18,7 +18,8 @@
 		{ href: '/coverage', label: 'nav.coverage' },
 		{ href: '/accounts', label: 'nav.accounts' }
 	];
-	const onLogin = $derived(page.url.pathname === '/login');
+	// Pages a person opens without a session: the login and a setup link.
+	const onPublic = $derived(page.url.pathname === '/login' || page.url.pathname === '/setup');
 
 	$effect(() => {
 		document.documentElement.lang = i18n.locale;
@@ -27,7 +28,7 @@
 	$effect(() => {
 		if (!session.checked) {
 			refresh();
-		} else if (!session.user && !onLogin) {
+		} else if (!session.user && !onPublic) {
 			const next = page.url.pathname + page.url.search;
 			goto(`/login?next=${encodeURIComponent(next)}`, { replaceState: true });
 		}
@@ -43,7 +44,7 @@
 	<title>{t('app.name')}</title>
 </svelte:head>
 
-{#if session.user && !onLogin}
+{#if session.user && !onPublic}
 	<header class="top">
 		<a class="brand" href="/">{t('app.name')}</a>
 		<nav aria-label={t('nav.main')}>
@@ -58,7 +59,7 @@
 	</header>
 {/if}
 
-{#if onLogin || session.user}
+{#if onPublic || session.user}
 	<main>{@render children()}</main>
 {:else}
 	<main><p class="hint">{t('app.loading')}</p></main>
