@@ -97,7 +97,27 @@ export function stepIn(node: Element, { direction = 1 } = {}): TransitionConfig 
 	});
 }
 
+/** Shuts an element on its way out of a `{#key}` block, whose old content never comes back: no focus or clicks, and
+ * its fields drop out of the form, or an empty required one left there for the length of the exit would block a
+ * quick submit of what replaced it. Not for `{#if}` blocks, whose exit can turn around and bring the element back. */
+function shut(node: Element) {
+	if (node instanceof HTMLElement) node.inert = true;
+	for (const control of node.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
+		'button, input'
+	)) {
+		control.disabled = true;
+	}
+}
+
+/** Out of a `{#key}` block that swaps one view for another: a quick fade, shut ([`shut`]). */
+export function swapOut(node: Element): TransitionConfig {
+	shut(node);
+	return vanish(node);
+}
+
+/** Out of a step (a `{#key}` block), shut ([`shut`]). */
 export function stepOut(node: Element, { direction = 1 } = {}): TransitionConfig {
+	shut(node);
 	return fly(node, {
 		x: still() ? 0 : -32 * direction,
 		duration: DURATION.exit,
