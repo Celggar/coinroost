@@ -40,6 +40,10 @@ pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
+    /// Whether a fresh install lets the first person who reaches it make the owner account from the web
+    /// (`COINROOST_FIRST_ACCOUNT=open`). Off by default: an install open to the internet would hand itself to
+    /// whoever comes first, so only a deployment that controls who reaches it (an access proxy) turns it on.
+    pub first_account: bool,
 }
 
 #[derive(OpenApi)]
@@ -70,6 +74,7 @@ fn api() -> OpenApiRouter<AppState> {
     OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::system::router())
         .merge(routes::session::router())
+        .merge(routes::first_account::router())
         .merge(routes::invites::router())
         .merge(routes::accounts::router())
         .merge(routes::catalog::router())

@@ -172,7 +172,11 @@ pub struct Enrolled<'a> {
     pub last_step: i64,
 }
 
-/// Stores a user whose password is already hashed ([`hash_password`]).
+/// The advisory lock every user insert takes, held to the end of its transaction, so a first-account sign-up can
+/// check that no user exists and add one with nothing slipping in between (see [`crate::invites`]).
+pub const USERS_LOCK: i64 = 0x636f_696e_726f_6f73;
+
+/// Stores a user whose password is already hashed ([`hash_password`]), under [`USERS_LOCK`].
 pub async fn insert_user(
     db: impl PgExecutor<'_>,
     household_id: Uuid,
@@ -182,13 +186,15 @@ pub async fn insert_user(
 ) -> ApiResult<Uuid> {
     let (id,): (Uuid,) = sqlx::query_as(
         "insert into users (household_id, email, password_hash, totp_secret, totp_last_step)
-         values ($1, $2, $3, $4, $5) returning id",
+         select $1, $2, $3, $4, $5 from (select pg_advisory_xact_lock($6)) as serialized
+         returning id",
     )
     .bind(household_id)
     .bind(email.trim().to_lowercase())
     .bind(password_hash)
     .bind(enrolled.secret)
     .bind(enrolled.last_step)
+    .bind(USERS_LOCK)
     .fetch_one(db)
     .await?;
     Ok(id)

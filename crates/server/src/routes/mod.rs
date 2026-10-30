@@ -5,6 +5,7 @@ pub mod accounts;
 pub mod apply;
 pub mod catalog;
 pub mod coverage;
+pub mod first_account;
 pub mod imports;
 pub mod invites;
 pub mod payroll;

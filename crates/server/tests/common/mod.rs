@@ -33,8 +33,16 @@ pub struct User {
 
 impl Api {
     pub fn new(db: PgPool) -> Api {
+        Api::with(db, false)
+    }
+
+    /// The API of a deployment that lets its first account be made from the web, or not.
+    pub fn with(db: PgPool, first_account: bool) -> Api {
         Api {
-            app: router(AppState { db: db.clone() }),
+            app: router(AppState {
+                db: db.clone(),
+                first_account,
+            }),
             db,
         }
     }

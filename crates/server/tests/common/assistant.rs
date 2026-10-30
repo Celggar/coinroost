@@ -26,7 +26,13 @@ impl Mcp {
 
     pub fn with_hosts(db: &PgPool, hosts: &[String]) -> Mcp {
         Mcp {
-            app: coinroost_server::mcp::router(AppState { db: db.clone() }, hosts),
+            app: coinroost_server::mcp::router(
+                AppState {
+                    db: db.clone(),
+                    first_account: false,
+                },
+                hosts,
+            ),
         }
     }
 

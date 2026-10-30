@@ -38,7 +38,13 @@ async fn serves_the_web_app_and_keeps_api_problems(db: PgPool) {
     .unwrap();
     fs::write(dir.join("_app/immutable/start.1a2b.js"), "export {};").unwrap();
     fs::write(dir.join("robots.txt"), "User-agent: *\nDisallow: /\n").unwrap();
-    let app = app(AppState { db }, Some(&dir));
+    let app = app(
+        AppState {
+            db,
+            first_account: false,
+        },
+        Some(&dir),
+    );
 
     // The app's own routes load the shell, which is revalidated on every visit.
     for page in ["/", "/import", "/coverage/deep"] {

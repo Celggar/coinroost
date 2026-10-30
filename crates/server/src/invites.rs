@@ -8,6 +8,9 @@
 //!   a session.
 //! - A wrong code leaves the link usable; after [`MAX_ATTEMPTS`] wrong codes it stops working. A used, expired,
 //!   exhausted or unknown link gets the same answer.
+//! - The first account: while there are no users, anyone who reaches the app can get a link for a new household
+//!   ([`create_first`]), the way a fresh Firefly III lets its first visitor register. Once any user exists those
+//!   links stop working; accepting one checks that under [`auth::USERS_LOCK`], so two at once make one owner.
 
 use std::fmt::Write as _;
 
@@ -43,20 +46,50 @@ pub async fn create(db: &PgPool, household: Option<Uuid>) -> ApiResult<NewInvite
     Ok(NewInvite { token, expires_at })
 }
 
+/// Whether the app has no users yet, so its first account can be made from the web ([`create_first`]).
+pub async fn first_account_open(db: &PgPool) -> ApiResult<bool> {
+    Ok(sqlx::query_scalar("select not exists (select 1 from users)")
+        .fetch_one(db)
+        .await?)
+}
+
+/// Makes a link for the app's first account, in a new household; refused once any user exists.
+pub async fn create_first(db: &PgPool) -> ApiResult<NewInvite> {
+    let token = URL_SAFE_NO_PAD.encode(rand::random::<[u8; 32]>());
+    let expires_at = OffsetDateTime::now_utc() + time::Duration::hours(INVITE_HOURS);
+    let made = sqlx::query(
+        "insert into invites (token_hash, expires_at, first_account)
+         select $1, $2, true where not exists (select 1 from users)",
+    )
+    .bind(auth::token_hash(&token))
+    .bind(expires_at)
+    .execute(db)
+    .await?;
+    if made.rows_affected() == 0 {
+        return Err(ApiError::Conflict(
+            "this app already has an account; ask its owner for a setup link".to_owned(),
+        ));
+    }
+    Ok(NewInvite { token, expires_at })
+}
+
 /// A link that still works.
 #[derive(sqlx::FromRow)]
 pub struct Live {
     pub id: Uuid,
     pub household_id: Option<Uuid>,
+    pub first_account: bool,
     pub totp_secret: Option<Vec<u8>>,
     pub expires_at: OffsetDateTime,
 }
 
-/// The link for a token if it still works: not used, not expired, not exhausted. Anything else is `NotFound`.
+/// The link for a token if it still works: not used, not expired, not exhausted, and for a first-account link, no
+/// user yet. Anything else is `NotFound`.
 pub async fn live(db: &PgPool, token: &str) -> ApiResult<Live> {
     sqlx::query_as::<_, Live>(
-        "select id, household_id, totp_secret, expires_at from invites
-         where token_hash = $1 and used_at is null and expires_at > now() and failed_attempts < $2",
+        "select id, household_id, first_account, totp_secret, expires_at from invites
+         where token_hash = $1 and used_at is null and expires_at > now() and failed_attempts < $2
+           and (not first_account or not exists (select 1 from users))",
     )
     .bind(auth::token_hash(token))
     .bind(MAX_ATTEMPTS)
@@ -118,6 +151,19 @@ pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<
         ));
     };
     let mut tx = db.begin().await?;
+    if invite.first_account {
+        // Held to the commit, as every user insert takes it: no other user can appear between this check and ours.
+        sqlx::query("select pg_advisory_xact_lock($1)")
+            .bind(auth::USERS_LOCK)
+            .execute(&mut *tx)
+            .await?;
+        let someone: bool = sqlx::query_scalar("select exists (select 1 from users)")
+            .fetch_one(&mut *tx)
+            .await?;
+        if someone {
+            return Err(ApiError::NotFound);
+        }
+    }
     // The one statement that uses the link: a second acceptance, even a concurrent one, finds nothing.
     let claimed: Option<(Option<Uuid>,)> = sqlx::query_as(
         "update invites set used_at = now()

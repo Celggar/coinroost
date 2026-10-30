@@ -1,6 +1,8 @@
 //! `coinroost-server serve`: applies the schema and serves the API on `COINROOST_BIND` (default `127.0.0.1:8080`)
 //! with the database at `DATABASE_URL`, the web app built in `COINROOST_WEB_DIR` when it is set, and `/mcp` for MCP
 //! clients, which accepts the `Host` names in `COINROOST_MCP_HOSTS` (comma separated; loopback when unset or empty).
+//! With `COINROOST_FIRST_ACCOUNT=open`, a fresh install lets the first person who reaches it make the owner account
+//! from the web; only turn it on behind something that limits who reaches the app (default `closed`).
 //! `coinroost-server migrate`: creates the database if it does not exist, applies the schema and exits.
 //! `coinroost-server user add <email> [--household <id>]`: adds a user, to a new household unless one is given.
 //! The password is read from the terminal (or from the first line of standard input when it is not a terminal),
@@ -144,7 +146,16 @@ async fn serve() -> Result<(), String> {
         .filter(|h| !h.is_empty())
         .collect();
     eprintln!("serving on {address}");
-    let state = AppState { db };
+    let first_account = match std::env::var("COINROOST_FIRST_ACCOUNT").as_deref() {
+        Ok("open") => true,
+        Ok("" | "closed") | Err(_) => false,
+        Ok(other) => {
+            return Err(format!(
+                "COINROOST_FIRST_ACCOUNT: expected open or closed, got {other:?}"
+            ));
+        }
+    };
+    let state = AppState { db, first_account };
     let routes = mcp::router(state.clone(), &hosts).merge(app(state, web.as_deref()));
     axum::serve(listener, routes)
         .with_graceful_shutdown(async {

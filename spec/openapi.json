@@ -316,6 +316,72 @@
         }
       }
     },
+    "/api/v1/first-account": {
+      "get": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "Whether the first account can be made from the web: the deployment allows it and the app has no users yet.",
+        "operationId": "state",
+        "responses": {
+          "200": {
+            "description": "Whether the first account can still be made",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstAccountState"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      },
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "summary": "A setup link for the first account, in a new household. It stops working as soon as any user exists.",
+        "operationId": "start",
+        "responses": {
+          "201": {
+            "description": "A setup link for the first account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstAccountLink"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This deployment makes its first account from the console",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The app already has an account; new people need a link from it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -2526,6 +2592,35 @@
           }
         },
         "additionalProperties": false
+      },
+      "FirstAccountLink": {
+        "type": "object",
+        "required": [
+          "token",
+          "expires_at"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "A setup link's token, used with the `/api/v1/invites/…` operations like any other."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FirstAccountState": {
+        "type": "object",
+        "required": [
+          "open"
+        ],
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "description": "True while the app has no users and its deployment lets the first account be made from the web."
+          }
+        }
       },
       "FortnightLine": {
         "type": "object",
