@@ -68,6 +68,7 @@ async fn the_first_account_is_made_from_the_web_then_sign_up_is_closed(db: PgPoo
     let (status, state) = call(&api, "POST", "/api/v1/invites/check", Some(check)).await;
     assert_eq!(status, StatusCode::OK, "{state}");
     assert_eq!(state["new_household"], true);
+    assert_eq!(state["first_account"], true);
     let enrollment = enroll(&api, &token, "owner@example.com").await;
     let (status, session) = accept(&api, &token, "owner@example.com", &code(&enrollment)).await;
     assert_eq!(status, StatusCode::CREATED, "{session}");

@@ -77,6 +77,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/first-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the first account can be made from the web: the deployment allows it and the app has no users yet. */
+        get: operations["state"];
+        put?: never;
+        /** A setup link for the first account, in a new household. It stops working as soon as any user exists. */
+        post: operations["start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -746,6 +764,16 @@ export interface components {
             /** @description The email the person will log in with; it only labels the entry in their authenticator app. */
             email: string;
         };
+        FirstAccountLink: {
+            /** @description A setup link's token, used with the `/api/v1/invites/…` operations like any other. */
+            token: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        FirstAccountState: {
+            /** @description True while the app has no users and its deployment lets the first account be made from the web. */
+            open: boolean;
+        };
         FortnightLine: {
             fortnight: components["schemas"]["FortnightView"];
             status: components["schemas"]["FortnightStatus"];
@@ -862,6 +890,8 @@ export interface components {
             expires_at: string;
             /** @description True when accepting it makes a new household; false when it joins an existing one. */
             new_household: boolean;
+            /** @description True for the app's first account (see `/api/v1/first-account`). */
+            first_account: boolean;
         };
         InviteToken: {
             /** @description The token from the link's fragment (after `#`). */
@@ -1507,6 +1537,64 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the first account can still be made */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstAccountState"];
+                };
+            };
+        };
+    };
+    start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A setup link for the first account */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstAccountLink"];
+                };
+            };
+            /** @description This deployment makes its first account from the console */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The app already has an account; new people need a link from it */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2943,7 +2943,8 @@
         "type": "object",
         "required": [
           "expires_at",
-          "new_household"
+          "new_household",
+          "first_account"
         ],
         "properties": {
           "expires_at": {
@@ -2953,6 +2954,10 @@
           "new_household": {
             "type": "boolean",
             "description": "True when accepting it makes a new household; false when it joins an existing one."
+          },
+          "first_account": {
+            "type": "boolean",
+            "description": "True for the app's first account (see `/api/v1/first-account`)."
           }
         }
       },

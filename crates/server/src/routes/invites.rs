@@ -37,6 +37,8 @@ pub struct InviteState {
     expires_at: OffsetDateTime,
     /// True when accepting it makes a new household; false when it joins an existing one.
     new_household: bool,
+    /// True for the app's first account (see `/api/v1/first-account`).
+    first_account: bool,
 }
 
 /// Whether a setup link still works. A used, expired or unknown link answers 404 the same way.
@@ -49,6 +51,7 @@ async fn check(State(state): State<AppState>, Json(body): Json<InviteToken>) -> 
     Ok(Json(InviteState {
         expires_at: invite.expires_at,
         new_household: invite.household_id.is_none(),
+        first_account: invite.first_account,
     }))
 }
 
