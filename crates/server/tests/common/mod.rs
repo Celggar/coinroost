@@ -11,7 +11,7 @@ pub mod transfers;
 use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode, header};
-use coinroost_server::{AppState, auth, router};
+use coinroost_server::{AppState, auth, router, totp};
 use http_body_util::BodyExt;
 use serde_json::Value;
 use sqlx::PgPool;
@@ -54,7 +54,7 @@ impl Api {
         let (_, secret) = auth::create_user(&self.db, household, &email, PASSWORD)
             .await
             .unwrap();
-        let code = auth::current_code(&secret).unwrap();
+        let code = totp::current_code(&secret).unwrap();
         let (status, body) = self
             .call(
                 "POST",

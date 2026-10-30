@@ -6,7 +6,7 @@ mod common;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::http::StatusCode;
-use coinroost_server::{auth, invites, tokens};
+use coinroost_server::{invites, tokens, totp};
 use common::{Api, PASSWORD, User};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -23,7 +23,7 @@ async fn next_window(api: &Api, user: &User) {
 /// A new set for the user, made the way the Security page makes it.
 async fn codes(api: &Api, user: &User) -> Vec<String> {
     next_window(api, user).await;
-    let body = json!({"code": auth::current_code(&user.secret).unwrap()});
+    let body = json!({"code": totp::current_code(&user.secret).unwrap()});
     let (status, set) = api
         .call("POST", "/api/v1/me/recovery-codes", Some(&user.token), Some(body))
         .await;
@@ -110,7 +110,7 @@ async fn a_login_needs_exactly_one_second_step(db: PgPool) {
     let api = Api::new(db);
     let user = api.household("Exactly One").await;
     let set = codes(&api, &user).await;
-    let code = auth::current_code(&user.secret).unwrap();
+    let code = totp::current_code(&user.secret).unwrap();
     let (status, _) = log_in(&api, &user.email, json!({"code": code, "recovery_code": set[0]})).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     let (status, _) = log_in(&api, &user.email, json!({})).await;
@@ -133,7 +133,7 @@ async fn wrong_recovery_codes_lock_the_user(db: PgPool) {
         "a locked user got in with a recovery code"
     );
     next_window(&api, &user).await;
-    let code = auth::current_code(&user.secret).unwrap();
+    let code = totp::current_code(&user.secret).unwrap();
     let (status, _) = log_in(&api, &user.email, json!({"code": code})).await;
     assert_eq!(
         status,
@@ -168,7 +168,7 @@ async fn regenerating_needs_a_fresh_code_and_retires_the_old_set(db: PgPool) {
     let api = Api::new(db);
     let user = api.household("Regenerate").await;
     // The code that just logged in cannot be replayed to make a set.
-    let replay = json!({"code": auth::current_code(&user.secret).unwrap()});
+    let replay = json!({"code": totp::current_code(&user.secret).unwrap()});
     let (status, body) = api
         .call(
             "POST",
@@ -222,7 +222,7 @@ async fn wrong_codes_when_regenerating_lock_the_user(db: PgPool) {
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     }
     next_window(&api, &user).await;
-    let right = json!({"code": auth::current_code(&user.secret).unwrap()});
+    let right = json!({"code": totp::current_code(&user.secret).unwrap()});
     let (status, body) = api
         .call(
             "POST",
@@ -319,7 +319,7 @@ async fn the_old_authenticator_dies_and_a_new_one_takes_over(db: PgPool) {
     let token = body["token"].as_str().unwrap().to_owned();
 
     next_window(&api, &user).await;
-    let old_code = json!({"code": auth::current_code(&user.secret).unwrap()});
+    let old_code = json!({"code": totp::current_code(&user.secret).unwrap()});
     let (status, _) = log_in(&api, &user.email, old_code.clone()).await;
     assert_eq!(
         status,

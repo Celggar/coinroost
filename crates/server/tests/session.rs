@@ -4,7 +4,7 @@ mod common;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode, header};
-use coinroost_server::auth;
+use coinroost_server::{auth, totp};
 use common::{Api, PASSWORD};
 use serde_json::json;
 use sqlx::PgPool;
@@ -66,7 +66,7 @@ async fn login_needs_password_and_current_code(db: PgPool) {
     let (_, secret) = auth::create_user(&api.db, household, "Jane@Example.com", PASSWORD)
         .await
         .unwrap();
-    let code = auth::current_code(&secret).unwrap();
+    let code = totp::current_code(&secret).unwrap();
     let wrong_code = format!("{:06}", (code.parse::<u32>().unwrap() + 1) % 1_000_000);
     let attempt = |email: &str, password: &str, code: &str| json!({ "email": email, "password": password, "code": code });
     for body in [
@@ -138,7 +138,7 @@ async fn login_takes_the_code_with_spaces_or_dashes(db: PgPool) {
         let (_, secret) = auth::create_user(&api.db, household, email, PASSWORD)
             .await
             .unwrap();
-        let code = auth::current_code(&secret).unwrap();
+        let code = totp::current_code(&secret).unwrap();
         let copied = format!("{}{split}{}", &code[..3], &code[3..]);
         let body = json!({ "email": email, "password": PASSWORD, "code": copied });
         let (status, body) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
@@ -148,7 +148,7 @@ async fn login_takes_the_code_with_spaces_or_dashes(db: PgPool) {
     let (_, secret) = auth::create_user(&api.db, household, "odd@example.com", PASSWORD)
         .await
         .unwrap();
-    let code = auth::current_code(&secret).unwrap();
+    let code = totp::current_code(&secret).unwrap();
     for odd in [format!("{code}7"), format!("{}a{}", &code[..2], &code[3..])] {
         let body = json!({ "email": "odd@example.com", "password": PASSWORD, "code": odd });
         let (status, _) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
@@ -174,7 +174,7 @@ async fn repeated_failures_lock_the_user(db: PgPool) {
         let (status, _) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
         assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
-    let code = auth::current_code(&secret).unwrap();
+    let code = totp::current_code(&secret).unwrap();
     let body = json!({ "email": "lock@example.com", "password": PASSWORD, "code": code });
     let (status, _) = api.call("POST", "/api/v1/sessions", None, Some(body)).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -198,7 +198,7 @@ async fn user_add_enrolls_a_user(db: PgPool) {
     assert!(enrolled.uri.starts_with("otpauth://totp/"), "{}", enrolled.uri);
     let totp = totp_rs::Totp::from_url(&enrolled.uri).unwrap();
     assert_eq!(totp.secret().to_base32(), enrolled.secret_base32);
-    let code = auth::current_code(totp.secret().as_bytes()).unwrap();
+    let code = totp::current_code(totp.secret().as_bytes()).unwrap();
     let login = json!({ "email": "new@example.com", "password": PASSWORD, "code": code });
     let (status, body) = api.call("POST", "/api/v1/sessions", None, Some(login)).await;
     assert_eq!(status, StatusCode::CREATED, "{body}");

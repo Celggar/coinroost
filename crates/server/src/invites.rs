@@ -24,6 +24,7 @@ use uuid::Uuid;
 use crate::auth::{self, Enrolled};
 use crate::error::{ApiError, ApiResult};
 use crate::recovery;
+use crate::totp;
 
 pub const INVITE_HOURS: i64 = 1;
 pub const MAX_ATTEMPTS: i32 = 5;
@@ -113,13 +114,13 @@ pub async fn enrollment(db: &PgPool, token: &str, email: &str) -> ApiResult<Enro
         "update invites set totp_secret = coalesce(totp_secret, $2) where id = $1 returning totp_secret",
     )
     .bind(invite.id)
-    .bind(auth::new_secret())
+    .bind(totp::new_secret())
     .fetch_one(db)
     .await?;
-    let uri = auth::enrollment_uri(email.trim(), &secret)?;
+    let uri = totp::enrollment_uri(email.trim(), &secret)?;
     Ok(Enrollment {
         qr_svg: qr_svg(&uri)?,
-        secret_base32: auth::secret_base32(&secret)?,
+        secret_base32: totp::secret_base32(&secret)?,
         uri,
     })
 }
@@ -149,7 +150,7 @@ pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<
         ApiError::Invalid("open the link's authenticator step first, then send its code".to_owned())
     })?;
     let password_hash = auth::hash_password(who.password)?;
-    let Some(step) = auth::code_step(&secret, who.code)? else {
+    let Some(step) = totp::code_step(&secret, who.code)? else {
         sqlx::query("update invites set failed_attempts = failed_attempts + 1 where id = $1")
             .bind(invite.id)
             .execute(db)

@@ -1,8 +1,8 @@
 //! Who is calling: users, their login and their sessions.
 //!
 //! - Passwords are hashed with Argon2id at OWASP's recommended cost (19 MiB, 2 passes, 1 lane).
-//! - A login needs the password and a current TOTP code (RFC 6238: SHA-1, 6 digits, 30-second steps, one step of
-//!   clock drift either way). A code is accepted once: the step it matched must be later than the last one used.
+//! - A login needs the password and a current code from the authenticator app ([`crate::totp`]). A code is accepted
+//!   once: the step it matched must be later than the last one used.
 //! - Instead of a code, a login may carry one of the user's recovery codes (see [`crate::recovery`]). That retires
 //!   the authenticator: until a new one is confirmed, its codes are refused and the user's sessions are limited to
 //!   setting up the new one ([`AnySession`]); every other route answers 403.
@@ -15,7 +15,6 @@
 //!   token may only read (GET and HEAD), and any other method answers 403.
 
 use std::sync::LazyLock;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use axum::extract::{FromRef, FromRequestParts};
@@ -30,14 +29,13 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::error::{ApiError, ApiResult};
-use crate::{recovery, tokens};
+use crate::{recovery, tokens, totp};
 
 pub const SESSION_COOKIE: &str = "coinroost_session";
 pub const SESSION_DAYS: i64 = 7;
 const MAX_FAILED_LOGINS: i32 = 5;
 const LOCK_MINUTES: i64 = 15;
 const MIN_PASSWORD_CHARS: usize = 12;
-const TOTP_STEP: u64 = 30;
 
 /// The caller of a request: a user with a live session, and their household. Every query a handler runs is
 /// scoped to `household_id`. A user who must set up a new authenticator first is refused here with 403, so every
@@ -189,18 +187,13 @@ pub async fn create_user(
     email: &str,
     password: &str,
 ) -> ApiResult<(Uuid, Vec<u8>)> {
-    let secret = new_secret();
+    let secret = totp::new_secret();
     let enrolled = Enrolled {
         secret: &secret,
         last_step: 0,
     };
     let id = insert_user(db, household_id, email, &hash_password(password)?, enrolled).await?;
     Ok((id, secret))
-}
-
-/// A secret for an authenticator app: 160 random bits, the size RFC 4226 recommends.
-pub fn new_secret() -> Vec<u8> {
-    rand::random::<[u8; 20]>().to_vec()
 }
 
 /// The authenticator a new user starts with: its secret and the last step a code was accepted for.
@@ -265,63 +258,9 @@ pub async fn enroll(
     Ok(Enrollment {
         household_id,
         user_id,
-        uri: enrollment_uri(&account, &secret)?,
-        secret_base32: secret_base32(&secret)?,
+        uri: totp::enrollment_uri(&account, &secret)?,
+        secret_base32: totp::secret_base32(&secret)?,
     })
-}
-
-/// The secret in base32, for apps where it is typed in.
-pub fn secret_base32(secret: &[u8]) -> ApiResult<String> {
-    Ok(totp(secret, "user")?.secret().to_base32())
-}
-
-/// The time step a code matches now (one step of drift either way), or `None` when it does not match. The code may
-/// come as people copy it, with spaces or dashes ("123 456", "123-456"); anything but six digits after that is wrong.
-pub fn code_step(secret: &[u8], code: &str) -> ApiResult<Option<i64>> {
-    let digits: String = code
-        .chars()
-        .filter(|c| !c.is_whitespace() && !DASHES.contains(c))
-        .collect();
-    if digits.len() != 6 || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return Ok(None);
-    }
-    Ok(totp(secret, "user")?
-        .check(&digits, now_seconds())
-        .and_then(|step| i64::try_from(step).ok()))
-}
-
-/// The hyphen-minus and the Unicode hyphens and dashes a copied code may carry between its groups.
-pub(crate) const DASHES: [char; 6] = ['-', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}'];
-
-/// The `otpauth://` URI an authenticator app enrolls from.
-pub fn enrollment_uri(email: &str, secret: &[u8]) -> ApiResult<String> {
-    totp(secret, email)?
-        .to_url()
-        .map_err(|e| ApiError::Internal(e.to_string()))
-}
-
-fn totp(secret: &[u8], account: &str) -> ApiResult<totp_rs::Totp> {
-    totp_rs::Builder::new()
-        .with_algorithm(totp_rs::Algorithm::SHA1)
-        .with_digits(6)
-        .with_skew(1)
-        .with_step_duration(TOTP_STEP)
-        .with_secret(secret)
-        .with_issuer(Some("Coinroost"))
-        .with_account_name(account)
-        .build()
-        .map_err(|e| ApiError::Internal(e.to_string()))
-}
-
-/// The current code for a secret, as an authenticator app shows it (tests use it to log in).
-pub fn current_code(secret: &[u8]) -> ApiResult<String> {
-    Ok(totp(secret, "user")?.generate(now_seconds()).to_string())
-}
-
-fn now_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
 }
 
 /// The second step of a login: a code from the authenticator app, or one of the user's recovery codes.
@@ -368,7 +307,7 @@ pub async fn login(
         .is_ok();
     let passed = match second {
         // A retired authenticator's codes fail like any wrong code.
-        Second::Code(code) => code_step(&secret, code)?
+        Second::Code(code) => totp::code_step(&secret, code)?
             .filter(|step| !reenroll_required && *step > last_step)
             .map(Passed::Step),
         Second::Recovery(code) => recovery::matching(db, Some(user_id), code)

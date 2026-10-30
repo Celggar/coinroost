@@ -20,6 +20,7 @@ use uuid::Uuid;
 use crate::auth;
 use crate::error::{ApiError, ApiResult};
 use crate::invites;
+use crate::totp;
 
 pub const SET_SIZE: usize = 10;
 const CODE_CHARS: usize = 10;
@@ -41,7 +42,7 @@ fn new_code() -> String {
 pub fn normalize(typed: &str) -> Option<String> {
     let code: String = typed
         .chars()
-        .filter(|c| !c.is_whitespace() && !auth::DASHES.contains(c))
+        .filter(|c| !c.is_whitespace() && !totp::DASHES.contains(c))
         .map(|c| match c.to_ascii_lowercase() {
             'o' => '0',
             'i' | 'l' => '1',
@@ -173,7 +174,7 @@ pub async fn regenerate(db: &PgPool, user_id: Uuid, code: &str) -> ApiResult<New
             "too many wrong codes: wait 15 minutes and try again".to_owned(),
         ));
     }
-    let Some(step) = auth::code_step(&secret, code)? else {
+    let Some(step) = totp::code_step(&secret, code)? else {
         auth::record_failure(db, user_id).await?;
         return Err(ApiError::Invalid(WRONG_CODE.to_owned()));
     };
@@ -197,14 +198,14 @@ pub async fn pending_authenticator(db: &PgPool, user_id: Uuid) -> ApiResult<invi
          where id = $1 and reenroll_required returning pending_totp_secret, email",
     )
     .bind(user_id)
-    .bind(auth::new_secret())
+    .bind(totp::new_secret())
     .fetch_optional(db)
     .await?;
     let (secret, email) = row.ok_or_else(not_recovering)?;
-    let uri = auth::enrollment_uri(&email, &secret)?;
+    let uri = totp::enrollment_uri(&email, &secret)?;
     Ok(invites::Enrollment {
         qr_svg: invites::qr_svg(&uri)?,
-        secret_base32: auth::secret_base32(&secret)?,
+        secret_base32: totp::secret_base32(&secret)?,
         uri,
     })
 }
@@ -222,7 +223,7 @@ pub async fn confirm_authenticator(db: &PgPool, user_id: Uuid, code: &str) -> Ap
     let pending = pending.ok_or_else(|| {
         ApiError::Invalid("open the new authenticator step first, then send its code".to_owned())
     })?;
-    let step = auth::code_step(&pending, code)?.ok_or_else(|| ApiError::Invalid(WRONG_CODE.to_owned()))?;
+    let step = totp::code_step(&pending, code)?.ok_or_else(|| ApiError::Invalid(WRONG_CODE.to_owned()))?;
     // Only the secret that was checked: a recovery login in between replaced it, and this code no longer counts.
     let swapped = sqlx::query(
         "update users set totp_secret = pending_totp_secret, pending_totp_secret = null, reenroll_required = false,
