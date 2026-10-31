@@ -57,14 +57,15 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
-		{#if accounts.length === 0}
-			<!-- Every file is read into one of the household's accounts: the first step comes first, and choosing files
-			     is not offered until there is an account to read them into. -->
+		{#if !accounts.some((a) => a.profile)}
+			<!-- Every file is read into one of the household's accounts with a bank file (cash has none, and an account
+			     cannot change it later): the first step comes first, and choosing files is not offered until there is an
+			     account to read them into. -->
 			<EmptyState
 				icon="bank"
-				text={t('import.no_accounts')}
+				text={accounts.length ? t('import.no_bank_file') : t('import.no_accounts')}
 				href="/accounts"
-				action={t('import.create_account')}
+				action={accounts.length ? t('file.open_accounts') : t('import.create_account')}
 			/>
 		{:else}
 			<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
