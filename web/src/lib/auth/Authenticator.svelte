@@ -166,6 +166,12 @@
 	.sizer {
 		visibility: hidden;
 	}
+	/* Forced colors drop the tint: a frame keeps «Copiar» a button, not a loose word beside the key (pass 7). */
+	@media (forced-colors: active) {
+		.copy {
+			border: 1px solid ButtonText;
+		}
+	}
 	/* A 44 px tall target (Apple's minimum) without moving anything around it. */
 	.open {
 		font-weight: 600;
