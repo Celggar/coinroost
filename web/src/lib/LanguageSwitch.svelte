@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { i18n, setLocale, t, type Locale } from '#lib/i18n.svelte.ts';
+	import { pop } from '#lib/motion.ts';
 
-	// `wide`: the full names across the width, as a segmented control (the «Más» page); otherwise the short pills.
+	// `wide`: the full names across the width, as a segmented control (the «Más» page), the chosen one filled and
+	// checked like the period presets (Material 3); otherwise the short pills. A place whose background is the
+	// surface sets `--language-chosen`, so the chosen pill still shows on it.
 	let { wide = false }: { wide?: boolean } = $props();
 
 	// Each language is named in itself, so a person who cannot read the current one still finds theirs; the pill
@@ -38,7 +41,9 @@
 				onchange={() => choose(language.code)}
 			/>
 			{#if wide}
-				<span lang={language.code}>{language.name}</span>
+				{#if i18n.locale === language.code}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop
+						><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+					>{/if}<span lang={language.code}>{language.name}</span>
 			{:else}
 				<span aria-hidden="true">{language.short}</span>
 				<span class="visually-hidden" lang={language.code}>{language.name}</span>
@@ -65,12 +70,26 @@
 		border-radius: 999px;
 	}
 	.wide label {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: var(--space-xs);
 		min-height: 44px;
 		border-radius: 999px;
 		font-size: var(--text-md);
 	}
 	.wide label.chosen {
-		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+		background: color-mix(in oklab, var(--accent) 22%, var(--surface));
+	}
+	.check {
+		flex: none;
+		width: 18px;
+		height: 18px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	label {
 		position: relative;
@@ -87,7 +106,7 @@
 	}
 	label.chosen {
 		color: var(--text);
-		background: color-mix(in oklab, var(--surface) 70%, transparent);
+		background: var(--language-chosen, color-mix(in oklab, var(--surface) 70%, transparent));
 	}
 	@media (hover: hover) {
 		label:hover:not(.chosen) {
