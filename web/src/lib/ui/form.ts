@@ -79,14 +79,18 @@ function uncut(y: number, lo: number, hi: number): number {
 		.map(({ r }) => ({ top: r.top + scrollY, bottom: r.bottom + scrollY }));
 	// The page cannot go above its start or past its end: a position out there is no answer.
 	const max = document.documentElement.scrollHeight - innerHeight;
-	const cut = (at: number) => boxes.filter((b) => b.top < at + line && at + line < b.bottom);
+	// A box that starts within 8 px under the cover reads as cut too: a label flush with the bar's edge looked cut
+	// (pass 9). Going up leaves it 8 px clear; going down hides it whole under the bar.
+	const clear = 8;
+	const cut = (at: number) =>
+		boxes.filter((b) => b.top < at + line + clear && at + line < b.bottom);
 	const start = Math.min(Math.max(y, 0), max);
 	for (const way of [-1, 1]) {
 		let at = start;
 		for (let crossing = cut(at); crossing.length; crossing = cut(at)) {
 			at =
 				way < 0
-					? Math.min(...crossing.map((b) => b.top)) - line
+					? Math.min(...crossing.map((b) => b.top)) - line - clear
 					: Math.max(...crossing.map((b) => b.bottom)) - line;
 			if (at < 0 || at > max) break;
 		}
@@ -171,6 +175,24 @@ export async function showBelow(end: HTMLElement, keep: HTMLElement) {
 	if (lo <= scrollY) return;
 	const hi = Math.max(lo, scrollY + labelTop(keep) - top);
 	scrollTo({ top: uncut(lo, lo, hi), behavior: behavior() });
+}
+
+/**
+ * After content above came in under a still page (a new rule rising into the list over the form): the least scroll
+ * that leaves no text cut at the top, the focused control kept on screen (pass 9: the new rule's title stood cut).
+ */
+export async function keepWhole() {
+	await still();
+	const { top, bottom } = edges();
+	const active = document.activeElement;
+	const focused =
+		active instanceof HTMLElement && active !== document.body
+			? active.getBoundingClientRect()
+			: null;
+	const lo = focused ? scrollY + focused.bottom - bottom : 0;
+	const hi = focused ? scrollY + focused.top - top : Infinity;
+	const y = uncut(scrollY, lo, hi);
+	if (Math.abs(y - scrollY) >= 1) scrollTo({ top: y, behavior: behavior() });
 }
 
 /** Moves the focus to the first field, in the form's order, that has an error. */

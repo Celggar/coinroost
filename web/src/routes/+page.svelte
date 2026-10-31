@@ -160,7 +160,9 @@
 	{#if error}
 		<p class="alert" role="alert">
 			{error}
-			<button class="secondary" onclick={() => retry(() => load({ from, to }))}
+			<button
+				class="secondary"
+				onclick={(event) => retry(event.currentTarget, () => load({ from, to }))}
 				>{t('app.try_again')}</button
 			>
 		</p>

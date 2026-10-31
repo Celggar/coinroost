@@ -63,8 +63,14 @@
 		await goto(next?.startsWith('/') && !next.startsWith('//') ? next : '/');
 	}
 
-	/** Swaps the second step; the button that was pressed leaves with the old one, so the caret goes to the new field. */
-	async function switchSecond() {
+	/**
+	 * Swaps the second step; the button that was pressed leaves with the old one, so the caret goes to the new field.
+	 * The message leaves, and with it every mark it explained: no field stays red without saying why (pass 9).
+	 */
+	async function switchSecond(event: Event) {
+		const form = (event.currentTarget as Element).closest('form');
+		for (const field of form?.querySelectorAll('[aria-invalid]') ?? [])
+			field.removeAttribute('aria-invalid');
 		recovering = !recovering;
 		error = { text: '', n: error.n + 1 };
 		await tick();

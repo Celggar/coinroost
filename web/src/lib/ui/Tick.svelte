@@ -8,9 +8,10 @@
 
 	let { value, children }: { value: unknown; children: Snippet } = $props();
 
+	// Under reduced motion the new one fades in once the old has faded: two fading in one place showed both at once.
 	const enter = (node: Element) =>
 		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
+			? fade(node, { duration: DURATION.short, delay: DURATION.short })
 			: fly(node, { y: 8, duration: DURATION.medium, easing: EASE.enter });
 	const leave = (node: Element) =>
 		prefersReducedMotion.current

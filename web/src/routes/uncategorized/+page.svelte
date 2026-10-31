@@ -81,7 +81,10 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
+		{loadError}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
 	</p>
 {:else if loaded}
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->

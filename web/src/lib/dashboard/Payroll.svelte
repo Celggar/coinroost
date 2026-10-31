@@ -33,7 +33,9 @@
 		{#if error}
 			<p class="alert" role="alert">
 				{error}
-				<button class="secondary" onclick={() => retry(load, '#payroll-title')}
+				<button
+					class="secondary"
+					onclick={(event) => retry(event.currentTarget, load, '#payroll-title')}
 					>{t('app.try_again')}</button
 				>
 			</p>

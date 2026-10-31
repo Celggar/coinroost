@@ -45,7 +45,10 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
+		{loadError}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
 	</p>
 {/if}
 {#if preview}

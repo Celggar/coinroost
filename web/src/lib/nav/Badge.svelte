@@ -13,8 +13,9 @@
 		in:pop={{ start: 0.6, duration: DURATION.short }}
 		out:vanish
 	>
-		{#key count}<span in:pop={{ start: 0.8, duration: DURATION.short }} out:vanish
-				>{count > 99 ? '99+' : count}</span
+		{#key count}<span
+				in:pop={{ start: 0.8, duration: DURATION.short, delay: DURATION.short }}
+				out:vanish>{count > 99 ? '99+' : count}</span
 			>{/key}
 	</span>
 {/if}

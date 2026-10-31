@@ -89,6 +89,14 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	/* On a phone the page's heading is out of sight and the bar's title says it: when the focus goes to the heading
+	   (after a retry, or once an item it was on is gone), the title wears the ring, or nothing on screen showed
+	   where the focus was (pass 9). */
+	:global(body:has(#main h1:focus-visible)) .title {
+		outline: 3px solid var(--focus);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
 	.bar {
 		order: 3;
 		position: sticky;

@@ -11,7 +11,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { focusShown } from '#lib/ui/form.ts';
+	import { focusShown, keepWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { glide, pop, rise, vanish } from '#lib/motion.ts';
 
@@ -87,6 +87,18 @@
 		if (response.ok) title?.focus();
 	}
 
+	// A new rule rises into the list above the form while the page stands still, so the form moves down and the
+	// rule's card can stand cut at the screen's top: once it lands, the page settles where nothing is cut (pass 9).
+	async function added() {
+		await load();
+		await tick();
+		const list = document.querySelector('.rules');
+		await Promise.all(
+			list?.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {})) ?? []
+		);
+		await keepWhole();
+	}
+
 	// A link to the category form (from an uncategorized queue with no category to choose) lands in its name field:
 	// the form only exists once the page has loaded, too late for the browser's own jump to the anchor.
 	onMount(async () => {
@@ -110,7 +122,10 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
+		{loadError}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
 	</p>
 {:else if loaded}
 	<div class="stack">
@@ -169,7 +184,7 @@
 			{/if}
 		</div>
 
-		<RuleForm {categories} {payees} {accounts} oncreated={load} />
+		<RuleForm {categories} {payees} {accounts} oncreated={added} />
 		<CategoryForm oncreated={load} />
 		<Changes {names} onapplied={load} />
 	</div>

@@ -54,7 +54,10 @@
 
 {#if error}
 	<p class="alert" role="alert">
-		{error} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
+		{error}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
 	</p>
 {:else if loaded}
 	<div class="stack">

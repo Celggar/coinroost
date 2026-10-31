@@ -143,7 +143,10 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
+		{loadError}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
 	</p>
 {:else if loaded}
 	<div class="stack">
@@ -165,7 +168,9 @@
 								<td data-label={t('accounts.name')}>{account.name}</td>
 								<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 								<td data-label={t('accounts.currency')}>{account.currency}</td>
-								<td data-label={t('accounts.bank_file')}>{profileName(account.profile)}</td>
+								<td class="bank-file" data-label={t('accounts.bank_file')}
+									>{profileName(account.profile)}</td
+								>
 								<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
 							</tr>
 						{/each}
@@ -273,6 +278,14 @@
 {/if}
 
 <style>
+	/* Where the table has the room, a bank file's name keeps to one line and the key, which breaks at its hyphens,
+	   takes the rest: «BAC · credit / card (CSV)» broke beside a 300 px key (pass 9). Narrower, it wraps, or the
+	   name column would shrink to a word per line (tried at 600 px). */
+	@media (min-width: 1100px) {
+		.bank-file {
+			white-space: nowrap;
+		}
+	}
 	code {
 		font-size: var(--text-sm);
 	}

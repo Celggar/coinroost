@@ -2,7 +2,7 @@
 	// A new set of recovery codes, shown once: two columns of codes, and buttons to copy them all or download them as
 	// a text file (the way GitHub and Google hand them out). The file says what they are and when they were made.
 	import { tag, t } from '#lib/i18n.svelte.ts';
-	import { pop, vanish } from '#lib/motion.ts';
+	import { DURATION, pop, vanish } from '#lib/motion.ts';
 
 	let {
 		codes,
@@ -49,8 +49,9 @@
 </ol>
 <div class="tools">
 	<button type="button" class="secondary" onclick={copy} data-testid="recovery-copy">
+		<!-- One word, then the other (a fade through): crossed, both showed at once for 116 ms (pass 9). -->
 		{#key copied}
-			<span in:pop={{ start: 0.8 }} out:vanish>
+			<span in:pop={{ start: 0.8, delay: DURATION.short }} out:vanish>
 				{copied ? t('recovery.copied_short') : t('recovery.copy')}
 			</span>
 		{/key}

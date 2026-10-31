@@ -115,7 +115,7 @@
 	"accounts.created": "Created {name}.",
 	"accounts.create": "Create account",
 	"delay.late": "Late",
-	"delay.warning": "Check",
+	"delay.warning": "Needs update",
 	"delay.no_data": "No data",
 	"delay.up_to_date": "Up to date",
 	"coverage.title": "Coverage",

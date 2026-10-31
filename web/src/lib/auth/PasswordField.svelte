@@ -4,7 +4,7 @@
 	// submits, so the browser never keeps it as plain text.
 	import { tick } from 'svelte';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { pop, vanish } from '#lib/motion.ts';
+	import { DURATION, pop, vanish } from '#lib/motion.ts';
 
 	let {
 		label,
@@ -61,7 +61,7 @@
 		/>
 		<button type="button" class="reveal" aria-controls={id} onclick={toggle}>
 			{#key shown}
-				<span in:pop={{ start: 0.85 }} out:vanish
+				<span in:pop={{ start: 0.85, delay: DURATION.short }} out:vanish
 					>{shown ? t('password.hide') : t('password.show')}</span
 				>
 			{/key}

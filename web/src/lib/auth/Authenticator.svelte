@@ -8,7 +8,7 @@
 	// Android a link that opens the app on this device. Used by the setup link's second step and by the new
 	// authenticator after a recovery code.
 	import { t } from '#lib/i18n.svelte.ts';
-	import { pop, vanish } from '#lib/motion.ts';
+	import { DURATION, pop, vanish } from '#lib/motion.ts';
 
 	let { enrollment }: { enrollment: { uri: string; secret: string; qr_svg: string } } = $props();
 
@@ -84,8 +84,10 @@
 			     the key and makes it break again (pass 7). -->
 			<span class="sizer" aria-hidden="true">{t('setup.copy_short')}</span>
 			<span class="sizer" aria-hidden="true">{t('setup.copied_short')}</span>
+			<!-- One word, then the other: the new one comes once the old has faded (a fade through), or at 60 ms both
+			     showed, one over the other (pass 9). -->
 			{#key copied}
-				<span in:pop={{ start: 0.8 }} out:vanish>
+				<span in:pop={{ start: 0.8, delay: DURATION.short }} out:vanish>
 					{copied ? t('setup.copied_short') : t('setup.copy_short')}
 				</span>
 			{/key}

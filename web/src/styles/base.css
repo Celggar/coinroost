@@ -103,6 +103,13 @@ html {
 	outline-offset: 2px;
 }
 
+/* A heading that takes the focus (after a retry, or once what had it is gone) wears the ring around its words, as
+   the phone's bar title does, not a square box across the page (pass 9). */
+:where(h1, h2, h3)[tabindex='-1']:focus-visible {
+	width: fit-content;
+	border-radius: 4px;
+}
+
 /* Chromium focuses the parts of a date input one by one, and its picker button shows no ring of its own: the
    whole input shows it while any part has the focus. */
 input[type='date']:focus-within {

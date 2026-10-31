@@ -121,7 +121,9 @@
 	{#if loadError}
 		<p class="alert" role="alert">
 			{loadError}
-			<button class="secondary" onclick={() => retry(load, '#codes-title')}
+			<button
+				class="secondary"
+				onclick={(event) => retry(event.currentTarget, load, '#codes-title')}
 				>{t('app.try_again')}</button
 			>
 		</p>
