@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
@@ -13,7 +14,8 @@
 		preview,
 		names,
 		onchanged
-	}: { preview: Schemas['TransferPreview']; names: AccountNames; onchanged: () => void } = $props();
+	}: { preview: Schemas['TransferPreview']; names: AccountNames; onchanged: () => Promise<void> } =
+		$props();
 
 	let busy = $state(false);
 
@@ -38,8 +40,10 @@
 			notify(plural(data.paired, 'waiting.paired_one', 'waiting.paired_other'));
 			refreshCounts();
 		}
-		onchanged();
-		// The pairs and this button leave: the focus goes to the list the pairs join, not to the page's start.
+		// The pairs and this button leave: the focus goes to the list the pairs join, not to the page's start, once
+		// the page has reloaded and the lists have their new size.
+		await onchanged();
+		await tick();
 		if (data) focusOn('#made-title');
 	}
 </script>
@@ -56,13 +60,12 @@
 					{#each preview.pairs as pair (pair.outflow.transaction_id)}
 						<li in:rise out:vanish animate:glide>
 							<div class="line">
-								<strong class="money"
-									>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong
-								>
 								<span>
 									{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)})<Arrow
 									/>{accountName(pair.inflow.account_id, names)} ({day(pair.inflow.date)})
 								</span>
+								<span class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</span
+								>
 							</div>
 							<div class="hint">
 								{t('waiting.found', {
@@ -101,13 +104,12 @@
 		gap: var(--space-xs);
 		justify-items: start;
 	}
+	/* The amount ends the first line, as in every list of transactions; the pair's text wraps beside it. */
 	.line {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: baseline;
 		gap: var(--space-xs) var(--space-md);
 		overflow-wrap: anywhere;
-	}
-	strong {
-		font-variant-numeric: tabular-nums;
 	}
 </style>

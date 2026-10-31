@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
@@ -13,7 +14,8 @@
 		transfers,
 		names,
 		onchanged
-	}: { transfers: Schemas['Transaction'][]; names: AccountNames; onchanged: () => void } = $props();
+	}: { transfers: Schemas['Transaction'][]; names: AccountNames; onchanged: () => Promise<void> } =
+		$props();
 
 	let busy = $state(false);
 	let title = $state<HTMLHeadingElement>();
@@ -40,8 +42,11 @@
 		}
 		notify(t('made.split_done', { description: transfer.description }));
 		refreshCounts();
-		onchanged();
-		// The transfer and its buttons leave this list: the focus goes to its title, not to the page's start.
+		// The transfer and its buttons leave this list: the focus goes to its title, not to the page's start. It
+		// waits for the page to reload, since the pair the split brings back grows the list above and moved the title
+		// out of view (pass 3).
+		await onchanged();
+		await tick();
 		title?.focus();
 	}
 </script>
@@ -56,17 +61,15 @@
 				{#each transfers as transfer (transfer.id)}
 					{@const { out, inn } = sides(transfer)}
 					<li in:rise out:vanish animate:glide>
-						<div class="line">
+						<div class="txn-line">
 							<span>{day(transfer.date)}</span>
-							{#if out}<strong class="money">{money(-out.amount_minor, out.currency)}</strong>{/if}
-							{#if out && inn}
-								<span
-									>{accountName(out.account_id, names)}<Arrow />{accountName(
+							<span class="description"
+								>{#if out && inn}{accountName(out.account_id, names)}<Arrow />{accountName(
 										inn.account_id,
 										names
-									)}</span
-								>
-							{/if}
+									)}{/if}</span
+							>
+							{#if out}<span class="money">{money(-out.amount_minor, out.currency)}</span>{/if}
 						</div>
 						<div class="hint">{transfer.description}</div>
 						<div class="buttons">
@@ -99,15 +102,6 @@
 		padding-top: var(--space-sm);
 		display: grid;
 		gap: var(--space-xs);
-	}
-	.line {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs) var(--space-md);
-		overflow-wrap: anywhere;
-	}
-	strong {
-		font-variant-numeric: tabular-nums;
 	}
 	.hint {
 		overflow-wrap: anywhere;

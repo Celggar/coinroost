@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, failure, type Failure, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
@@ -15,7 +16,8 @@
 		preview,
 		names,
 		onchanged
-	}: { preview: Schemas['TransferPreview']; names: AccountNames; onchanged: () => void } = $props();
+	}: { preview: Schemas['TransferPreview']; names: AccountNames; onchanged: () => Promise<void> } =
+		$props();
 
 	let first = $state('');
 	let second = $state('');
@@ -54,7 +56,9 @@
 		notify(t('unmatched.paired'));
 		refreshCounts();
 		first = second = '';
-		onchanged();
+		// The focus moves once the page has reloaded and the lists have their new size.
+		await onchanged();
+		await tick();
 		return null;
 	}
 
@@ -101,12 +105,12 @@
 			<ul class="legs" aria-label={t('unmatched.title')} in:rise out:vanish>
 				{#each preview.unmatched as item (item.leg.transaction_id)}
 					<li in:rise out:vanish animate:glide>
-						<div class="what">
+						<div class="txn-line">
 							<span>{day(item.leg.date)}</span>
-							<span>{accountName(item.leg.account_id, names)}</span>
+							<span class="description">{accountName(item.leg.account_id, names)}</span>
 							<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
-							<span class="description">{item.leg.description}</span>
 						</div>
+						<div class="hint">{item.leg.description}</div>
 						<div class="hint">{reasonLabel(item.reason)}</div>
 						{#each item.candidates as candidate (candidate.transaction_id)}
 							<button
@@ -186,12 +190,10 @@
 		gap: var(--space-sm);
 		justify-items: start;
 	}
-	.what {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs) var(--space-md);
+	/* The buttons keep their own width; the line spans the row, so its amount ends at the edge like every list's. */
+	.legs .txn-line {
+		justify-self: stretch;
 	}
-	.description,
 	button {
 		overflow-wrap: anywhere;
 		text-align: start;
