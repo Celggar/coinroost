@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { day, money } from '#lib/format.ts';
+	import { money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
@@ -61,8 +61,11 @@
 						<li in:rise out:vanish animate:glide>
 							<div class="line">
 								<span>
-									{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)})<Arrow
-									/>{accountName(pair.inflow.account_id, names)} ({day(pair.inflow.date)})
+									{accountName(pair.outflow.account_id, names)} ({wholeDay(
+										pair.outflow.date
+									)})<Arrow />{accountName(pair.inflow.account_id, names)} ({wholeDay(
+										pair.inflow.date
+									)})
 								</span>
 								<span class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</span
 								>

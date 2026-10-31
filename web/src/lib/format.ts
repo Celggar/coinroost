@@ -82,10 +82,14 @@ export function list(items: string[]): string {
 	return new Intl.ListFormat(tag(), { type: 'conjunction' }).format(items);
 }
 
-/** A date range, both ends included. Each date holds together (no-break spaces); a line may break only at the dash. */
+/** A date that holds together inside running text (no-break spaces): never «15 may» on one line, «2026» on the next. */
+export function wholeDay(iso: string): string {
+	return day(iso).replaceAll(' ', '\u00a0');
+}
+
+/** A date range, both ends included. Each date holds together; a line may break only at the dash. */
 export function span(from: string, to: string): string {
-	const whole = (iso: string) => day(iso).replaceAll(' ', '\u00a0');
-	return from === to ? whole(from) : `${whole(from)} – ${whole(to)}`;
+	return from === to ? wholeDay(from) : `${wholeDay(from)} – ${wholeDay(to)}`;
 }
 
 /** Today in the browser's time zone, as YYYY-MM-DD. */
