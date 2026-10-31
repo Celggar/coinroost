@@ -10,7 +10,7 @@
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
-	import { fadeThrough, pop, vanish } from '#lib/motion.ts';
+	import { arrive, fadeThrough, placeholder, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
 	const PAYEES = 10;
@@ -160,7 +160,7 @@
 	{/if}
 
 	{#if error}
-		<p class="alert" role="alert">
+		<p class="alert" role="alert" out:placeholder>
 			{error}
 			<button
 				class="secondary"
@@ -171,7 +171,7 @@
 	{/if}
 
 	{#if reports}
-		<div class="reports stack" class:stale={busy} bind:this={shown}>
+		<div class="reports stack" class:stale={busy} bind:this={shown} in:arrive>
 			{#if currencies.length === 0}
 				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
 				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
@@ -242,7 +242,7 @@
 			{/each}
 		</div>
 	{:else if !error}
-		<p class="hint loading">{t('app.loading')}</p>
+		<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 	{/if}
 
 	<!-- What is owed comes after the period's figures: before them it pushed the tiles below the first screen on a

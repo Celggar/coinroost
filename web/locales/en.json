@@ -238,7 +238,7 @@
 	"summary.hint": "Transfers between your accounts count in neither. Legs still waiting for their other side are shown apart.",
 	"period.from": "From",
 	"period.to": "To",
-	"period.inverted": "Must be on or after “From”.",
+	"period.inverted": "Must be on or after “From”.",
 	"summary.nothing": "No money moved in this period.",
 	"summary.totals_in": "Totals in {currency}",
 	"summary.spending": "Spending",

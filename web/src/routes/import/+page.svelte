@@ -5,7 +5,7 @@
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
 	import FileCard from '#lib/import/FileCard.svelte';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -53,14 +53,14 @@
 <h1>{t('import.title')}</h1>
 
 {#if error}
-	<p class="alert" role="alert">
+	<p class="alert" role="alert" out:placeholder>
 		{error}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button
 		>
 	</p>
 {:else if loaded}
-	<div class="stack">
+	<div class="stack" in:arrive>
 		{#if !accounts.some((a) => a.profile)}
 			<!-- Every file is read into one of the household's accounts with a bank file (cash has none, and an account
 			     cannot change it later): the first step comes first, and choosing files is not offered until there is an
@@ -119,7 +119,7 @@
 		{/each}
 	</div>
 {:else}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}
 
 <style>

@@ -238,7 +238,7 @@
 	"summary.hint": "Las transferencias entre tus cuentas no cuentan en ninguno. Las partes que todavía esperan su otro lado se muestran aparte.",
 	"period.from": "Desde",
 	"period.to": "Hasta",
-	"period.inverted": "Tiene que ser igual o posterior a «Desde».",
+	"period.inverted": "Tiene que ser igual o posterior a «Desde».",
 	"summary.nothing": "No se movió dinero en este periodo.",
 	"summary.totals_in": "Totales en {currency}",
 	"summary.spending": "Gastos",

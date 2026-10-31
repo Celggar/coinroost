@@ -8,6 +8,7 @@
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
+	import { arrive, placeholder } from '#lib/motion.ts';
 
 	let coverage = $state<Schemas['Coverage'] | null>(null);
 	let error = $state('');
@@ -82,66 +83,71 @@
 </div>
 
 {#if error}
-	<p class="alert" role="alert">{error}</p>
+	<p class="alert" role="alert" out:placeholder>{error}</p>
 {:else if coverage}
-	{#if coverage.items.length === 0}
-		<EmptyState
-			icon="bank"
-			text={t('coverage.no_accounts')}
-			href="/accounts"
-			action={t('coverage.create_one')}
-		/>
-	{:else}
-		<div class="table-wrap" use:scrollable={t('coverage.title')}>
-			<table class="rows-on-phone">
-				<thead>
-					<tr>
-						<th>{t('column.account')}</th>
-						<th>{t('column.status')}</th>
-						<th>{t('coverage.latest')}</th>
-						<th class="number">{t('coverage.days_since')}</th>
-						<th>{t('coverage.imported')}</th>
-						<th>{t('coverage.gaps')}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each coverage.items as item (item.account_id)}
+	<!-- One block for either shape, so the content fades in as one when it loads. -->
+	<div in:arrive>
+		{#if coverage.items.length === 0}
+			<EmptyState
+				icon="bank"
+				text={t('coverage.no_accounts')}
+				href="/accounts"
+				action={t('coverage.create_one')}
+			/>
+		{:else}
+			<div class="table-wrap" use:scrollable={t('coverage.title')}>
+				<table class="rows-on-phone">
+					<thead>
 						<tr>
-							<td data-label={t('column.account')}>{item.name}</td>
-							<td data-label={t('column.status')}>
-								<span class="chip {tones[item.delay]}">{delayName(item.delay)}</span>
-							</td>
-							<td data-label={t('coverage.latest')} class="date"
-								>{item.latest ? day(item.latest) : '—'}</td
-							>
-							<td data-label={t('coverage.days_since')} class="number">{item.days_since ?? '—'}</td>
-							<td data-label={t('coverage.imported')} class="ranges">
-								{#each item.ranges as range (range.from)}
-									<div>{span(range.from, range.to)}</div>
-								{:else}
-									<span class="hint">{t('coverage.no_imports')}</span>
-								{/each}
-							</td>
-							<td data-label={t('coverage.gaps')} class="ranges">
-								{#each item.gaps as gap (gap.from)}
-									<div>
-										<span class="chip {tones[gap.delay]}"
-											>{plural(gap.days, 'coverage.days_one', 'coverage.days_other')}</span
-										>
-										{span(gap.from, gap.to)}
-									</div>
-								{:else}
-									<span class="hint">{t('coverage.no_gaps')}</span>
-								{/each}
-							</td>
+							<th>{t('column.account')}</th>
+							<th>{t('column.status')}</th>
+							<th>{t('coverage.latest')}</th>
+							<th class="number">{t('coverage.days_since')}</th>
+							<th>{t('coverage.imported')}</th>
+							<th>{t('coverage.gaps')}</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{/if}
+					</thead>
+					<tbody>
+						{#each coverage.items as item (item.account_id)}
+							<tr>
+								<td data-label={t('column.account')}>{item.name}</td>
+								<td data-label={t('column.status')}>
+									<span class="chip {tones[item.delay]}">{delayName(item.delay)}</span>
+								</td>
+								<td data-label={t('coverage.latest')} class="date"
+									>{item.latest ? day(item.latest) : '—'}</td
+								>
+								<td data-label={t('coverage.days_since')} class="number"
+									>{item.days_since ?? '—'}</td
+								>
+								<td data-label={t('coverage.imported')} class="ranges">
+									{#each item.ranges as range (range.from)}
+										<div>{span(range.from, range.to)}</div>
+									{:else}
+										<span class="hint">{t('coverage.no_imports')}</span>
+									{/each}
+								</td>
+								<td data-label={t('coverage.gaps')} class="ranges">
+									{#each item.gaps as gap (gap.from)}
+										<div>
+											<span class="chip {tones[gap.delay]}"
+												>{plural(gap.days, 'coverage.days_one', 'coverage.days_other')}</span
+											>
+											{span(gap.from, gap.to)}
+										</div>
+									{:else}
+										<span class="hint">{t('coverage.no_gaps')}</span>
+									{/each}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
+	</div>
 {:else}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}
 
 <style>

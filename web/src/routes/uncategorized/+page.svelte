@@ -6,7 +6,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
@@ -80,7 +80,7 @@
 <p class="hint">{t('uncategorized.hint')}</p>
 
 {#if loadError}
-	<p class="alert" role="alert">
+	<p class="alert" role="alert" out:placeholder>
 		{loadError}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button
@@ -88,7 +88,7 @@
 	</p>
 {:else if loaded}
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->
-	<div class="in-place">
+	<div class="in-place" in:arrive>
 		{#if transactions.length === 0}
 			<!-- Global: these blocks come with the one above them, where a local transition does not play. -->
 			{#if empty}
@@ -178,7 +178,7 @@
 		{/if}
 	</div>
 {:else}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}
 
 <style>

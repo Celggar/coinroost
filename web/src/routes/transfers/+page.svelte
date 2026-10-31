@@ -8,6 +8,7 @@
 	import Waiting from '#lib/transfers/Waiting.svelte';
 	import { accountNames, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { arrive, placeholder } from '#lib/motion.ts';
 
 	let preview = $state<Schemas['TransferPreview'] | null>(null);
 	let transfers = $state<Schemas['Transaction'][]>([]);
@@ -44,7 +45,7 @@
 <p class="hint">{t('transfers.hint')}</p>
 
 {#if loadError}
-	<p class="alert" role="alert">
+	<p class="alert" role="alert" out:placeholder>
 		{loadError}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button
@@ -52,12 +53,12 @@
 	</p>
 {/if}
 {#if preview}
-	<div class="stack">
+	<div class="stack" in:arrive>
 		<Summary {version} />
 		<Waiting {preview} {names} onchanged={load} />
 		<Unmatched {preview} {names} onchanged={load} />
 		<Made {transfers} {names} onchanged={load} />
 	</div>
 {:else if !loadError}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}

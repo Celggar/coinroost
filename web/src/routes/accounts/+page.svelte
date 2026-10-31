@@ -4,7 +4,7 @@
 	import { onMount, tick } from 'svelte';
 	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
 	import { has, t, type Key } from '#lib/i18n.svelte.ts';
-	import { rise, vanish } from '#lib/motion.ts';
+	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
@@ -142,14 +142,14 @@
 <h1>{t('accounts.title')}</h1>
 
 {#if loadError}
-	<p class="alert" role="alert">
+	<p class="alert" role="alert" out:placeholder>
 		{loadError}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button
 		>
 	</p>
 {:else if loaded}
-	<div class="stack">
+	<div class="stack" in:arrive>
 		{#if accounts.length}
 			<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
 				<table class="rows-on-phone">
@@ -274,7 +274,7 @@
 		</form>
 	</div>
 {:else}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}
 
 <style>

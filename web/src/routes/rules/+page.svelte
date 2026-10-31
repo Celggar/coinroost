@@ -13,7 +13,7 @@
 	import { focusOn, retry } from '#lib/ui/focus.ts';
 	import { focusShown, keepWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
-	import { glide, pop, rise, vanish } from '#lib/motion.ts';
+	import { arrive, glide, placeholder, pop, rise, vanish } from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -121,14 +121,14 @@
 <p class="hint">{t('rules.hint')}</p>
 
 {#if loadError}
-	<p class="alert" role="alert">
+	<p class="alert" role="alert" out:placeholder>
 		{loadError}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button
 		>
 	</p>
 {:else if loaded}
-	<div class="stack">
+	<div class="stack" in:arrive>
 		<div class="in-place">
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:rise out:vanish>
@@ -189,7 +189,7 @@
 		<Changes {names} onapplied={load} />
 	</div>
 {:else}
-	<p class="hint loading">{t('app.loading')}</p>
+	<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 {/if}
 
 <style>

@@ -101,6 +101,32 @@ export function vanish(node: Element): TransitionConfig {
 	return fade(node, { duration: DURATION.short, easing: EASE.exit });
 }
 
+/**
+ * Out of what stands in for a page's content until it loads (the «Cargando…» line, the alert of a failed load): it
+ * leaves the flow at once, so the content takes its place without a jump, and fades out where it was. Only one that
+ * was on screen makes `arrive` wait; the loading line stays invisible its first 300 ms.
+ */
+export function placeholder(node: HTMLElement): TransitionConfig {
+	const shown = Number(getComputedStyle(node).opacity) > 0;
+	node.style.width = `${node.getBoundingClientRect().width}px`;
+	node.style.position = 'absolute';
+	if (shown) node.dataset.leaving = '';
+	return fade(node, { duration: DURATION.short, easing: EASE.exit });
+}
+
+/**
+ * Into the content that replaces a placeholder: it fades in once the placeholder has faded out (a fade through, the
+ * two never crossing), at once when none was showing. It appeared in one frame (pass 10).
+ */
+export function arrive(node: Element): TransitionConfig {
+	const waiting = [...document.querySelectorAll('[data-leaving]')].some((e) => e.isConnected);
+	return fade(node, {
+		duration: DURATION.medium,
+		easing: EASE.enter,
+		delay: waiting ? DURATION.short : 0
+	});
+}
+
 /** In and out of a step: slides in from the side it comes from (`direction` 1 forward, -1 back). */
 export function stepIn(node: Element, { direction = 1 } = {}): TransitionConfig {
 	return fly(node, {

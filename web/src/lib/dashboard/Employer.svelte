@@ -99,11 +99,15 @@
 											><span class="chip {statusTone('no_data')}">{statusName('no_data')}</span></td
 										>
 										<td data-label={t('payroll.days')}>
-											<!-- One block, so on a phone card the range sits beside its label whole. -->
+											<!-- One block, so on a phone card the range sits beside its label whole. Where the table has
+											     the room the second end starts its own line, so the column is as wide as one end, not the
+											     whole range on one line: that width left it half empty and broke the payment (pass 10). -->
 											<span
 												>{#each runParts(row.first, row.last) as part, i (i)}{#if part.end}<span
 															class="end">{part.text}</span
-														>{:else}{part.text}{/if}{/each}</span
+														>{:else}{part.text}{#if i > 0}<br
+																class="split"
+															/>{/if}{/if}{/each}</span
 											>
 										</td>
 										<td data-label={t('payroll.payment')}></td>
@@ -195,6 +199,11 @@
 		.paid,
 		.end {
 			white-space: nowrap;
+		}
+	}
+	@media (max-width: 1099px) {
+		.split {
+			display: none;
 		}
 	}
 </style>
