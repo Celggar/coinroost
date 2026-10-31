@@ -35,6 +35,11 @@ figure {
 	margin: 0;
 }
 
+/* A page's own lines between its title and its content (its hint, a count) keep a step from what follows. */
+main > p {
+	margin-bottom: var(--space-lg);
+}
+
 h1 {
 	font-size: var(--text-xl);
 	font-weight: 700;
@@ -59,6 +64,18 @@ h3 {
 
 a {
 	color: var(--link);
+}
+
+/* Keys and ids: the system's monospace, not the browser's default (a serif on some Linux setups). */
+code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+/* What the browser scrolls into view (a focused field, an anchor) clears the app's bar where it stays on top. */
+@media (min-width: 561px) {
+	html {
+		scroll-padding-top: calc(var(--bar-height, 0px) + var(--space-lg));
+	}
 }
 
 :focus-visible {
@@ -210,11 +227,10 @@ input::placeholder {
 	box-shadow: 0 0 0 1px var(--bad);
 }
 
-/* A label that wraps its control (the sign-in pages): the text over the control, stacked from the top. */
+/* A label that wraps its control (the sign-in pages): the text over the control. */
 label {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
-	align-content: start;
 	gap: var(--space-xs);
 	font-weight: 600;
 }

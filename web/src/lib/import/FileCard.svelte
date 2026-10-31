@@ -3,7 +3,9 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
+	import { lift, pop, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
 		file,
@@ -67,6 +69,7 @@
 			return;
 		}
 		report = data;
+		notify(t('file.added', { added: data.batch.added, duplicates: data.batch.duplicates }));
 		// Read it again so the counts and rows show what the account has now.
 		await read(accountId);
 	}
@@ -91,7 +94,7 @@
 		>
 	</header>
 
-	{#if error}<p class="alert" role="alert">{error}</p>{/if}
+	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
 
 	{#if answered}
 		<label>
@@ -106,33 +109,41 @@
 					<option value={choice.id}>{choice.name}</option>
 				{/each}
 			</select>
-			{#if note}<span class="hint"
+			{#if note}<span class="hint" out:vanish
 					>{note}
 					{#if !importable.length}<a class="target" href="/accounts">{t('file.open_accounts')}</a
 						>{/if}</span
 				>{/if}
 		</label>
 	{:else if busy}
-		<p class="hint">{t('file.reading')}</p>
+		<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
 	{/if}
 
 	{#if reading && account}
-		<dl class="counts">
+		<dl class="counts" in:rise>
 			<div>
 				<dt>{t('file.rows_read')}</dt>
-				<dd>{reading.rows_read}</dd>
+				<dd>
+					{#key reading.rows_read}<span in:pop={{ start: 0.8 }}>{reading.rows_read}</span>{/key}
+				</dd>
 			</div>
 			<div>
 				<dt>{t('file.new')}</dt>
-				<dd>{reading.new}</dd>
+				<dd>
+					{#key reading.new}<span in:pop={{ start: 0.8 }}>{reading.new}</span>{/key}
+				</dd>
 			</div>
 			<div>
 				<dt>{t('file.already')}</dt>
-				<dd>{reading.duplicates}</dd>
+				<dd>
+					{#key reading.duplicates}<span in:pop={{ start: 0.8 }}>{reading.duplicates}</span>{/key}
+				</dd>
 			</div>
 			<div>
 				<dt>{t('file.unreadable_rows')}</dt>
-				<dd>{reading.errors}</dd>
+				<dd>
+					{#key reading.errors}<span in:pop={{ start: 0.8 }}>{reading.errors}</span>{/key}
+				</dd>
 			</div>
 		</dl>
 		{#if reading.first_date && reading.last_date}
@@ -182,15 +193,17 @@
 			</details>
 		{/if}
 
+		<!-- What the file comes to is the card's own state; what the import did also goes to the page's notice. -->
 		{#if report}
-			<p class="notice" role="status">
+			<p class="result" in:rise>
+				<span class="check" aria-hidden="true"></span>
 				{t('file.added', { added: report.batch.added, duplicates: report.batch.duplicates })}
 			</p>
 		{:else}
 			{#if reading.new === 0}
-				<p class="notice" role="status">{t('file.nothing_new')}</p>
+				<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
 			{/if}
-			<div>
+			<div class="actions" out:vanish>
 				<button onclick={commit} disabled={busy || reading.new === 0}>
 					{plural(reading.new, 'file.import_one', 'file.import_other')}
 				</button>
@@ -204,7 +217,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: start;
-		gap: 12px;
+		gap: var(--space-md);
 	}
 	.head h2 {
 		min-width: 0;
@@ -212,17 +225,17 @@
 	.counts {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: 8px;
+		gap: var(--space-sm);
 		margin: 0;
 	}
 	.counts div {
 		background: var(--bg);
-		border-radius: var(--radius);
+		border-radius: var(--radius-button);
 		padding: var(--space-sm) var(--space-md);
 	}
 	dt {
 		color: var(--muted);
-		font-size: var(--text-xs);
+		font-size: var(--text-sm);
 	}
 	dd {
 		margin: 0;
@@ -230,24 +243,48 @@
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 	}
+	dd > span {
+		display: inline-block;
+	}
 	h3 {
-		font-size: var(--text-md);
-		margin: 0 0 4px;
+		margin: 0 0 var(--space-xs);
 	}
 	.errors {
 		margin: 0;
 		padding-left: var(--space-xl);
 		color: var(--bad);
 	}
-	/* A 24 px target at least (WCAG 2.5.8), though it sits in a hint. */
+	/* A link that is a tap target of its own: 44 px tall. */
 	.target {
-		display: inline-block;
-		padding: 4px 0;
-		min-height: 24px;
-	}
-	summary {
-		cursor: pointer;
-		padding: 8px 0;
+		display: inline-flex;
+		align-items: center;
 		min-height: 44px;
+	}
+	/* The file's import, done: a check and what it added. */
+	.result {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		color: var(--ok);
+		font-weight: 600;
+	}
+	.check {
+		flex: none;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: var(--ok-bg);
+		position: relative;
+	}
+	.check::after {
+		content: '';
+		position: absolute;
+		left: 7px;
+		top: 4px;
+		width: 5px;
+		height: 9px;
+		border-right: 2px solid var(--ok);
+		border-bottom: 2px solid var(--ok);
+		transform: rotate(45deg);
 	}
 </style>

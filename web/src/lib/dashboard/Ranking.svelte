@@ -63,7 +63,7 @@
 	.line {
 		display: flex;
 		justify-content: space-between;
-		gap: 12px;
+		gap: var(--space-md);
 	}
 	.name {
 		min-width: 0;
@@ -76,7 +76,7 @@
 	}
 	.track {
 		height: 8px;
-		margin: 2px 0;
+		margin: var(--space-2xs) 0;
 	}
 	.fill {
 		height: 100%;
@@ -84,15 +84,12 @@
 		border-radius: 0 4px 4px 0;
 		background: var(--chart-spending);
 	}
-	.hint {
-		font-size: var(--text-xs);
-	}
 	summary {
 		cursor: pointer;
-		padding: 8px 0;
+		padding: var(--space-sm) 0;
 		min-height: 44px;
 	}
 	details .ranking {
-		margin-top: 4px;
+		margin-top: var(--space-xs);
 	}
 </style>

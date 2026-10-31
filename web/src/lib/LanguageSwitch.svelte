@@ -43,7 +43,7 @@
 <style>
 	.language {
 		display: inline-flex;
-		gap: 2px;
+		gap: var(--space-2xs);
 		margin: 0;
 		padding: 0;
 		border: 0;
@@ -55,7 +55,7 @@
 		place-items: center;
 		min-width: 44px;
 		min-height: 44px;
-		padding: 0 12px;
+		padding: 0 var(--space-md);
 		border-radius: 10px;
 		font-weight: 600;
 		font-size: var(--text-sm);

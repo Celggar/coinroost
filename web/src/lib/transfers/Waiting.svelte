@@ -2,6 +2,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { glide, rise, vanish } from '#lib/motion.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -40,12 +41,12 @@
 <section class="card" aria-labelledby="waiting-title">
 	<h2 id="waiting-title">{t('waiting.title')}</h2>
 	{#if preview.pairs.length === 0}
-		<p>{t('waiting.nothing')}</p>
+		<p in:rise>{t('waiting.nothing')}</p>
 	{:else}
 		<p class="hint">{t('waiting.hint')}</p>
 		<ul class="pairs" aria-label={t('waiting.title')}>
 			{#each preview.pairs as pair (pair.outflow.transaction_id)}
-				<li>
+				<li in:rise out:vanish animate:glide>
 					<div class="line">
 						<strong>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong>
 						<span>
@@ -67,7 +68,7 @@
 				</li>
 			{/each}
 		</ul>
-		<div>
+		<div class="actions" out:vanish>
 			<button onclick={apply} disabled={busy}
 				>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
 			>
@@ -81,19 +82,19 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.pairs li {
 		border-top: 1px solid var(--border);
-		padding-top: 8px;
+		padding-top: var(--space-sm);
 		display: grid;
-		gap: 4px;
+		gap: var(--space-xs);
 		justify-items: start;
 	}
 	.line {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 12px;
+		gap: var(--space-xs) var(--space-md);
 		overflow-wrap: anywhere;
 	}
 	strong {

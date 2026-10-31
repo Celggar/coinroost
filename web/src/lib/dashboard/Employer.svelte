@@ -129,7 +129,7 @@
 	}
 	summary {
 		cursor: pointer;
-		padding: 8px 0;
+		padding: var(--space-sm) 0;
 		min-height: 44px;
 	}
 </style>

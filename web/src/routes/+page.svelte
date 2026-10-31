@@ -184,7 +184,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: end;
-		gap: 8px 12px;
+		gap: var(--space-sm) var(--space-md);
 	}
 	.period button[aria-pressed='true'] {
 		background: var(--bg);
@@ -195,7 +195,7 @@
 	.rankings {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-		gap: 12px;
+		gap: var(--space-md);
 		align-items: start;
 	}
 	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. */

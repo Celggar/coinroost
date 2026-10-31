@@ -171,5 +171,7 @@
 		text-decoration: underline;
 		text-underline-offset: 3px;
 		--state-layer: transparent;
+		font-weight: 400;
+		line-height: 1.5;
 	}
 </style>

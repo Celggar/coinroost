@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { glide, rise, vanish } from '#lib/motion.ts';
 	import FileCard from '#lib/import/FileCard.svelte';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -60,11 +61,13 @@
 		</label>
 
 		{#each files as entry (entry.id)}
-			<FileCard
-				file={entry.file}
-				{accounts}
-				onremove={() => (files = files.filter((f) => f.id !== entry.id))}
-			/>
+			<div class="file" in:rise out:vanish animate:glide>
+				<FileCard
+					file={entry.file}
+					{accounts}
+					onremove={() => (files = files.filter((f) => f.id !== entry.id))}
+				/>
+			</div>
 		{/each}
 	</div>
 {:else}
@@ -73,9 +76,17 @@
 
 <style>
 	.drop {
-		border: 2px dashed var(--border);
-		border-radius: var(--radius);
-		padding: 16px;
+		border: 2px dashed var(--field-border);
+		border-radius: var(--radius-card);
+		padding: var(--space-xl);
 		background: var(--surface);
+		transition: border-color var(--duration-short) var(--ease-standard);
+	}
+	.drop:hover,
+	.drop:focus-within {
+		border-color: var(--accent);
+	}
+	.file {
+		display: grid;
 	}
 </style>

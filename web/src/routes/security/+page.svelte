@@ -226,7 +226,7 @@
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.buttons button {
 		display: grid;

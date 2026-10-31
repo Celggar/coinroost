@@ -32,6 +32,11 @@
 		document.documentElement.lang = i18n.locale;
 	});
 
+	// The bar's height, for scroll-padding (base.css): a field the browser scrolls to is never under it.
+	$effect(() => {
+		document.documentElement.style.setProperty('--bar-height', `${barHeight}px`);
+	});
+
 	$effect(() => {
 		if (!session.checked) {
 			refresh();
@@ -149,8 +154,17 @@
 		gap: var(--space-xs);
 		flex: 1;
 	}
-	/* On a phone: the name and Log out on the first row, the sections on their own row below. */
+	/* On a phone: the name, the language and Log out on the first row, the sections on their own rows below. The
+	   bar scrolls away with the page there: kept on top it would take a third of the screen. */
 	@media (max-width: 560px) {
+		.top {
+			position: static;
+			gap: var(--space-sm);
+		}
+		.top > button {
+			padding: 0 var(--space-md);
+			font-size: var(--text-sm);
+		}
 		.brand {
 			flex: 1;
 		}

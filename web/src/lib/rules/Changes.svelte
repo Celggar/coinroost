@@ -2,6 +2,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
@@ -65,7 +66,7 @@
 <section class="card" aria-labelledby="changes-title">
 	<h2 id="changes-title">{t('changes.title')}</h2>
 	<p class="hint">{t('changes.hint')}</p>
-	<div>
+	<div class="actions">
 		<button
 			class="secondary"
 			onclick={() => {
@@ -76,12 +77,12 @@
 	</div>
 	{#if preview}
 		{#if preview.changes.length === 0}
-			<p>{t('changes.nothing')}</p>
+			<p in:rise>{t('changes.nothing')}</p>
 		{:else}
-			<p>{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}</p>
-			<ul class="changes">
+			<p in:rise>{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}</p>
+			<ul class="changes" in:rise out:vanish>
 				{#each preview.changes as change (change.transaction_id)}
-					<li>
+					<li out:vanish animate:glide>
 						<div class="what">
 							<span>{day(change.date)}</span>
 							<span class="description">{change.description}</span>
@@ -91,7 +92,7 @@
 					</li>
 				{/each}
 			</ul>
-			<div>
+			<div class="actions" out:vanish>
 				<button onclick={apply} disabled={busy}>
 					{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
 				</button>
@@ -106,16 +107,16 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.changes li {
 		border-top: 1px solid var(--border);
-		padding-top: 8px;
+		padding-top: var(--space-sm);
 	}
 	.what {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 12px;
+		gap: var(--space-xs) var(--space-md);
 	}
 	.description {
 		flex: 1;

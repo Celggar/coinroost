@@ -112,9 +112,10 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await card
 		.getByRole('button', { name: say('file.import_other', { count: transactions }) })
 		.click();
-	await expect(card.getByRole('status')).toHaveText(
-		say('file.added', { added: transactions, duplicates: 0 })
-	);
+	// The page's notice says what the import did, and the card keeps it as its own state.
+	const added = say('file.added', { added: transactions, duplicates: 0 });
+	await expect(page.getByRole('status').filter({ hasText: added })).toHaveText(added);
+	await expect(card.getByText(added)).toBeVisible();
 	await expect(count(card, say('file.new'))).toHaveText('0');
 
 	// The same file again: everything is already there, and the import button stays off.

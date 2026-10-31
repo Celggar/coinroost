@@ -121,9 +121,9 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		gap: 12px;
+		gap: var(--space-md);
 	}
 	td div + div {
-		margin-top: 4px;
+		margin-top: var(--space-xs);
 	}
 </style>

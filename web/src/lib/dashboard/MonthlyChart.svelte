@@ -221,15 +221,18 @@
 		margin: 0;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: 8px;
+		gap: var(--space-sm);
 	}
+	/* The chart's title is a card heading like the others (h2 in base.css). */
 	figcaption {
+		font-size: var(--text-lg);
 		font-weight: 700;
+		line-height: 1.3;
 	}
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 16px;
+		gap: var(--space-xs) var(--space-lg);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -290,7 +293,7 @@
 		top: 0;
 		transform: translateX(-50%);
 		display: grid;
-		gap: 2px;
+		gap: var(--space-2xs);
 		min-width: 170px;
 		padding: var(--space-sm) var(--space-md);
 		background: var(--surface);
@@ -316,7 +319,7 @@
 	}
 	summary {
 		cursor: pointer;
-		padding: 8px 0;
+		padding: var(--space-sm) 0;
 		min-height: 44px;
 	}
 	th[scope='row'] {

@@ -2,6 +2,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { glide, pop, rise, vanish } from '#lib/motion.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -43,12 +44,12 @@
 <section class="card" aria-labelledby="made-title">
 	<h2 id="made-title">{t('made.title')}</h2>
 	{#if transfers.length === 0}
-		<p>{t('made.none')}</p>
+		<p in:rise>{t('made.none')}</p>
 	{:else}
 		<ul class="made" aria-label={t('made.title')}>
 			{#each transfers as transfer (transfer.id)}
 				{@const { out, inn } = sides(transfer)}
-				<li>
+				<li in:rise out:vanish animate:glide>
 					<div class="line">
 						<span>{day(transfer.date)}</span>
 						{#if out}<strong>{money(-out.amount_minor, out.currency)}</strong>{/if}
@@ -61,13 +62,19 @@
 					<div class="hint">{transfer.description}</div>
 					<div class="buttons">
 						{#if confirming === transfer.id}
-							<button onclick={() => split(transfer)} disabled={busy}>{t('made.split_it')}</button>
-							<button class="secondary" onclick={() => (confirming = null)}
+							<button
+								class="danger"
+								onclick={() => split(transfer)}
+								disabled={busy}
+								in:pop={{ start: 0.9 }}>{t('made.split_it')}</button
+							>
+							<button class="secondary" onclick={() => (confirming = null)} in:pop={{ start: 0.9 }}
 								>{t('made.keep_it')}</button
 							>
 						{:else}
 							<button
 								class="secondary"
+								in:pop={{ start: 0.9 }}
 								onclick={() => (confirming = transfer.id)}
 								aria-label={t('made.split_named', { description: transfer.description })}
 								>{t('made.split')}</button
@@ -86,18 +93,18 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.made li {
 		border-top: 1px solid var(--border);
-		padding-top: 8px;
+		padding-top: var(--space-sm);
 		display: grid;
-		gap: 4px;
+		gap: var(--space-xs);
 	}
 	.line {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 12px;
+		gap: var(--space-xs) var(--space-md);
 		overflow-wrap: anywhere;
 	}
 	strong {
@@ -109,6 +116,6 @@
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 </style>
