@@ -395,6 +395,7 @@
 	"security.failed": "The codes could not be made",
 	"security.load_failed": "Your codes' status could not be read",
 	"form.required": "Fill in this field.",
+	"form.required_many": "Fill in these fields.",
 	"form.choose": "Choose one.",
 	"form.too_long": "At most {max} characters.",
 	"form.too_short": "At least {min} characters.",

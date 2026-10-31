@@ -42,6 +42,14 @@
 	let passwordField: PasswordField | undefined = $state();
 	let codeField: CodeField | undefined = $state();
 	let introEnded: (() => void) | undefined;
+	// A step that replaces the one people were using takes the focus to its heading, so it is not left on the
+	// page's body (WCAG 2.4.3). Not on the first step: the page has just opened.
+	let moveFocus = false;
+	function arrive(node: HTMLElement) {
+		if (!moveFocus) return;
+		moveFocus = false;
+		node.querySelector<HTMLElement>('.step-label')?.focus({ preventScroll: true });
+	}
 
 	/** A fresh install's first account: the server hands out a setup link, kept in the address so a reload finds it. */
 	async function firstAccountLink(): Promise<string> {
@@ -55,6 +63,7 @@
 
 	function go(next: Step) {
 		direction = order.indexOf(next) >= order.indexOf(step) ? 1 : -1;
+		moveFocus = step !== 'checking';
 		step = next;
 	}
 
@@ -145,6 +154,8 @@
 		} else if (response.status === 422) {
 			fail(t('setup.wrong_code'));
 			codeField?.shake();
+			// The code is cleared, marked and focused, ready for the next one.
+			codeField?.mark();
 		} else {
 			fail(problem(failure, response.status, t('setup.failed')));
 		}
@@ -183,6 +194,7 @@
 			{#key step}
 				<div
 					class="step"
+					use:arrive
 					in:stepIn={{ direction }}
 					out:stepOut={{ direction }}
 					onintroend={() => introEnded?.()}
@@ -192,14 +204,14 @@
 							<span class="spinner" aria-hidden="true"></span>{t('setup.checking')}
 						</p>
 					{:else if step === 'invalid'}
-						<h2 class="step-label">{t('setup.invalid_title')}</h2>
+						<h2 class="step-label" tabindex="-1">{t('setup.invalid_title')}</h2>
 						<p class="lead">{t('setup.invalid')}</p>
 						<!-- A used link often means the account exists already: the way to the login is right here. -->
 						<p><a href="/login">{t('setup.to_login')}</a></p>
 					{:else if step === 'account'}
 						<form novalidate oninput={edited} class="stack" onsubmit={toCode}>
 							<div>
-								<h2 class="step-label">{t('setup.step_account')}</h2>
+								<h2 class="step-label" tabindex="-1">{t('setup.step_account')}</h2>
 								{#if first}<p class="lead">{t('setup.first_lead')}</p>{/if}
 							</div>
 							<label>
@@ -230,7 +242,7 @@
 					{:else if step === 'code' && enrollment}
 						<form novalidate oninput={edited} class="stack" onsubmit={finish}>
 							<div>
-								<h2 class="step-label">{t('setup.step_code')}</h2>
+								<h2 class="step-label" tabindex="-1">{t('setup.step_code')}</h2>
 								<p class="lead">{onPhone ? t('setup.scan_phone') : t('setup.scan')}</p>
 							</div>
 							<Authenticator {enrollment} />
@@ -258,7 +270,7 @@
 					{:else if step === 'codes'}
 						<div class="stack">
 							<div>
-								<h2 class="step-label">{t('setup.step_codes')}</h2>
+								<h2 class="step-label" tabindex="-1">{t('setup.step_codes')}</h2>
 								<p class="lead">{t('setup.codes_lead')}</p>
 							</div>
 							<RecoveryCodes codes={recovery.codes} {email} createdAt={recovery.createdAt} />

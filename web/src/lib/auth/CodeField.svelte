@@ -48,6 +48,12 @@
 		field?.focus();
 	}
 
+	/** Marks the code as wrong (the slots turn red until it is edited) and puts the caret back in it. */
+	export function mark() {
+		field?.setAttribute('aria-invalid', 'true');
+		field?.focus();
+	}
+
 	/** Shakes the slots, next to the message that says the code was wrong. */
 	export function shake() {
 		shakeRow(row);

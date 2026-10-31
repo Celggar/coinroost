@@ -217,6 +217,10 @@
 		font-size: 0.9rem;
 		color: var(--muted);
 	}
+	/* A step's heading takes the focus when the step changes, to place screen readers, not to be typed in. */
+	.glass :global(.step-label:focus) {
+		outline: none;
+	}
 	.glass :global(.step-label) {
 		margin: 6px 0 0;
 		font-size: 0.8125rem;

@@ -395,6 +395,7 @@
 	"security.failed": "No se pudieron crear los códigos",
 	"security.load_failed": "No se pudo leer el estado de tus códigos",
 	"form.required": "Completa este campo.",
+	"form.required_many": "Completa estos campos.",
 	"form.choose": "Escoge una opción.",
 	"form.too_long": "Máximo {max} caracteres.",
 	"form.too_short": "Mínimo {min} caracteres.",

@@ -113,7 +113,7 @@
 		justify-content: space-between;
 		gap: 8px;
 		min-height: 48px;
-		padding: 0 4px 0 12px;
+		padding: 4px 4px 4px 12px;
 		border: 1px solid var(--field-border);
 		border-radius: 10px;
 		background: var(--surface);
@@ -124,6 +124,9 @@
 			monospace;
 		font-size: 1rem;
 		letter-spacing: 0.04em;
+		/* A key that wraps keeps room from the box's edges and splits into even halves. */
+		padding-block: 6px;
+		text-wrap: balance;
 		overflow-wrap: anywhere;
 		user-select: all;
 	}

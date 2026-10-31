@@ -1,7 +1,7 @@
 // Form checks in the page's language (FD5). Forms set `novalidate`, so the browser never shows its own bubble (in the
 // browser's language, outside the page); these read the same constraints (`required`, `maxlength`, `type`,
 // `pattern`, `min`/`max`) and give each invalid field its message, keyed by the field's `name`.
-import { t } from '#lib/i18n.svelte.ts';
+import { i18n, t } from '#lib/i18n.svelte.ts';
 
 export type Errors = Record<string, string>;
 
@@ -51,11 +51,13 @@ export function focusFirst(form: HTMLFormElement, errors: Errors) {
 }
 
 /**
- * For forms that show one message (the sign-in pages): marks the invalid fields with `aria-invalid` and gives the
- * first error as one sentence that names its field («Correo: Completa este campo.»), or '' when there is none.
+ * For forms that show one message (the sign-in pages): marks the invalid fields with `aria-invalid` and names every
+ * one of them, so no field is marked without the message saying why. Fields with the same problem share a sentence
+ * («Correo y Contraseña: Completa estos campos.»); '' when there is none.
  */
 export function single(form: HTMLFormElement, errors: Errors): string {
-	let first = '';
+	const named = new Map<string, string[]>();
+	const bare: string[] = [];
 	for (const [key, control] of controls(form)) {
 		if (!errors[key]) {
 			control.removeAttribute('aria-invalid');
@@ -63,9 +65,17 @@ export function single(form: HTMLFormElement, errors: Errors): string {
 		}
 		control.setAttribute('aria-invalid', 'true');
 		const label = control.labels?.[0]?.firstChild?.textContent?.trim();
-		first ||= label ? t('form.named', { field: label, message: errors[key] }) : errors[key];
+		if (label) named.set(errors[key], [...(named.get(errors[key]) ?? []), label]);
+		else bare.push(errors[key]);
 	}
-	return first;
+	const list = new Intl.ListFormat(i18n.locale, { type: 'conjunction' });
+	const sentences = [...named].map(([message, fields]) =>
+		t('form.named', {
+			field: list.format(fields),
+			message: fields.length > 1 && message === t('form.required') ? t('form.required_many') : message
+		})
+	);
+	return [...sentences, ...bare].join(' ');
 }
 
 /** The errors without the one of the field being edited: a message goes as soon as its field changes. */
