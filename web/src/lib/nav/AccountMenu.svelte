@@ -18,7 +18,10 @@
 	let root: HTMLElement | undefined = $state();
 	let button: HTMLButtonElement | undefined = $state();
 	// Where the panel stands: fixed to the window above the button, so it can be wider than the rail, which scrolls
-	// and would cut it (the chosen language had 5 px on each side at the rail's width).
+	// and would cut it (the chosen language had 5 px on each side at the rail's width). It is 320 px wide: the page's
+	// column starts at 264 px up to a 1208 px window and then moves right, so some width always meets the panel's
+	// edge; at 320 that is near 1344 px, while at 1280 the panel clearly overlaps the page (by 32 px) and at 1366 it
+	// stays 11 px clear.
 	let place = $state({ left: 0, bottom: 0 });
 
 	const email = $derived(session.user?.email ?? '');
@@ -164,10 +167,10 @@
 	.panel {
 		position: fixed;
 		z-index: 30;
-		width: 288px;
+		width: 320px;
 		display: grid;
 		gap: var(--space-md);
-		padding: var(--space-lg) var(--space-lg) var(--space-xs);
+		padding: var(--space-lg) var(--space-lg) var(--space-sm);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		background: var(--surface);
@@ -194,10 +197,12 @@
 		max-width: 100%;
 		overflow-wrap: anywhere;
 	}
+	/* The dividers reach 8 px past the panel's text, as wide as the log-out row's hover tint below them. */
 	.language {
 		display: grid;
 		gap: var(--space-xs);
-		padding-top: var(--space-md);
+		margin-inline: calc(-1 * var(--space-sm));
+		padding: var(--space-md) var(--space-sm) 0;
 		border-top: 1px solid var(--border);
 	}
 	.label {
@@ -210,24 +215,23 @@
 	.language :global(.language) {
 		--language-chosen: color-mix(in oklab, var(--accent) 14%, var(--surface));
 	}
-	/* The same 12 px above both dividers; the row sits in the middle between its divider and the panel's edge (4 px
-	   and the button's own half on each side). */
+	/* The same 12 px above both dividers. The log-out row sits in the middle between its divider and the panel's edge,
+	   and its hover tint keeps 8 px from the divider, the edge and the sides, rounded to match the panel's corners. */
 	.foot {
-		padding-top: var(--space-xs);
+		margin-inline: calc(-1 * var(--space-sm));
+		padding-top: var(--space-sm);
 		border-top: 1px solid var(--border);
 	}
-	/* The hover tint reaches 8 px past the panel's text on each side, so it does not start right at the icon; the icon's
-	   stroke (4 px into its box) stays on the text's line above. */
+	/* Its padding puts the icon's stroke (4 px into its box) on the panel's text line above. */
 	.leave {
 		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 		justify-content: flex-start;
 		gap: var(--space-md);
-		width: calc(100% + 2 * var(--space-sm));
+		width: 100%;
 		min-height: 48px;
-		margin-inline: calc(-1 * var(--space-sm));
 		padding: 0 var(--space-sm);
 		border: 0;
-		border-radius: var(--radius-field);
+		border-radius: calc(var(--radius-card) - var(--space-sm));
 		background: none;
 		color: var(--text);
 	}
