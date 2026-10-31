@@ -311,6 +311,16 @@ label {
 	line-height: 1.4;
 }
 
+/* «Loading…» waits 300 ms before it fades in: a page or a language that arrives sooner never flashes it. */
+.loading {
+	animation: loading-in var(--duration-short) var(--ease-standard) 300ms backwards;
+}
+@keyframes loading-in {
+	from {
+		opacity: 0;
+	}
+}
+
 .field-error {
 	color: var(--bad);
 	font-size: var(--text-sm);

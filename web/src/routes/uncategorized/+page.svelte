@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -83,9 +84,14 @@
 	<div class="in-place">
 		{#if transactions.length === 0}
 			{#if empty}
-				<p in:rise>
-					{t('uncategorized.none_yet')} <a href="/import">{t('uncategorized.import_first')}</a>
-				</p>
+				<div in:rise>
+					<EmptyState
+						icon="import"
+						text={t('uncategorized.none_yet')}
+						href="/import"
+						action={t('uncategorized.import_first')}
+					/>
+				</div>
 			{:else}
 				<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
 			{/if}
@@ -136,7 +142,7 @@
 		{/if}
 	</div>
 {:else}
-	<p class="hint">{t('app.loading')}</p>
+	<p class="hint loading">{t('app.loading')}</p>
 {/if}
 
 <style>

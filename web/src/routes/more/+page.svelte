@@ -92,6 +92,12 @@
 	.rows a :global(svg:last-child) {
 		color: var(--muted);
 	}
+	/* Forced colors leave an SVG's author color alone: the chevron takes the row's system link color. */
+	@media (forced-colors: active) {
+		.rows a :global(svg:last-child) {
+			color: inherit;
+		}
+	}
 	.leave {
 		width: 100%;
 	}

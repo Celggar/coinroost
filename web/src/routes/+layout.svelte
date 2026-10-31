@@ -93,7 +93,7 @@
 {:else if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
-	<main><p class="hint">{t('app.loading')}</p></main>
+	<main><p class="hint loading">{t('app.loading')}</p></main>
 {/if}
 
 <style>

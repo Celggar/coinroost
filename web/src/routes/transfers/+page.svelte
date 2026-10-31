@@ -55,5 +55,5 @@
 		<Made {transfers} {names} onchanged={load} />
 	</div>
 {:else if !loadError}
-	<p class="hint">{t('app.loading')}</p>
+	<p class="hint loading">{t('app.loading')}</p>
 {/if}

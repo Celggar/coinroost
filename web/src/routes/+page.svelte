@@ -8,7 +8,7 @@
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
-	import Icon from '#lib/nav/Icon.svelte';
+	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { fadeThrough, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
@@ -160,17 +160,21 @@
 			{#if currencies.length === 0}
 				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
 				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
-				<div class="card empty">
-					{#if reports.hasAccounts}
-						<span class="empty-icon"><Icon name="import" size={28} /></span>
-						<p>{t('dashboard.nothing')}</p>
-						<a class="button" href="/import">{t('dashboard.to_import')}</a>
-					{:else}
-						<span class="empty-icon"><Icon name="bank" size={28} /></span>
-						<p>{t('dashboard.no_accounts')}</p>
-						<a class="button" href="/accounts">{t('dashboard.to_accounts')}</a>
-					{/if}
-				</div>
+				{#if reports.hasAccounts}
+					<EmptyState
+						icon="import"
+						text={t('dashboard.nothing')}
+						href="/import"
+						action={t('dashboard.to_import')}
+					/>
+				{:else}
+					<EmptyState
+						icon="bank"
+						text={t('dashboard.no_accounts')}
+						href="/accounts"
+						action={t('dashboard.to_accounts')}
+					/>
+				{/if}
 			{/if}
 			{#each currencies as totals (totals.currency)}
 				{@const c = totals.currency}
@@ -215,30 +219,11 @@
 			{/each}
 		</div>
 	{:else if !error}
-		<p class="hint">{t('app.loading')}</p>
+		<p class="hint loading">{t('app.loading')}</p>
 	{/if}
 </div>
 
 <style>
-	.empty {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-md);
-		padding: var(--space-2xl) var(--space-xl);
-		text-align: center;
-	}
-	.empty p {
-		text-wrap: balance;
-	}
-	.empty-icon {
-		display: grid;
-		place-items: center;
-		width: 56px;
-		height: 56px;
-		border-radius: 999px;
-		background: color-mix(in oklab, var(--accent) 12%, var(--surface));
-		color: var(--accent);
-	}
 	.period {
 		display: flex;
 		flex-wrap: wrap;

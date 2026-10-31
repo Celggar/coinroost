@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import Icon from '#lib/nav/Icon.svelte';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -57,39 +58,46 @@
 {:else if loaded}
 	<div class="stack">
 		{#if accounts.length === 0}
-			<!-- Every file is read into one of the household's accounts: the first step comes first. -->
-			<p>{t('import.no_accounts')} <a href="/accounts">{t('import.create_account')}</a></p>
-		{/if}
-		<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
-			 whole zone is its label, with a button drawn in the page's style. Files can also be dropped on it. -->
-		<label
-			class="drop"
-			class:over
-			ondragover={(event) => {
-				event.preventDefault();
-				over = true;
-			}}
-			ondragleave={() => (over = false)}
-			ondrop={(event) => {
-				over = false;
-				drop(event);
-			}}
-		>
-			<span class="icon"><Icon name="import" size={28} /></span>
-			<span class="title" id="drop-title">{t('import.drop_title')}</span>
-			<span class="hint" id="drop-hint">{t('import.choose_hint')}</span>
-			<span class="button pick" id="drop-pick">{t('import.choose')}</span>
-			<span class="hint here">{t('import.drop_here')}</span>
-			<input
-				class="visually-hidden"
-				type="file"
-				aria-labelledby="drop-pick"
-				aria-describedby="drop-hint"
-				multiple
-				accept=".csv,.xls,.xlsx,.pdf"
-				onchange={choose}
+			<!-- Every file is read into one of the household's accounts: the first step comes first, and choosing files
+			     is not offered until there is an account to read them into. -->
+			<EmptyState
+				icon="bank"
+				text={t('import.no_accounts')}
+				href="/accounts"
+				action={t('import.create_account')}
 			/>
-		</label>
+		{:else}
+			<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
+			 whole zone is its label, with a button drawn in the page's style. Files can also be dropped on it. -->
+			<label
+				class="drop"
+				class:over
+				ondragover={(event) => {
+					event.preventDefault();
+					over = true;
+				}}
+				ondragleave={() => (over = false)}
+				ondrop={(event) => {
+					over = false;
+					drop(event);
+				}}
+			>
+				<span class="icon"><Icon name="import" size={28} /></span>
+				<span class="title" id="drop-title">{t('import.drop_title')}</span>
+				<span class="hint" id="drop-hint">{t('import.choose_hint')}</span>
+				<span class="button pick" id="drop-pick">{t('import.choose')}</span>
+				<span class="hint here">{t('import.drop_here')}</span>
+				<input
+					class="visually-hidden"
+					type="file"
+					aria-labelledby="drop-pick"
+					aria-describedby="drop-hint"
+					multiple
+					accept=".csv,.xls,.xlsx,.pdf"
+					onchange={choose}
+				/>
+			</label>
+		{/if}
 
 		{#each files as entry (entry.id)}
 			<div class="file" in:rise out:vanish animate:glide>
@@ -106,7 +114,7 @@
 		{/each}
 	</div>
 {:else}
-	<p class="hint">{t('app.loading')}</p>
+	<p class="hint loading">{t('app.loading')}</p>
 {/if}
 
 <style>

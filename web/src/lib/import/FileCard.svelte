@@ -166,7 +166,9 @@
 					</dd>
 				</div>
 				<div>
-					<dt>{report ? t('file.added') : t('file.new')}</dt>
+					<dt>
+						<Tick value={Boolean(report)}>{report ? t('file.added') : t('file.new')}</Tick>
+					</dt>
 					<dd>
 						<Tick value={report ? report.batch.added : reading.new}
 							>{report ? report.batch.added : reading.new}</Tick
@@ -232,11 +234,13 @@
 											><Money minor={row.amount_minor} currency={account.currency} /></td
 										>
 										<td data-label={t('column.status')}
-											>{row.duplicate
-												? t('file.row_already')
-												: report
-													? t('file.row_added')
-													: t('file.row_new')}</td
+											><Tick value={Boolean(report)}
+												>{row.duplicate
+													? t('file.row_already')
+													: report
+														? t('file.row_added')
+														: t('file.row_new')}</Tick
+											></td
 										>
 									</tr>
 								{/each}

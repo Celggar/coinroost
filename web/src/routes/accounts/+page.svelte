@@ -266,7 +266,7 @@
 		</form>
 	</div>
 {:else}
-	<p class="hint">{t('app.loading')}</p>
+	<p class="hint loading">{t('app.loading')}</p>
 {/if}
 
 <style>

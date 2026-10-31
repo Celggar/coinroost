@@ -5,10 +5,14 @@
 	import { day, span, today } from '#lib/format.ts';
 	import { plural, t, type Key } from '#lib/i18n.svelte.ts';
 	import Rich from '#lib/Rich.svelte';
+	import EmptyState from '#lib/ui/EmptyState.svelte';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let coverage = $state<Schemas['Coverage'] | null>(null);
 	let error = $state('');
 	let busy = $state(false);
+	// The «Refreshing…» label only once a refresh takes a while: a fast one would flash it for a frame or two.
+	let slow = $state(false);
 
 	const tones: Record<Schemas['Delay'], string> = {
 		late: 'bad',
@@ -24,9 +28,10 @@
 	} satisfies Record<Schemas['Delay'], Key>;
 	const delayName = (delay: Schemas['Delay']) => t(delayKeys[delay]);
 
-	async function load() {
+	async function load(asked = false) {
 		busy = true;
 		error = '';
+		const wait = setTimeout(() => (slow = true), 300);
 		const {
 			data,
 			error: failure,
@@ -34,7 +39,9 @@
 		} = await api.GET('/api/v1/coverage', {
 			params: { query: { today: today() } }
 		});
+		clearTimeout(wait);
 		busy = false;
+		slow = false;
 		if (!data) {
 			// Never an empty table: it would read as «everything is up to date».
 			coverage = null;
@@ -42,6 +49,8 @@
 			return;
 		}
 		coverage = data;
+		// A refresh the person asked for says it happened: the table often looks the same afterwards.
+		if (asked) notify(t('coverage.refreshed'));
 	}
 
 	onMount(load);
@@ -58,17 +67,25 @@
 	</p>
 	<!-- aria-disabled, not disabled: a disabled button drops the focus, and the person pressed this one. Both labels
 	     share one cell, so the button keeps its width while one fades into the other; the hidden one is not read. -->
-	<button class="secondary refresh" onclick={() => busy || load()} aria-disabled={busy}>
-		<span class:shown={!busy} aria-hidden={busy}>{t('coverage.refresh')}</span>
-		<span class:shown={busy} aria-hidden={!busy}>{t('coverage.refreshing')}</span>
-	</button>
+	<!-- Nothing to refresh before there is an account: the empty card below says what to do instead. -->
+	{#if !(coverage && coverage.items.length === 0)}
+		<button class="secondary refresh" onclick={() => busy || load(true)} aria-disabled={busy}>
+			<span class:shown={!slow} aria-hidden={slow}>{t('coverage.refresh')}</span>
+			<span class:shown={slow} aria-hidden={!slow}>{t('coverage.refreshing')}</span>
+		</button>
+	{/if}
 </div>
 
 {#if error}
 	<p class="alert" role="alert">{error}</p>
 {:else if coverage}
 	{#if coverage.items.length === 0}
-		<p>{t('coverage.no_accounts')} <a href="/accounts">{t('coverage.create_one')}</a></p>
+		<EmptyState
+			icon="bank"
+			text={t('coverage.no_accounts')}
+			href="/accounts"
+			action={t('coverage.create_one')}
+		/>
 	{:else}
 		<div class="table-wrap" use:scrollable={t('coverage.title')}>
 			<table class="rows-on-phone">
@@ -119,7 +136,7 @@
 		</div>
 	{/if}
 {:else}
-	<p class="hint">{t('app.loading')}</p>
+	<p class="hint loading">{t('app.loading')}</p>
 {/if}
 
 <style>
