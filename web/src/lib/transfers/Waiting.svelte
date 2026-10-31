@@ -42,7 +42,7 @@
 
 <section class="card" aria-labelledby="waiting-title">
 	<h2 id="waiting-title">{t('waiting.title')}</h2>
-	<div class="swap">
+	<div class="in-place">
 		{#if preview.pairs.length === 0}
 			<p in:rise out:vanish>{t('waiting.nothing')}</p>
 		{:else}

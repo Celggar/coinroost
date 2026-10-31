@@ -47,7 +47,7 @@
 
 <section class="card" aria-labelledby="made-title">
 	<h2 id="made-title" tabindex="-1" bind:this={title}>{t('made.title')}</h2>
-	<div class="swap">
+	<div class="in-place">
 		{#if transfers.length === 0}
 			<p in:rise out:vanish>{t('made.none')}</p>
 		{:else}

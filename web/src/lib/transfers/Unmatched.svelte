@@ -87,7 +87,7 @@
 
 <section class="card" aria-labelledby="unmatched-title">
 	<h2 id="unmatched-title">{t('unmatched.title')}</h2>
-	<div class="swap">
+	<div class="in-place">
 		{#if preview.unmatched.length === 0}
 			<p in:rise out:vanish>{t('unmatched.nothing')}</p>
 		{:else}

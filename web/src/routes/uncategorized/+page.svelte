@@ -75,7 +75,7 @@
 	</p>
 {:else if loaded}
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->
-	<div class="swap">
+	<div class="in-place">
 		{#if transactions.length === 0}
 			<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
 		{:else}

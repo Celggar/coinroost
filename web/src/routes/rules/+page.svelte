@@ -84,7 +84,7 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
-		<div class="swap">
+		<div class="in-place">
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:rise out:vanish>
 					{#each rules as rule, index (rule.id)}
@@ -155,12 +155,14 @@
 		margin: 0;
 		overflow-wrap: anywhere;
 	}
+	/* Number, name and chip share the name's first baseline, so a long name wraps under itself, not around the number. */
 	.head {
 		display: flex;
-		align-items: center;
+		align-items: baseline;
 		gap: var(--space-md);
 	}
 	.position {
+		flex: none;
 		display: inline-grid;
 		place-items: center;
 		min-width: 32px;

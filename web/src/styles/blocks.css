@@ -284,12 +284,12 @@ details[open]::details-content {
 
 /* Two states that replace each other in place (a list and its empty line): both sit in one cell, so the one leaving
    fades over the one coming instead of stacking under it (FD9). */
-.swap {
+.in-place {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 }
 
-.swap > * {
+.in-place > * {
 	grid-area: 1 / 1;
 }
 
