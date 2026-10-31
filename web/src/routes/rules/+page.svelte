@@ -101,9 +101,11 @@
 
 	// A link to the category form (from an uncategorized queue with no category to choose) lands in its name field:
 	// the form only exists once the page has loaded, too late for the browser's own jump to the anchor.
+	let fromQueue = $state(false);
 	onMount(async () => {
+		fromQueue = location.hash === '#new-category';
 		await load();
-		if (location.hash === '#new-category') {
+		if (fromQueue) {
 			await tick();
 			const form = document.getElementById('new-category');
 			const name = form?.querySelector('input');
@@ -185,7 +187,7 @@
 		</div>
 
 		<RuleForm {categories} {payees} {accounts} oncreated={added} />
-		<CategoryForm oncreated={load} />
+		<CategoryForm oncreated={load} back={fromQueue} />
 		<Changes {names} onapplied={load} />
 	</div>
 {:else}

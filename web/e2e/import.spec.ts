@@ -105,11 +105,15 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(other.getByText(say('file.not_found'))).toBeVisible();
 	const account = other.getByLabel(say('file.account'));
 	await account.selectOption({ label: 'Checking' });
-	// The reason goes under «Cuenta», tied to it, in place of the hint that no longer holds.
+	// The reason goes under «Cuenta», tied to it, in place of the note that no longer holds; the way on to an account
+	// that reads the file stays (pass 10: only «Quitar» was left).
 	await expect(account).toHaveAttribute('aria-invalid', 'true');
 	await expect(other.getByText(say('file.not_found'))).toHaveCount(0);
-	const reason = other.locator(`[id="${await account.getAttribute('aria-describedby')}"]`);
+	const reason = other.locator('.field-error');
 	await expect(reason).not.toBeEmpty();
+	const described = (await account.getAttribute('aria-describedby'))?.split(' ') ?? [];
+	expect(described).toContain(await reason.getAttribute('id'));
+	await expect(other.getByRole('link', { name: say('file.open_accounts') })).toBeVisible();
 	// In the page's language: the text of the problem's code, never the API's English detail.
 	const why = (await reason.textContent())?.trim();
 	expect([say('problem.file_unreadable'), say('problem.file_missing_columns')]).toContain(why);

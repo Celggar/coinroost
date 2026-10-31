@@ -208,6 +208,7 @@
 	"categoryform.failed": "No se pudo crear la categoría",
 	"categoryform.created": "Se creó {name}.",
 	"categoryform.create": "Crear categoría",
+	"categoryform.back": "Volver a «Sin categoría»",
 	"changes.category": "Categoría: {from} → {to}",
 	"changes.payee": "Beneficiario: {from} → {to}",
 	"changes.only_rule": "Solo cambia la regla que la clasificó",

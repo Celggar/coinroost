@@ -43,7 +43,7 @@
 		>
 	</nav>
 
-	<section class="card" aria-labelledby="language-title">
+	<section class="card language-card" aria-labelledby="language-title">
 		<h2 id="language-title">{t('more.language')}</h2>
 		<LanguageSwitch wide />
 	</section>
@@ -117,6 +117,11 @@
 		.rows a :global(svg:last-child) {
 			color: inherit;
 		}
+	}
+	/* The language card keeps a phone card's 16 px at every width: its title and switch start where the rows' icons
+	   do. A wider card's 24 px put them 9 px in from the icons between 561 and 899 px (P2 round 10). */
+	.language-card {
+		padding: var(--space-lg);
 	}
 	.leave {
 		width: 100%;

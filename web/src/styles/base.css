@@ -167,7 +167,8 @@ button::before,
 	}
 }
 
-button.secondary {
+button.secondary,
+.button.secondary {
 	--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 	min-height: 44px;
 	border-radius: var(--radius-button);

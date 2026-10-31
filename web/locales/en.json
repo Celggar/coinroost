@@ -208,6 +208,7 @@
 	"categoryform.failed": "The category could not be created",
 	"categoryform.created": "Created {name}.",
 	"categoryform.create": "Create category",
+	"categoryform.back": "Back to “Uncategorized”",
 	"changes.category": "Category: {from} → {to}",
 	"changes.payee": "Payee: {from} → {to}",
 	"changes.only_rule": "Only the rule that set it changes",

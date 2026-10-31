@@ -126,14 +126,18 @@
 	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
 
 	{#if answered}
+		<!-- No account reads the file, or none recognised it: the way on is an account that does, made on Cuentas. It
+		     stays under the error of an account that cannot read it, or only «Quitar» was left (pass 10). -->
+		{@const wayOn = !importable.length || preview?.detection === 'not_found'}
+		{#snippet open()}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/snippet}
 		{#snippet found()}
 			{note}
-			{#if !importable.length}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/if}
+			{#if wayOn}{@render open()}{/if}
 		{/snippet}
 		<Field
 			label={t('file.account')}
 			name="account"
-			hint={note && !accountError ? found : ''}
+			hint={accountError ? (wayOn ? open : '') : note ? found : ''}
 			error={accountError}
 		>
 			{#snippet children(wiring)}

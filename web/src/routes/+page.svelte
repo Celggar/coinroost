@@ -296,6 +296,16 @@
 		background: color-mix(in oklab, var(--accent) 22%, var(--surface));
 		color: var(--text);
 	}
+	/* Forced colors drop the fill: the chosen segment takes the system's selection colors, as a selected item does,
+	   so it shows on a phone too, where it has no check. */
+	@media (forced-colors: active) {
+		.presets button[aria-pressed='true'] {
+			forced-color-adjust: none;
+			background: Highlight;
+			color: HighlightText;
+			border-color: Highlight;
+		}
+	}
 	.check {
 		flex: none;
 		width: 18px;
@@ -306,8 +316,13 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
-	/* A phone: the presets in three equal segments across, the two dates side by side under them. */
+	/* A phone: the presets in three equal segments across, the two dates side by side under them. The chosen one
+	   shows by its fill alone, as Material's segmented button allows: with the check, «✓ This month» left its
+	   segment at 320 px and touched the divider at 360 (pass 10). */
 	@media (max-width: 560px) {
+		.check {
+			display: none;
+		}
 		.period > :global(*),
 		.presets {
 			width: 100%;
@@ -322,7 +337,7 @@
 			padding: 0 var(--space-sm);
 		}
 	}
-	/* The narrowest phones: smaller label and padding, so «✓ Este año» stays on one line. */
+	/* The narrowest phones: a smaller label and padding, so «12 months» stays on one line. */
 	@media (max-width: 359px) {
 		.presets button {
 			padding: 0 var(--space-xs);

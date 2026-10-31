@@ -64,24 +64,40 @@
 		border: 0;
 		min-width: 0;
 	}
+	/* The period presets' look (Material 3 segmented button): two joined halves in one outline, a line between them,
+	   the chosen half filled to the outline. It was a pill inside a pill, unlike the period on the same screen (P2
+	   round 10). */
 	.wide {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0;
 		width: 100%;
-		padding: var(--space-2xs);
 		border: 1px solid var(--field-border);
-		border-radius: 999px;
+		border-radius: var(--radius-field);
 	}
 	.wide label {
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		gap: var(--space-xs);
-		min-height: 44px;
-		border-radius: 999px;
+		min-height: var(--field-height);
+		border-radius: 0;
 		font-size: var(--text-md);
 	}
+	/* Of type: the hidden legend comes first in the fieldset. */
+	.wide label:first-of-type {
+		border-radius: calc(var(--radius-field) - 1px) 0 0 calc(var(--radius-field) - 1px);
+	}
+	.wide label:last-of-type {
+		border-left: 1px solid var(--field-border);
+		border-radius: 0 calc(var(--radius-field) - 1px) calc(var(--radius-field) - 1px) 0;
+	}
+	/* The half not chosen reads as the period's segments do, in the link color; the chosen one in the text's. */
+	.wide label {
+		color: var(--link);
+	}
 	.wide label.chosen {
+		color: var(--text);
 		background: color-mix(in oklab, var(--accent) 22%, var(--surface));
 	}
 	.check {
@@ -122,6 +138,7 @@
 			color: var(--text);
 		}
 		.wide label:hover:not(.chosen) {
+			color: var(--link);
 			background: color-mix(in oklab, var(--text) 8%, transparent);
 		}
 	}
@@ -141,6 +158,13 @@
 		label.chosen {
 			outline: 1px solid CanvasText;
 			outline-offset: -1px;
+		}
+		/* The halves take the system's selection colors, as the period's chosen segment does. */
+		.wide label.chosen {
+			forced-color-adjust: none;
+			outline: 0;
+			background: Highlight;
+			color: HighlightText;
 		}
 	}
 </style>

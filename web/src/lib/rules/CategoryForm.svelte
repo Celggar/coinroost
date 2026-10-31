@@ -6,8 +6,15 @@
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
+	import { pop } from '#lib/motion.ts';
 
-	let { oncreated }: { oncreated: (category: Schemas['Category']) => void } = $props();
+	// `back`: the person came from the uncategorized queue to make the categories it lacked; once one exists, the way
+	// back to the queue shows by the button, or they had to know to tap «Revisar» (pass 10).
+	let {
+		oncreated,
+		back = false
+	}: { oncreated: (category: Schemas['Category']) => void; back?: boolean } = $props();
+	let made = $state(false);
 
 	let name = $state('');
 	let kind = $state<Schemas['CategoryKind']>('expense');
@@ -45,6 +52,7 @@
 			return;
 		}
 		notify(t('categoryform.created', { name: data.name }));
+		made = true;
 		name = '';
 		oncreated(data);
 		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
@@ -82,5 +90,15 @@
 	<FormError text={error} />
 	<div class="actions">
 		<button type="submit" disabled={busy}>{t('categoryform.create')}</button>
+		{#if back && made}<a class="button secondary" href="/uncategorized" in:pop
+				>{t('categoryform.back')}</a
+			>{/if}
 	</div>
 </form>
+
+<style>
+	/* A row with the primary in it: the way back takes the primary's height (FD6), so the row shares its edges. */
+	.actions .button {
+		min-height: var(--primary-height);
+	}
+</style>
