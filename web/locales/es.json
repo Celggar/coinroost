@@ -129,7 +129,7 @@
 	"coverage.create_one": "Crea tu primera cuenta",
 	"coverage.refreshed": "Cobertura actualizada.",
 	"coverage.latest": "Último dato",
-	"coverage.days_since": "Días desde entonces",
+	"coverage.days_since": "Días sin datos",
 	"coverage.imported": "Importado",
 	"coverage.gaps": "Huecos",
 	"coverage.no_imports": "Sin importaciones",

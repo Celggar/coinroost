@@ -12,6 +12,7 @@
 
 	let transactions = $state<Schemas['Transaction'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
+	let accounts = $state<Schemas['Account'][]>([]);
 	let loadError = $state('');
 	let loaded = $state(false);
 	// Nothing imported yet reads differently from everything sorted.
@@ -20,10 +21,11 @@
 
 	async function load() {
 		loadError = '';
-		const [list, kinds, any] = await Promise.all([
+		const [list, kinds, any, held] = await Promise.all([
 			api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
 			api.GET('/api/v1/categories'),
-			api.GET('/api/v1/transactions', { params: { query: { limit: 1 } } })
+			api.GET('/api/v1/transactions', { params: { query: { limit: 1 } } }),
+			api.GET('/api/v1/accounts')
 		]);
 		if (!list.data || !kinds.data) {
 			const failed = list.data ? kinds : list;
@@ -33,6 +35,7 @@
 		transactions = list.data.items;
 		categories = kinds.data.items;
 		empty = any.data?.items.length === 0;
+		accounts = held.data?.items ?? [];
 		loaded = true;
 	}
 
@@ -85,13 +88,31 @@
 		{#if transactions.length === 0}
 			<!-- Global: these blocks come with the one above them, where a local transition does not play. -->
 			{#if empty}
+				<!-- Nothing imported yet: the step that comes first, as Summary and Import show it. Without an account
+				     that reads a bank file, Import would only send people on to Accounts (pass 6). -->
 				<div in:rise|global>
-					<EmptyState
-						icon="import"
-						text={t('uncategorized.none_yet')}
-						href="/import"
-						action={t('uncategorized.import_first')}
-					/>
+					{#if accounts.length === 0}
+						<EmptyState
+							icon="bank"
+							text={t('dashboard.no_accounts')}
+							href="/accounts"
+							action={t('dashboard.to_accounts')}
+						/>
+					{:else if !accounts.some((a) => a.profile)}
+						<EmptyState
+							icon="bank"
+							text={t('import.no_bank_file')}
+							href="/accounts"
+							action={t('file.open_accounts')}
+						/>
+					{:else}
+						<EmptyState
+							icon="import"
+							text={t('uncategorized.none_yet')}
+							href="/import"
+							action={t('uncategorized.import_first')}
+						/>
+					{/if}
 				</div>
 			{:else}
 				<div id="all-done" in:rise|global>

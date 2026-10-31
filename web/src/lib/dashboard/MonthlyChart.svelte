@@ -342,7 +342,13 @@
 		min-height: 44px;
 	}
 	th[scope='row'] {
-		font-weight: 400;
 		text-align: start;
+	}
+	/* In the wide table a month reads as data, like its figures; on a phone it heads its card, bold like every
+	   other card's name (pass 7). */
+	@media (min-width: 561px) {
+		th[scope='row'] {
+			font-weight: 400;
+		}
 	}
 </style>

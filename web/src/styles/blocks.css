@@ -378,11 +378,14 @@ details[open]::details-content {
 		box-shadow: none;
 		border-radius: var(--radius-button);
 	}
+	/* The name and its value share their first baseline, whatever the value's font or box (a key in monospace sat
+	   1.5 px above its name, pass 6). */
 	.rows-on-phone td,
 	.rows-on-phone td.number {
 		display: grid;
 		grid-template-columns: 112px minmax(0, 1fr);
 		justify-items: start;
+		align-items: baseline;
 		gap: var(--space-md);
 		padding: var(--space-xs) 0;
 		border: 0;
