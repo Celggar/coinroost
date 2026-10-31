@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '#lib/nav/Icon.svelte';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -8,6 +9,7 @@
 	let accounts = $state<Schemas['Account'][]>([]);
 	let error = $state('');
 	let loaded = $state(false);
+	let over = $state(false);
 	let files = $state<{ id: number; file: File }[]>([]);
 	let next = 0;
 
@@ -54,10 +56,33 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
-		<label class="drop" ondragover={(event) => event.preventDefault()} ondrop={drop}>
-			{t('import.choose')}
+		<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
+			 whole zone is its label, with a button drawn in the page's style. Files can also be dropped on it. -->
+		<label
+			class="drop"
+			class:over
+			ondragover={(event) => {
+				event.preventDefault();
+				over = true;
+			}}
+			ondragleave={() => (over = false)}
+			ondrop={(event) => {
+				over = false;
+				drop(event);
+			}}
+		>
+			<span class="icon"><Icon name="import" size={28} /></span>
+			<span class="title">{t('import.drop_title')}</span>
 			<span class="hint">{t('import.choose_hint')}</span>
-			<input type="file" multiple accept=".csv,.xls,.xlsx,.pdf" onchange={choose} />
+			<span class="button pick">{t('import.choose')}</span>
+			<span class="hint here">{t('import.drop_here')}</span>
+			<input
+				class="visually-hidden"
+				type="file"
+				multiple
+				accept=".csv,.xls,.xlsx,.pdf"
+				onchange={choose}
+			/>
 		</label>
 
 		{#each files as entry (entry.id)}
@@ -76,15 +101,56 @@
 
 <style>
 	.drop {
+		display: grid;
+		justify-items: center;
+		gap: var(--space-sm);
+		padding: var(--space-2xl) var(--space-xl);
 		border: 2px dashed var(--field-border);
 		border-radius: var(--radius-card);
-		padding: var(--space-xl);
 		background: var(--surface);
-		transition: border-color var(--duration-short) var(--ease-standard);
+		text-align: center;
+		cursor: pointer;
+		transition:
+			border-color var(--duration-short) var(--ease-standard),
+			background-color var(--duration-short) var(--ease-standard);
 	}
 	.drop:hover,
-	.drop:focus-within {
+	.drop.over {
 		border-color: var(--accent);
+	}
+	.drop.over {
+		background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+	}
+	/* The hidden control has the focus; the zone shows it. */
+	.drop:has(input:focus-visible) {
+		border-color: var(--accent);
+		outline: 3px solid var(--focus);
+		outline-offset: 2px;
+	}
+	.icon {
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+		color: var(--accent);
+	}
+	.title {
+		font-size: var(--text-lg);
+		font-weight: 700;
+	}
+	.hint {
+		max-width: 480px;
+	}
+	.pick {
+		margin-top: var(--space-sm);
+	}
+	/* Nothing is dragged on a phone. */
+	@media (pointer: coarse) {
+		.here {
+			display: none;
+		}
 	}
 	.file {
 		display: grid;

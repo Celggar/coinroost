@@ -2,25 +2,20 @@
 	import '../app.css';
 	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import NavBar from '#lib/nav/NavBar.svelte';
+	import NavRail from '#lib/nav/NavRail.svelte';
+	import Tabs from '#lib/nav/Tabs.svelte';
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import Notices from '#lib/ui/Notices.svelte';
-	import { i18n, t, type Key } from '#lib/i18n.svelte.ts';
+	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	// The phone's bars: the top one's height clears what the browser scrolls into view, the bottom one's height
+	// clears the end of the page; both stay 0 on a wide screen, where the rail stands beside the page.
 	let barHeight = $state(0);
-
-	const links: { href: string; label: Key }[] = [
-		{ href: '/', label: 'nav.summary' },
-		{ href: '/import', label: 'nav.import' },
-		{ href: '/uncategorized', label: 'nav.uncategorized' },
-		{ href: '/rules', label: 'nav.rules' },
-		{ href: '/transfers', label: 'nav.transfers' },
-		{ href: '/coverage', label: 'nav.coverage' },
-		{ href: '/accounts', label: 'nav.accounts' },
-		{ href: '/security', label: 'nav.security' }
-	];
+	let navHeight = $state(0);
 	// Pages a person opens without a session: the login and a setup link.
 	const onPublic = $derived(page.url.pathname === '/login' || page.url.pathname === '/setup');
 	// After a recovery code the server lets the session do nothing but set up a new authenticator, so that page is
@@ -32,9 +27,18 @@
 		document.documentElement.lang = i18n.locale;
 	});
 
-	// The bar's height, for scroll-padding (base.css): a field the browser scrolls to is never under it.
+	// The bars' heights, for scroll-padding (base.css): a field the browser scrolls to is never under one (WCAG 2.4.11).
 	$effect(() => {
 		document.documentElement.style.setProperty('--bar-height', `${barHeight}px`);
+		document.documentElement.style.setProperty('--nav-height', `${navHeight}px`);
+	});
+
+	const inApp = $derived(!!session.user && !onPublic && !limited && !onAuthenticator);
+
+	// The badges follow every page change and the moment the session is known; pages that change a count refresh it
+	// themselves right away.
+	$effect(() => {
+		if (inApp && page.url.pathname) refreshCounts();
 	});
 
 	$effect(() => {
@@ -70,120 +74,97 @@
 	<title>{t('app.name')}</title>
 </svelte:head>
 
-{#if session.user && !onPublic && !limited && !onAuthenticator}
-	<header class="top" bind:clientHeight={barHeight}>
-		<a class="brand" href="/">
-			<svg aria-hidden="true" width="28" height="28" viewBox="0 0 32 32">
-				<rect width="32" height="32" rx="9" class="mark" />
-				<path d="M9 17l7-6 7 6" class="roof" />
-				<circle cx="16" cy="20.5" r="3" class="dot" />
-			</svg>
-			{t('app.name')}
-		</a>
-		<nav aria-label={t('nav.main')}>
-			{#each links as link (link.href)}
-				<a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
-					{t(link.label)}
-				</a>
-			{/each}
-		</nav>
-		<LanguageSwitch />
-		<button class="secondary" onclick={leave}>{t('nav.log_out')}</button>
-	</header>
-{/if}
-
-<!-- The sign-in pages keep their own alert next to the button; the app's pages share one notice. -->
-{#if session.user && !onPublic && !limited && !onAuthenticator}
-	<Notices offset={barHeight} />
-{/if}
-
-{#if onPublic || (session.user && limited === onAuthenticator)}
+{#if inApp}
+	<a class="skip" href="#main">{t('nav.skip')}</a>
+	<div class="shell">
+		<div class="wide-only"><NavRail path={page.url.pathname} onleave={leave} /></div>
+		<div class="column">
+			<div class="narrow-only">
+				<NavBar path={page.url.pathname} bind:top={barHeight} bind:bottom={navHeight} />
+			</div>
+			<!-- The sign-in pages keep their own alert next to the button; the app's pages share one notice. -->
+			<Notices offset={barHeight} />
+			<main id="main" tabindex="-1">
+				<Tabs path={page.url.pathname} />
+				{@render children()}
+			</main>
+		</div>
+	</div>
+{:else if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
 	<main><p class="hint">{t('app.loading')}</p></main>
 {/if}
 
 <style>
-	/* The app's bar takes the login's identity: its mark, and a frosted surface that stays on top. */
-	.top {
-		position: sticky;
-		top: 0;
-		z-index: 5;
+	/* A wide screen: the rail on the left, the page beside it. A phone: the page under its top bar, the destinations in
+	   a bar fixed at the bottom. */
+	.shell {
+		display: grid;
+		grid-template-columns: 248px minmax(0, 1fr);
+		min-height: 100dvh;
+	}
+	/* The page's column: the top bar, the page (centred, 960 px at most), and on a phone the navigation bar last,
+	   held to the bottom of the screen, so the end of a page is never under it. */
+	.column {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-sm) var(--space-lg);
-		padding: var(--space-sm) var(--space-lg);
-		border-bottom: 1px solid var(--card-edge);
-		background: color-mix(in oklab, var(--surface) 82%, transparent);
-		-webkit-backdrop-filter: blur(16px) saturate(160%);
-		backdrop-filter: blur(16px) saturate(160%);
+		flex-direction: column;
+		min-width: 0;
+		min-height: 100dvh;
 	}
-	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
-		.top {
-			background: var(--surface);
-			-webkit-backdrop-filter: none;
-			backdrop-filter: none;
-		}
-	}
-	.brand {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-sm);
-		min-height: 44px;
-		font-weight: 700;
-		text-decoration: none;
-		color: var(--text);
-	}
-	.mark {
-		fill: var(--accent);
-	}
-	.roof {
-		fill: none;
-		stroke: var(--accent-text);
-		stroke-width: 2.5;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-	.dot {
-		fill: var(--accent-text);
-	}
-	nav {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs);
+	.column > main {
+		order: 2;
 		flex: 1;
+		align-self: center;
+		width: 100%;
+		margin: 0;
 	}
-	/* On a phone: the name, the language and Log out on the first row, the sections on their own rows below. The
-	   bar scrolls away with the page there: kept on top it would take a third of the screen. */
-	@media (max-width: 560px) {
-		.top {
-			position: static;
-			gap: var(--space-sm);
+	.narrow-only {
+		display: none;
+	}
+	/* The rail's column carries its surface and edge the whole height of the page; the rail sticks inside it. */
+	.wide-only {
+		background: var(--surface);
+		border-right: 1px solid var(--card-edge);
+	}
+	@media (max-width: 899px) {
+		.shell {
+			display: block;
 		}
-		.top > button {
-			padding: 0 var(--space-md);
-			font-size: var(--text-sm);
+		.wide-only {
+			display: none;
 		}
-		.brand {
-			flex: 1;
+		.narrow-only {
+			display: contents;
 		}
-		nav {
-			order: 3;
-			flex-basis: 100%;
+		/* The top bar carries the page's title; the page keeps its heading for screen readers and the outline. */
+		main :global(h1) {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
 		}
 	}
-	nav a {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
-		padding: 0 var(--space-md);
+	main:focus {
+		outline: none;
+	}
+	/* First in the tab order, out of sight until it has the focus (WCAG 2.4.1). */
+	.skip {
+		position: fixed;
+		z-index: 20;
+		top: var(--space-sm);
+		left: var(--space-sm);
+		padding: var(--space-md) var(--space-lg);
 		border-radius: var(--radius-button);
-		text-decoration: none;
-	}
-	nav a[aria-current='page'] {
-		background: color-mix(in oklab, var(--accent) 12%, transparent);
-		color: var(--text);
+		background: var(--surface);
+		color: var(--link);
 		font-weight: 600;
+		box-shadow: var(--card-shadow);
+		transform: translateY(-200%);
+	}
+	.skip:focus {
+		transform: none;
 	}
 </style>

@@ -68,7 +68,7 @@
 		<p>{t('coverage.no_accounts')} <a href="/accounts">{t('coverage.create_one')}</a></p>
 	{:else}
 		<div class="table-wrap" use:scrollable={t('coverage.title')}>
-			<table>
+			<table class="rows-on-phone">
 				<thead>
 					<tr>
 						<th>{t('column.account')}</th>
@@ -82,20 +82,20 @@
 				<tbody>
 					{#each coverage.items as item (item.account_id)}
 						<tr>
-							<td>{item.name}</td>
-							<td>
+							<td data-label={t('column.account')}>{item.name}</td>
+							<td data-label={t('column.status')}>
 								<span class="chip {tones[item.delay]}">{delayName(item.delay)}</span>
 							</td>
-							<td>{item.latest ? day(item.latest) : '—'}</td>
-							<td class="number">{item.days_since ?? '—'}</td>
-							<td>
+							<td data-label={t('coverage.latest')}>{item.latest ? day(item.latest) : '—'}</td>
+							<td data-label={t('coverage.days_since')} class="number">{item.days_since ?? '—'}</td>
+							<td data-label={t('coverage.imported')}>
 								{#each item.ranges as range (range.from)}
 									<div>{span(range.from, range.to)}</div>
 								{:else}
 									<span class="hint">{t('coverage.no_imports')}</span>
 								{/each}
 							</td>
-							<td>
+							<td data-label={t('coverage.gaps')}>
 								{#each item.gaps as gap (gap.from)}
 									<div>
 										<span class="chip {tones[gap.delay]}"
@@ -123,6 +123,13 @@
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-md);
+	}
+	/* A phone shows the title in its top bar: the button keeps its place at the end of the row, beside nothing. */
+	@media (max-width: 899px) {
+		.title {
+			justify-content: flex-end;
+			margin-bottom: var(--space-md);
+		}
 	}
 	td div + div {
 		margin-top: var(--space-xs);

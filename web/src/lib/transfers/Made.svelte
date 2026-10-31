@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -37,6 +38,7 @@
 			return;
 		}
 		notify(t('made.split_done', { description: transfer.description }));
+		refreshCounts();
 		onchanged();
 		// The transfer and its buttons leave this list: the focus goes to its title, not to the page's start.
 		title?.focus();

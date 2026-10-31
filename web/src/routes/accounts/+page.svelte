@@ -2,7 +2,7 @@
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
-	import { t, type Key } from '#lib/i18n.svelte.ts';
+	import { has, t, type Key } from '#lib/i18n.svelte.ts';
 	import { rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
@@ -117,8 +117,15 @@
 		cardPrefixes = '';
 	}
 
-	const profileName = (id: string | null | undefined) =>
-		profiles.find((p) => p.id === id)?.name ?? (id ? id : '—');
+	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */
+	const formatName = (profile: { id: string; name: string }) => {
+		const key = `profile.${profile.id}`;
+		return has(key) ? t(key) : profile.name;
+	};
+	const profileName = (id: string | null | undefined) => {
+		const profile = profiles.find((p) => p.id === id);
+		return profile ? formatName(profile) : id ? id : '—';
+	};
 
 	onMount(load);
 </script>
@@ -137,7 +144,7 @@
 	<div class="stack">
 		{#if accounts.length}
 			<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
-				<table>
+				<table class="rows-on-phone">
 					<thead>
 						<tr>
 							<th>{t('accounts.name')}</th>
@@ -150,11 +157,11 @@
 					<tbody>
 						{#each accounts as account (account.id)}
 							<tr in:rise>
-								<td>{account.name}</td>
-								<td>{kindName(account.kind)}</td>
-								<td>{account.currency}</td>
-								<td>{profileName(account.profile)}</td>
-								<td><code>{account.namespace}</code></td>
+								<td data-label={t('accounts.name')}>{account.name}</td>
+								<td data-label={t('accounts.kind')}>{kindName(account.kind)}</td>
+								<td data-label={t('accounts.currency')}>{account.currency}</td>
+								<td data-label={t('accounts.bank_file')}>{profileName(account.profile)}</td>
+								<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
 							</tr>
 						{/each}
 					</tbody>
@@ -196,7 +203,7 @@
 						<select {...wiring} bind:value={profile} onchange={pickProfile}>
 							<option value="">{t('accounts.no_profile')}</option>
 							{#each profiles as option (option.id)}
-								<option value={option.id}>{option.name}</option>
+								<option value={option.id}>{formatName(option)}</option>
 							{/each}
 						</select>
 					{/snippet}

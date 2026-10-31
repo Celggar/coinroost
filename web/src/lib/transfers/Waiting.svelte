@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
@@ -33,6 +34,7 @@
 			);
 		} else {
 			notify(plural(data.paired, 'waiting.paired_one', 'waiting.paired_other'));
+			refreshCounts();
 		}
 		onchanged();
 	}

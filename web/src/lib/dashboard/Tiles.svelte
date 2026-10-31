@@ -7,10 +7,9 @@
 	let { totals }: { totals: Schemas['Totals'] } = $props();
 
 	const net = $derived(totals.income - totals.spending);
-	const unpaired = $derived(totals.unpaired_transfer_out + totals.unpaired_transfer_in);
 </script>
 
-<dl class="figures">
+<dl class="figures tiles">
 	<div>
 		<dt>{t('tiles.spending')}</dt>
 		<dd class="value">{money(totals.spending, totals.currency)}</dd>
@@ -19,29 +18,33 @@
 		<dt>{t('tiles.income')}</dt>
 		<dd class="value">{money(totals.income, totals.currency)}</dd>
 	</div>
-	<div>
+	<div class="span">
 		<dt>{t('tiles.net')}</dt>
 		<dd class="value"><Money minor={net} currency={totals.currency} /></dd>
 	</div>
-	<div>
+	<!-- Like the others: its label, one figure (what left without its other side), then the rest in one short line. -->
+	<div class="span">
 		<dt>{t('tiles.unpaired')}</dt>
-		<dd>
-			{t('tiles.unpaired_detail', {
-				out: money(totals.unpaired_transfer_out, totals.currency),
-				in: money(totals.unpaired_transfer_in, totals.currency)
-			})}
+		<dd class="value">{money(totals.unpaired_transfer_out, totals.currency)}</dd>
+		<dd class="detail">
+			{t('tiles.unpaired_in', { in: money(totals.unpaired_transfer_in, totals.currency) })}
 		</dd>
-		{#if unpaired > 0}
-			<dd><a class="target" href="/transfers">{t('tiles.see_transfers')}</a></dd>
-		{/if}
 	</div>
 </dl>
 
 <style>
-	/* A link that is a tap target of its own: 44 px tall. */
-	.target {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
+	.detail {
+		color: var(--muted);
+		font-size: var(--text-sm);
+	}
+	/* A phone: spending and income side by side, the net and the unpaired each across the width, so no tile is
+	   stretched to a neighbour's height with an empty bottom. */
+	@media (max-width: 560px) {
+		.tiles {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.span {
+			grid-column: 1 / -1;
+		}
 	}
 </style>

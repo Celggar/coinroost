@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
@@ -83,6 +84,7 @@
 		}
 		report = data;
 		notify(t('file.added', { added: data.batch.added, duplicates: data.batch.duplicates }));
+		refreshCounts();
 		// The import button is gone: the focus goes to what it did, not to the page's start.
 		await tick();
 		resultLine?.focus();
@@ -189,7 +191,7 @@
 			<details>
 				<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
 				<div class="table-wrap" use:scrollable={t('file.rows')}>
-					<table>
+					<table class="rows-on-phone">
 						<thead>
 							<tr>
 								<th>{t('column.date')}</th>
@@ -201,12 +203,14 @@
 						<tbody>
 							{#each reading.rows as row (row.external_id)}
 								<tr>
-									<td>{day(row.date)}</td>
-									<td>{row.description}</td>
-									<td class="number"
+									<td data-label={t('column.date')}>{day(row.date)}</td>
+									<td data-label={t('column.description')}>{row.description}</td>
+									<td data-label={t('column.amount')} class="number"
 										><Money minor={row.amount_minor} currency={account.currency} /></td
 									>
-									<td>{row.duplicate ? t('file.row_already') : t('file.row_new')}</td>
+									<td data-label={t('column.status')}
+										>{row.duplicate ? t('file.row_already') : t('file.row_new')}</td
+									>
 								</tr>
 							{/each}
 						</tbody>

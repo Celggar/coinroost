@@ -2,6 +2,9 @@
 	import { tick } from 'svelte';
 	import { i18n, setLocale, t, type Locale } from '#lib/i18n.svelte.ts';
 
+	// `wide`: the full names across the width, as a segmented control (the «Más» page); otherwise the short pills.
+	let { wide = false }: { wide?: boolean } = $props();
+
 	// Each language is named in itself, so a person who cannot read the current one still finds theirs; the pill
 	// shows its short code.
 	const languages: { code: Locale; short: string; name: string }[] = [
@@ -23,7 +26,7 @@
 	}
 </script>
 
-<fieldset class="language">
+<fieldset class="language" class:wide>
 	<legend class="visually-hidden">{t('language.label')}</legend>
 	{#each languages as language (language.code)}
 		<label class:chosen={i18n.locale === language.code}>
@@ -34,8 +37,12 @@
 				checked={i18n.locale === language.code}
 				onchange={() => choose(language.code)}
 			/>
-			<span aria-hidden="true">{language.short}</span>
-			<span class="visually-hidden" lang={language.code}>{language.name}</span>
+			{#if wide}
+				<span lang={language.code}>{language.name}</span>
+			{:else}
+				<span aria-hidden="true">{language.short}</span>
+				<span class="visually-hidden" lang={language.code}>{language.name}</span>
+			{/if}
 		</label>
 	{/each}
 </fieldset>
@@ -48,6 +55,22 @@
 		padding: 0;
 		border: 0;
 		min-width: 0;
+	}
+	.wide {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		width: 100%;
+		padding: var(--space-2xs);
+		border: 1px solid var(--field-border);
+		border-radius: 999px;
+	}
+	.wide label {
+		min-height: 44px;
+		border-radius: 999px;
+		font-size: var(--text-md);
+	}
+	.wide label.chosen {
+		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
 	}
 	label {
 		position: relative;

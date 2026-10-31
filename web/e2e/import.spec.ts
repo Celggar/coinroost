@@ -154,8 +154,12 @@ test('a manual category survives applying the rules', async ({ context }) => {
 		`${say('when.text', { text: 'SUPERMERCADO' })} · ${say('when.out')}`
 	);
 
-	// Imported before the rule existed, so nothing is sorted yet: choose one by hand.
-	await page.getByRole('link', { name: say('nav.uncategorized'), exact: true }).click();
+	// Imported before the rule existed, so nothing is sorted yet: choose one by hand. «Revisar» opens on its first
+	// tab, «Sin categoría».
+	await page.getByRole('link', { name: say('nav.review'), exact: true }).click();
+	await expect(
+		page.getByRole('link', { name: say('nav.uncategorized'), exact: true })
+	).toHaveAttribute('aria-current', 'page');
 	await expect(
 		page.getByText(say('uncategorized.count_other', { count: transactions }))
 	).toBeVisible();

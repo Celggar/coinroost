@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The viewport notice (FD8, J12). It never covers an action: on a wide screen it sits bottom-right, away from the
-	// buttons, which line up on the left; on a phone it drops in under the app's bar (`offset`, its height). Taps go
+	// buttons, which line up on the left; on a phone it drops in under the top bar (`offset`, its height), clear of the navigation bar at the bottom. Taps go
 	// through it. Screen readers hear it from two regions that stay on the page (a region that arrives already filled
 	// is often not announced): a polite one for what an action did, an assertive one for why it failed. It clears on
 	// the next action: a press anywhere, a key that is not moving the focus, or a page change; the action that made
@@ -87,7 +87,7 @@
 	.text {
 		flex: 1;
 	}
-	@media (max-width: 560px) {
+	@media (max-width: 899px) {
 		.notices {
 			top: calc(var(--bar, 0px) + var(--space-sm));
 			bottom: auto;

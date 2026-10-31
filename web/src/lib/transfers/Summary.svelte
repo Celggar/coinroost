@@ -38,7 +38,7 @@
 <section class="card" aria-labelledby="summary-title">
 	<h2 id="summary-title">{t('summary.title')}</h2>
 	<p class="hint">{t('summary.hint')}</p>
-	<div class="period">
+	<div class="date-range">
 		<label>{t('period.from')} <input type="date" bind:value={from} /></label>
 		<label>{t('period.to')} <input type="date" bind:value={to} /></label>
 	</div>
@@ -74,11 +74,6 @@
 </section>
 
 <style>
-	.period {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-md);
-	}
 	.totals {
 		display: grid;
 		gap: var(--space-md);

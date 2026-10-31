@@ -71,11 +71,11 @@ code {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
-/* What the browser scrolls into view (a focused field, an anchor) clears the app's bar where it stays on top. */
-@media (min-width: 561px) {
-	html {
-		scroll-padding-top: calc(var(--bar-height, 0px) + var(--space-lg));
-	}
+/* What the browser scrolls into view (a focused field, an anchor) clears the phone's top bar and its bottom
+   navigation bar, which stay on screen (WCAG 2.4.11, C43); both heights are 0 on a wide screen. */
+html {
+	scroll-padding-top: calc(var(--bar-height, 0px) + var(--space-lg));
+	scroll-padding-bottom: calc(var(--nav-height, 0px) + var(--space-lg));
 }
 
 :focus-visible {

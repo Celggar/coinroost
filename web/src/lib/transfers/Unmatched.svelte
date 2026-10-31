@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { api, failure, type Failure, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { accountName, legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
@@ -51,6 +52,7 @@
 			};
 		}
 		notify(t('unmatched.paired'));
+		refreshCounts();
 		first = second = '';
 		onchanged();
 		return null;

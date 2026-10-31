@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
@@ -47,6 +48,7 @@
 		}
 		const name = categories.find((c) => c.id === categoryId)?.name;
 		notify(t('uncategorized.done', { description: transaction.description, category: name ?? '' }));
+		refreshCounts();
 		// The focus moves on to the card that takes this one's place (or the one before it, at the end), so the
 		// next choice is one key away and the focus never falls to the page.
 		const at = transactions.findIndex((x) => x.id === transaction.id);

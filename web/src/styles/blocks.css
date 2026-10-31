@@ -104,15 +104,32 @@ th.number {
 	margin: 0;
 }
 
+/* Each tile spans three rows of the row it sits in (label, figure, an optional line) and shares them with its
+   neighbours (subgrid), so a label that wraps to two lines never pushes its figure below the others'. */
 .figures > div {
+	grid-row: span 3;
 	display: grid;
+	grid-template-rows: subgrid;
 	align-content: start;
-	gap: var(--space-xs);
+	row-gap: var(--space-xs);
 	padding: var(--space-md) var(--space-lg);
 	background: var(--surface);
 	border: 1px solid var(--card-edge);
 	border-radius: var(--radius-card);
 	box-shadow: var(--card-shadow);
+}
+
+/* Inside a card the tiles sit inset and tinted, never a card raised on a card; narrower, so two fit a phone. */
+.card .figures {
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr));
+	gap: var(--space-sm);
+}
+
+.card .figures > div {
+	border: 0;
+	border-radius: var(--radius-button);
+	background: var(--bg);
+	box-shadow: none;
 }
 
 .figures dt {
@@ -274,4 +291,90 @@ details[open]::details-content {
 
 .swap > * {
 	grid-area: 1 / 1;
+}
+
+/* A table that becomes one card per row on a phone: each cell on its own line beside its column's name (from
+   `data-label`), so nothing is cut off or squeezed to a word per line. The column headers stay in the page, out of
+   sight. Inside a card, its rows are tinted, not raised. */
+@media (max-width: 560px) {
+	.table-wrap:has(> .rows-on-phone) {
+		overflow: visible;
+		border: 0;
+		border-radius: 0;
+		background: none;
+		box-shadow: none;
+	}
+	.rows-on-phone,
+	.rows-on-phone tbody,
+	.rows-on-phone tr,
+	.rows-on-phone td {
+		display: block;
+	}
+	.rows-on-phone thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+	.rows-on-phone tr {
+		padding: var(--space-md) var(--space-lg);
+		border: 1px solid var(--card-edge);
+		border-radius: var(--radius-card);
+		background: var(--surface);
+		box-shadow: var(--card-shadow);
+	}
+	.rows-on-phone tr + tr {
+		margin-top: var(--space-md);
+	}
+	.card .rows-on-phone tr {
+		border: 0;
+		background: var(--bg);
+		box-shadow: none;
+		border-radius: var(--radius-button);
+	}
+	.rows-on-phone td,
+	.rows-on-phone td.number {
+		display: grid;
+		grid-template-columns: 112px minmax(0, 1fr);
+		justify-items: start;
+		gap: var(--space-md);
+		padding: var(--space-xs) 0;
+		border: 0;
+		text-align: left;
+		white-space: normal;
+	}
+	.rows-on-phone td::before {
+		content: attr(data-label);
+		color: var(--muted);
+		font-size: var(--text-sm);
+	}
+	/* The row's name heads its card. */
+	.rows-on-phone td:first-child {
+		grid-template-columns: minmax(0, 1fr);
+		padding-bottom: var(--space-sm);
+		font-size: var(--text-md);
+		font-weight: 600;
+	}
+	.rows-on-phone td:first-child::before {
+		content: none;
+	}
+}
+
+/* A date range: «from» and «to» side by side at every width, the same wherever a page asks for a period. */
+.date-range {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 200px));
+	gap: var(--space-md);
+}
+
+.date-range input {
+	width: 100%;
+	min-width: 0;
+}
+
+@media (max-width: 560px) {
+	.date-range {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }

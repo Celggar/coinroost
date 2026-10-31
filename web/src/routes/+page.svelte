@@ -121,7 +121,7 @@
 				>
 			{/each}
 		</div>
-		<div class="range">
+		<div class="date-range">
 			<label>{t('period.from')} <input type="date" bind:value={from} /></label>
 			<label>{t('period.to')} <input type="date" bind:value={to} /></label>
 		</div>
@@ -216,15 +216,10 @@
 		color: var(--text);
 		box-shadow: inset 0 0 0 1px var(--text);
 	}
-	.range {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(160px, 1fr));
-		gap: var(--space-md);
-	}
 	/* A phone: the presets in three equal segments across, the two dates side by side under them. */
 	@media (max-width: 560px) {
 		.presets,
-		.range {
+		.date-range {
 			display: grid;
 			width: 100%;
 		}
@@ -233,13 +228,6 @@
 		}
 		.presets button {
 			padding: 0 var(--space-sm);
-		}
-		.range {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.range input {
-			min-width: 0;
-			width: 100%;
 		}
 	}
 	.rankings {
