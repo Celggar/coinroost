@@ -3,9 +3,16 @@
 	// the history folded.
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import type { Schemas } from '#lib/api/client.ts';
-	import { day, LIST, money } from '#lib/format.ts';
+	import { day, LIST, money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { daysText, fortnightList, fortnightName, statusName, statusTone } from './payroll.ts';
+	import {
+		daysText,
+		fortnightList,
+		fortnightName,
+		historyRows,
+		statusName,
+		statusTone
+	} from './payroll.ts';
 
 	let { employer }: { employer: Schemas['EmployerPayroll'] } = $props();
 
@@ -17,7 +24,7 @@
 	<h3 id="{id}-name">{employer.name}</h3>
 	{#if employer.error}
 		<!-- A setting to check, not a failure of the page: the warning's amber, not the error's red. -->
-		<p class="notice warn">{t('payroll.no_deposits', { date: day(employer.start) })}</p>
+		<p class="notice warn">{t('payroll.no_deposits', { date: wholeDay(employer.start) })}</p>
 	{:else}
 		{#if employer.owed.length}
 			<p class="owed">
@@ -41,13 +48,13 @@
 				{employer.unknown.length > 2
 					? t('payroll.no_data_range', {
 							count: employer.unknown.length,
-							first: fortnightName(employer.unknown[0]),
-							last: fortnightName(employer.unknown[employer.unknown.length - 1]),
-							date: day(employer.data_until)
+							first: fortnightName(employer.unknown[0], true),
+							last: fortnightName(employer.unknown[employer.unknown.length - 1], true),
+							date: wholeDay(employer.data_until)
 						})
 					: t('payroll.no_data', {
-							fortnights: fortnightList(employer.unknown),
-							date: day(employer.data_until)
+							fortnights: fortnightList(employer.unknown, true),
+							date: wholeDay(employer.data_until)
 						})}
 			</p>
 		{/if}
@@ -56,8 +63,8 @@
 				plural(employer.paid, 'payroll.paid_one', 'payroll.paid_other'),
 				employer.next_due &&
 					t('payroll.next_due', {
-						fortnight: fortnightName(employer.next_due),
-						date: day(employer.next_due.due_on)
+						fortnight: fortnightName(employer.next_due, true),
+						date: wholeDay(employer.next_due.due_on)
 					})
 			]
 				.filter(Boolean)
@@ -77,27 +84,52 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each employer.history.toReversed() as line (line.fortnight.first_day)}
-								<tr>
-									<th scope="row">{fortnightName(line.fortnight)}</th>
-									<td data-label={t('column.status')}
-										><span class="chip {statusTone(line.status)}">{statusName(line.status)}</span
-										></td
-									>
-									<td data-label={t('payroll.days')}>{daysText(line)}</td>
-									<td data-label={t('payroll.payment')}>
-										<!-- One block, so on a phone card both lines sit beside the label. -->
-										{#if line.payment}
-											<div>
-												{day(line.payment.date)} · {money(line.payment.amount_minor, c)}
-												<div class="hint">
-													{line.payment.description}{#if line.label}
-														· {t('payroll.named', { fortnight: fortnightName(line.label) })}{/if}
+							{#each historyRows(employer.history) as row (row.kind === 'line' ? row.line.fortnight.first_day : row.first.first_day)}
+								{#if row.kind === 'run'}
+									<tr>
+										<th scope="row"
+											>{plural(
+												row.count,
+												'payroll.fortnights_other',
+												'payroll.fortnights_other'
+											)}</th
+										>
+										<td data-label={t('column.status')}
+											><span class="chip {statusTone('no_data')}">{statusName('no_data')}</span></td
+										>
+										<td data-label={t('payroll.days')}
+											>{t('payroll.run', {
+												first: fortnightName(row.first),
+												last: fortnightName(row.last, true)
+											})}</td
+										>
+										<td data-label={t('payroll.payment')}></td>
+									</tr>
+								{:else}
+									{@const line = row.line}
+									<tr>
+										<th scope="row">{fortnightName(line.fortnight)}</th>
+										<td data-label={t('column.status')}
+											><span class="chip {statusTone(line.status)}">{statusName(line.status)}</span
+											></td
+										>
+										<td data-label={t('payroll.days')}>{daysText(line)}</td>
+										<td data-label={t('payroll.payment')}>
+											<!-- One block, so on a phone card both lines sit beside the label. -->
+											{#if line.payment}
+												<div>
+													{day(line.payment.date)} · {money(line.payment.amount_minor, c)}
+													<div class="hint">
+														{line.payment.description}{#if line.label}
+															· {t('payroll.named', {
+																fortnight: fortnightName(line.label, true)
+															})}{/if}
+													</div>
 												</div>
-											</div>
-										{/if}
-									</td>
-								</tr>
+											{/if}
+										</td>
+									</tr>
+								{/if}
 							{/each}
 						</tbody>
 					</table>

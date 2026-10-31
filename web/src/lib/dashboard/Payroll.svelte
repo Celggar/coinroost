@@ -2,7 +2,7 @@
 	// «Payments owed to you»: each employer's report at today's date.
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { day, today } from '#lib/format.ts';
+	import { today, wholeDay } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Employer from './Employer.svelte';
 
@@ -34,7 +34,7 @@
 				{error} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 			</p>
 		{:else if payroll}
-			<p class="hint">{t('payroll.as_of', { date: day(payroll.as_of) })}</p>
+			<p class="hint">{t('payroll.as_of', { date: wholeDay(payroll.as_of) })}</p>
 			{#each payroll.employers as employer (employer.employer_id)}
 				<Employer {employer} />
 			{/each}

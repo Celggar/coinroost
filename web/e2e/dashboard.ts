@@ -153,11 +153,28 @@ export async function checkPayroll(page: Page) {
 	const noData = card.getByRole('paragraph').filter({ hasText: say('payroll.status.no_data') });
 	await expect(noData).toBeVisible();
 	await card.getByText(say('payroll.history'), { exact: true }).click();
-	const statuses = paid.history
-		.toReversed()
-		.map((l: { status: string }) => say(`payroll.status.${l.status}` as Key));
+	// Newest first, with three or more fortnights in a row without data as one row that counts them.
+	const statuses: string[] = [];
+	const runs: number[] = [];
+	let run = 0;
+	for (const { status } of [...paid.history.toReversed(), { status: 'end' }]) {
+		if (status === 'no_data') {
+			run += 1;
+			continue;
+		}
+		if (run >= 3) runs.push(run);
+		statuses.push(...Array(run >= 3 ? 1 : run).fill(say('payroll.status.no_data')));
+		run = 0;
+		if (status !== 'end') statuses.push(say(`payroll.status.${status}` as Key));
+	}
 	await expect(card.getByRole('table').locator('.chip')).toHaveText(statuses);
 	expect(statuses).toContain(say('payroll.status.late'));
+	expect(runs.length).toBeGreaterThan(0);
+	for (const count of runs) {
+		await expect(
+			card.getByRole('rowheader', { name: say('payroll.fortnights_other', { count }) })
+		).toBeVisible();
+	}
 
 	const start = await date(page, nobody.start, { day: 'numeric', month: 'short', year: 'numeric' });
 	await expect(section.getByRole('article', { name: 'Nobody Inc' })).toContainText(

@@ -19,7 +19,13 @@
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const qr = $derived(`data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}`);
-	const grouped = $derived(enrollment.secret.match(/.{1,4}/g)?.join(' ') ?? '');
+	// The key in groups of four, half of them on each line: balanced wrapping left it 3/2/3 wherever four groups did
+	// not fit beside the button (pass 7).
+	const groups = $derived(enrollment.secret.match(/.{1,4}/g) ?? []);
+	const lines = $derived([
+		groups.slice(0, Math.ceil(groups.length / 2)).join(' '),
+		groups.slice(Math.ceil(groups.length / 2)).join(' ')
+	]);
 	// The same-device link: Apple's own scheme on Apple devices (iOS 15, macOS 12 and later), the common one on
 	// Android, where authenticator apps register it, and none on other desktops, where nothing handles it.
 	const sameDevice = $derived.by(() => {
@@ -72,8 +78,12 @@
 <div class="key">
 	<span class="key-label">{t('setup.key')}</span>
 	<div class="key-box">
-		<code data-testid="setup-key">{grouped}</code>
+		<code data-testid="setup-key"><span>{lines[0]}</span> <span>{lines[1]}</span></code>
 		<button type="button" class="copy" aria-label={t('setup.copy')} onclick={copy}>
+			<!-- Both words in the same cell, unseen: the button keeps the wider one's width, so «Copiada» never narrows
+			     the key and makes it break again (pass 7). -->
+			<span class="sizer" aria-hidden="true">{t('setup.copy_short')}</span>
+			<span class="sizer" aria-hidden="true">{t('setup.copied_short')}</span>
 			{#key copied}
 				<span in:pop={{ start: 0.8 }} out:vanish>
 					{copied ? t('setup.copied_short') : t('setup.copy_short')}
@@ -107,11 +117,13 @@
 	.key-label {
 		font-weight: 600;
 	}
+	/* The key's two lines beside the button where they fit, else the button under them at the end. */
 	.key-box {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 8px;
+		gap: 4px;
 		min-height: 48px;
 		/* The key always wraps to two lines in the sign-in card: 12 px on the right too keeps «Copy» as far from the
 		   box's edge as from its top and bottom (13 px with the border). */
@@ -126,18 +138,21 @@
 			monospace;
 		font-size: 1rem;
 		letter-spacing: 0.04em;
-		/* A key that wraps keeps room from the box's edges and splits into even halves. */
+		/* The key keeps room from the box's edges. */
 		padding-block: 6px;
-		text-wrap: balance;
-		overflow-wrap: anywhere;
 		user-select: all;
+	}
+	code > span {
+		display: block;
+		white-space: nowrap;
 	}
 	.copy {
 		flex: none;
 		display: grid;
 		place-items: center;
 		min-height: 44px;
-		padding: 0 12px;
+		margin-inline-start: auto;
+		padding: 0 8px;
 		border: 0;
 		border-radius: 8px;
 		background: color-mix(in oklab, var(--accent) 12%, transparent);
@@ -147,6 +162,9 @@
 	}
 	.copy > :global(*) {
 		grid-area: 1 / 1;
+	}
+	.sizer {
+		visibility: hidden;
 	}
 	/* A 44 px tall target (Apple's minimum) without moving anything around it. */
 	.open {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	// The dashboard: what is owed to the person, then the period's money per currency. Every number comes from
+	// The dashboard: the period's money per currency, then what is owed to the person. Every number comes from
 	// one report of the API, never summed across currencies.
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import MonthlyChart from '#lib/dashboard/MonthlyChart.svelte';
@@ -125,28 +125,33 @@
 <h1>{t('dashboard.title')}</h1>
 
 <div class="stack">
-	<Payroll />
-
 	<!-- Three labelled controls in one row (FD4, his #158): the presets are a segmented control as tall as the date
 		 fields, under a label of their own, so labels share their tops and controls theirs, even when «Hasta» shows
 		 an error under it. -->
-	<div class="period">
-		<div class="form-field" role="group" aria-labelledby="period-label">
-			<span class="label" id="period-label">{t('dashboard.period')}</span>
-			<div class="presets">
-				{#each presets as option (option.which)}
-					{@const range = preset(option.which)}
-					{@const chosen = from === range.from && to === range.to}
-					<button class="secondary" aria-pressed={chosen} onclick={() => choose(option.which)}
-						>{#if chosen}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop out:vanish
-								><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
-							>{/if}{t(option.label)}</button
-					>
-				{/each}
+	<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
+	{#if reports?.hasAccounts}
+		<div class="period">
+			<div class="form-field" role="group" aria-labelledby="period-label">
+				<span class="label" id="period-label">{t('dashboard.period')}</span>
+				<div class="presets">
+					{#each presets as option (option.which)}
+						{@const range = preset(option.which)}
+						{@const chosen = from === range.from && to === range.to}
+						<button class="secondary" aria-pressed={chosen} onclick={() => choose(option.which)}
+							>{#if chosen}<svg
+									class="check"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+									in:pop
+									out:vanish><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+								>{/if}{t(option.label)}</button
+						>
+					{/each}
+				</div>
 			</div>
+			<DateRange bind:from bind:to />
 		</div>
-		<DateRange bind:from bind:to />
-	</div>
+	{/if}
 
 	{#if error}
 		<p class="alert" role="alert">
@@ -221,6 +226,10 @@
 	{:else if !error}
 		<p class="hint loading">{t('app.loading')}</p>
 	{/if}
+
+	<!-- What is owed comes after the period's figures: before them it pushed the tiles below the first screen on a
+	     phone (pass 7). -->
+	<Payroll />
 </div>
 
 <style>
