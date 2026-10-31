@@ -184,10 +184,12 @@
 		display: grid;
 		gap: var(--space-md);
 		padding: var(--space-lg) var(--space-lg) var(--space-sm);
-		border: 1px solid var(--border);
+		/* Its own surface, which the tints inside it mix with: in dark the cards' fill made it read as a cut, not a layer. */
+		--surface: var(--raised);
+		border: 1px solid var(--raised-edge);
 		border-radius: var(--radius-card);
 		background: var(--surface);
-		box-shadow: var(--card-shadow);
+		box-shadow: var(--raised-shadow);
 		transform-origin: bottom left;
 	}
 	/* The address on a line of its own, so it breaks only when it is longer than the panel. The panel's text starts

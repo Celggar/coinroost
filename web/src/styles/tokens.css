@@ -42,6 +42,11 @@
 	--radius-card: 16px;
 	--card-edge: rgb(3 46 21 / 0.08);
 	--card-shadow: 0 1px 2px rgb(3 46 21 / 0.06), 0 8px 24px rgb(3 46 21 / 0.06);
+	/* A layer over the page (the account panel): in light its shadow sets it apart; in dark a shadow does not show,
+	   so it is lighter than the cards, as raised surfaces are in dark themes, with an edge of 3:1 against both. */
+	--raised: #ffffff;
+	--raised-edge: var(--border);
+	--raised-shadow: 0 2px 6px rgb(3 46 21 / 0.08), 0 16px 40px rgb(3 46 21 / 0.16);
 	--field-height: 44px;
 	--primary-height: 48px;
 	--placeholder: #67787c;
@@ -102,6 +107,9 @@
 		--chart-axis: #4b585b;
 		--card-edge: rgb(255 255 255 / 0.08);
 		--card-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+		--raised: #232b2e;
+		--raised-edge: #67787c;
+		--raised-shadow: var(--card-shadow);
 		--placeholder: #9ca8ab;
 		--danger: #f97066;
 		--danger-hover: #fda29b;
