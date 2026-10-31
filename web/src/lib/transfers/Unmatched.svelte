@@ -112,14 +112,31 @@
 						</div>
 						<div class="hint">{item.leg.description}</div>
 						<div class="hint">{reasonLabel(item.reason)}</div>
-						{#each item.candidates as candidate (candidate.transaction_id)}
-							<button
-								class="secondary"
-								disabled={busy}
-								onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
-								>{t('unmatched.pair_with', { leg: legText(candidate, names) })}</button
-							>
-						{/each}
+						<!-- Each possible other side reads like a leg, inset, with a short button beside it (under it on a
+						     phone); the button's name says which leg it pairs with. -->
+						{#if item.candidates.length}
+							<ul class="candidates">
+								{#each item.candidates as candidate (candidate.transaction_id)}
+									<li>
+										<div class="candidate">
+											<div class="txn-line">
+												<span>{day(candidate.date)}</span>
+												<span class="description">{accountName(candidate.account_id, names)}</span>
+												<Money minor={candidate.amount_minor} currency={candidate.currency} />
+											</div>
+											<div class="hint">{candidate.description}</div>
+										</div>
+										<button
+											class="secondary"
+											disabled={busy}
+											aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
+											onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
+											>{t('unmatched.pair')}</button
+										>
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</li>
 				{/each}
 			</ul>
@@ -194,9 +211,29 @@
 	.legs .txn-line {
 		justify-self: stretch;
 	}
-	button {
-		overflow-wrap: anywhere;
-		text-align: start;
+	.candidates {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		justify-self: stretch;
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.candidates li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm) var(--space-lg);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-button);
+		background: var(--bg);
+	}
+	.candidate {
+		flex: 1 1 240px;
+		min-width: 0;
+		display: grid;
+		gap: var(--space-2xs);
 	}
 	form {
 		display: grid;

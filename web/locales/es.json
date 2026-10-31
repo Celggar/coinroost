@@ -263,6 +263,7 @@
 	"unmatched.title": "Partes sin pareja",
 	"unmatched.nothing": "Cada parte de transferencia tiene su otro lado.",
 	"unmatched.pair_with": "Emparejar con {leg}",
+	"unmatched.pair": "Emparejar",
 	"unmatched.by_hand": "Emparejar a mano",
 	"unmatched.by_hand_hint": "Para una transferencia que tardó más de lo normal. Las listas traen las partes de transferencia que siguen esperando.",
 	"unmatched.one_side": "Un lado",

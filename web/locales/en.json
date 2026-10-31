@@ -263,6 +263,7 @@
 	"unmatched.title": "Legs without a pair",
 	"unmatched.nothing": "Every transfer leg has its other side.",
 	"unmatched.pair_with": "Pair with {leg}",
+	"unmatched.pair": "Pair",
 	"unmatched.by_hand": "Pair by hand",
 	"unmatched.by_hand_hint": "For a transfer that took longer than usual. The lists hold the transfer legs still waiting.",
 	"unmatched.one_side": "One side",
