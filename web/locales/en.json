@@ -370,7 +370,7 @@
 	"setup.first_lead": "Coinroost has no accounts yet: yours will be the owner.",
 	"setup.scan_phone": "On this phone, tap “Set up on this device” or copy the key; from another phone, scan the code.",
 	"setup.step_codes": "Step 3 of 3 · Your recovery codes",
-	"setup.codes_lead": "If you lose your phone, each code lets you in once. Keep them away from this phone: in a note in the Passwords app, or printed.",
+	"setup.codes_lead": "If you lose your phone, each code lets you in once. Keep them off that phone: in a note in the Passwords app, or printed.",
 	"setup.codes_done": "I saved them, go in",
 	"recovery.list": "Recovery codes",
 	"recovery.copy": "Copy",

@@ -204,7 +204,7 @@ export function focusFirst(form: HTMLFormElement, errors: Errors) {
 /**
  * For forms that show one message (the sign-in pages): marks the invalid fields with `aria-invalid` and names every
  * one of them, so no field is marked without the message saying why. Fields with the same problem share a sentence
- * («Correo y Contraseña: Completa estos campos.»); '' when there is none.
+ * («Correo y contraseña: completa estos campos.»); '' when there is none.
  */
 export function single(form: HTMLFormElement, errors: Errors): string {
 	const named = new Map<string, string[]>();
@@ -220,14 +220,24 @@ export function single(form: HTMLFormElement, errors: Errors): string {
 		else bare.push(errors[key]);
 	}
 	const list = new Intl.ListFormat(i18n.locale, { type: 'conjunction' });
+	// After the colon the sentence goes on in lower case, and a field named after the first is a word inside it
+	// (RAE, «dos puntos»; Chicago 6.63): «Correo y Contraseña: Completa…» read as a heading (pass 11).
 	const sentences = [...named].map(([message, fields]) =>
 		t('form.named', {
-			field: list.format(fields),
-			message:
+			field: list.format(fields.map((field, i) => (i ? inSentence(field) : field))),
+			message: inSentence(
 				fields.length > 1 && message === t('form.required') ? t('form.required_many') : message
+			)
 		})
 	);
 	return [...sentences, ...bare].join(' ');
+}
+
+/** A capitalised word in lower case, to go on inside a sentence; an acronym («TOTP») keeps its capitals. */
+function inSentence(text: string): string {
+	return /^\p{Lu}\p{Ll}/u.test(text)
+		? text[0].toLocaleLowerCase(i18n.locale) + text.slice(1)
+		: text;
 }
 
 /** The errors without the one of the field being edited: a message goes as soon as its field changes. */

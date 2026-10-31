@@ -370,7 +370,7 @@
 	"setup.first_lead": "Coinroost aún no tiene cuentas: la tuya será la dueña.",
 	"setup.scan_phone": "En este teléfono, toca «Configurar en este dispositivo» o copia la clave; desde otro teléfono, escanea el código.",
 	"setup.step_codes": "Paso 3 de 3 · Tus códigos de recuperación",
-	"setup.codes_lead": "Si pierdes el teléfono, cada código te deja entrar una vez. Guárdalos fuera de este teléfono: en una nota de la app Contraseñas o impresos.",
+	"setup.codes_lead": "Si pierdes el teléfono, cada código te deja entrar una vez. Guárdalos fuera de ese teléfono: en una nota de la app Contraseñas o impresos.",
 	"setup.codes_done": "Ya los guardé, entrar",
 	"recovery.list": "Códigos de recuperación",
 	"recovery.copy": "Copiar",

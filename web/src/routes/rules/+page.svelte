@@ -235,4 +235,9 @@
 		align-items: center;
 		gap: var(--space-sm);
 	}
+	/* «Borrar» keeps one place on every card, at the row's end, with one move button or two: right after «Bajar» or
+	   «Subir» it stood 23 px apart from card to card (pass 11). */
+	.buttons > :global(.swap-cell) {
+		margin-inline-start: auto;
+	}
 </style>
