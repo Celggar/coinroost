@@ -1,13 +1,14 @@
 <script lang="ts">
 	// The phone's navigation (P1, N3): a 56 px top bar with the page's title, and a bar held to the bottom of the screen
 	// (sticky, last in the page's column) with the five destinations as labelled icons (Material 3 navigation bar), always on screen and in reach of the thumb.
+	import { page } from '$app/state';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Badge from './Badge.svelte';
 	import Icon from './Icon.svelte';
 	import Mark from './Mark.svelte';
 	import NavCounts from './NavCounts.svelte';
 	import { counts } from './counts.svelte.ts';
-	import { isCurrent, narrow, titleOf } from './destinations.ts';
+	import { errorTitle, isCurrent, narrow, titleOf } from './destinations.ts';
 
 	let {
 		path,
@@ -16,11 +17,13 @@
 	}: { path: string; top?: number; bottom?: number } = $props();
 
 	const count = (badge: 'review' | 'accounts' | undefined) => (badge ? counts[badge] : 0);
+	// The error page has no destination: the bar says what its heading says.
+	const title = $derived(page.error ? errorTitle(page.status) : titleOf(path));
 </script>
 
 <header class="appbar" bind:clientHeight={top}>
 	{#if path === '/'}<Mark />{/if}
-	<span class="title">{t(titleOf(path))}</span>
+	<span class="title">{t(title)}</span>
 </header>
 
 <nav class="bar" aria-label={t('nav.main')} bind:clientHeight={bottom}>

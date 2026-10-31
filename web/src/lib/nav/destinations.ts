@@ -4,7 +4,17 @@
 import type { Key } from '#lib/i18n.svelte.ts';
 
 export type IconName =
-	'home' | 'import' | 'review' | 'bank' | 'rules' | 'more' | 'shield' | 'logout' | 'chev' | 'check';
+	| 'home'
+	| 'import'
+	| 'review'
+	| 'bank'
+	| 'rules'
+	| 'more'
+	| 'shield'
+	| 'logout'
+	| 'chev'
+	| 'check'
+	| 'unknown';
 
 export type Destination = {
 	href: string;
@@ -80,6 +90,11 @@ export function titleOf(path: string): Key {
 	if (path === '/security') return 'nav.security';
 	if (path === '/rules') return 'nav.rules';
 	return [...narrow].find((d) => d.pages.includes(path))?.label ?? 'app.name';
+}
+
+/** The error page's title, for its heading and the phone's top bar. */
+export function errorTitle(status: number): Key {
+	return status === 404 ? 'error.not_found_title' : 'error.failed_title';
 }
 
 export function isCurrent(destination: Destination, path: string): boolean {
