@@ -42,11 +42,14 @@ pub async fn target(db: &PgPool, household_id: Uuid, account_id: Uuid) -> ApiRes
     .fetch_optional(db)
     .await?;
     let (profile_id, namespace, currency) = account.ok_or(ApiError::NotFound)?;
-    let profile_id = profile_id.ok_or_else(|| ApiError::Invalid("the account has no profile".to_owned()))?;
+    let profile_id = profile_id.ok_or_else(|| {
+        ApiError::invalid("account_without_profile", "the account has no profile".to_owned())
+    })?;
     if validate::minor_digits(&currency) != Some(2) {
-        return Err(ApiError::Invalid(format!(
-            "imports into {currency} accounts are not supported yet"
-        )));
+        return Err(ApiError::invalid(
+            "currency_not_supported",
+            format!("imports into {currency} accounts are not supported yet"),
+        ));
     }
     Ok(Target {
         account_id,
@@ -59,15 +62,25 @@ pub async fn target(db: &PgPool, household_id: Uuid, account_id: Uuid) -> ApiRes
 /// Reads the file with the target's profile and namespace.
 pub async fn read(file: Bytes, target: &Target) -> ApiResult<Normalization> {
     if file.is_empty() {
-        return Err(ApiError::Invalid("the file is empty".to_owned()));
+        return Err(ApiError::invalid("file_empty", "the file is empty".to_owned()));
     }
     let profile = Profile::find(&target.profile_id)
-        .ok_or_else(|| ApiError::Invalid(format!("no profile {}", target.profile_id)))?;
+        .ok_or_else(|| ApiError::invalid("unknown_profile", format!("no profile {}", target.profile_id)))?;
     let namespace = target.namespace.clone();
     tokio::task::spawn_blocking(move || normalize(&file, &profile, &namespace))
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
-        .map_err(|e| ApiError::Invalid(e.to_string()))
+        .map_err(|e| ApiError::invalid(unreadable_code(&e), e.to_string()))
+}
+
+/// The problem code for a file the profile cannot read.
+fn unreadable_code(error: &coinroost_normalizer::Error) -> &'static str {
+    match error {
+        coinroost_normalizer::Error::Unreadable(_) => "file_unreadable",
+        coinroost_normalizer::Error::MissingColumns { .. } => "file_missing_columns",
+        coinroost_normalizer::Error::Unsupported(_) => "file_format_unsupported",
+        coinroost_normalizer::Error::InvalidProfile(_) => "profile_invalid",
+    }
 }
 
 /// Which of the household's accounts a file belongs to, read from the file itself.
@@ -143,6 +156,12 @@ pub async fn known_ids(
 pub struct RowFailure {
     /// Row number in the file, 1 being the header.
     row: usize,
+    /// Why, stable across releases: `unreadable_date` or `unreadable_amount`. Clients show their own text for it.
+    code: &'static str,
+    /// The cell that could not be read, when there is one (the date as written).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value: Option<String>,
+    /// Why, in English.
     reason: String,
 }
 
@@ -151,11 +170,18 @@ pub fn failures(normalization: &Normalization) -> Vec<RowFailure> {
     normalization
         .errors
         .iter()
-        .map(|e| RowFailure {
-            row: e.row,
-            reason: match &e.problem {
-                RowProblem::UnreadableDate(text) => format!("unreadable date: {text}"),
-                RowProblem::UnreadableAmount => "no amount that can be read".to_owned(),
+        .map(|e| match &e.problem {
+            RowProblem::UnreadableDate(text) => RowFailure {
+                row: e.row,
+                code: "unreadable_date",
+                value: Some(text.clone()),
+                reason: format!("unreadable date: {text}"),
+            },
+            RowProblem::UnreadableAmount => RowFailure {
+                row: e.row,
+                code: "unreadable_amount",
+                value: None,
+                reason: "no amount that can be read".to_owned(),
             },
         })
         .collect()
@@ -261,8 +287,10 @@ pub async fn store(
         .collect();
     // New transactions are sorted by the rules as they are now; nothing already there is touched.
     let sorter = Sorter::load(&mut *tx, session.household_id).await?;
-    let count =
-        |n: usize| i32::try_from(n).map_err(|_| ApiError::Invalid("the file has too many rows".to_owned()));
+    let count = |n: usize| {
+        i32::try_from(n)
+            .map_err(|_| ApiError::invalid("file_too_long", "the file has too many rows".to_owned()))
+    };
     let batch: ImportBatch = sqlx::query_as(concat!(
         "insert into import_batches (household_id, account_id, file_name, file_sha256, profile, rows_read, added,
                                      duplicates, errors, first_date, last_date, created_by)

@@ -3741,12 +3741,13 @@
         "required": [
           "type",
           "title",
-          "status"
+          "status",
+          "code"
         ],
         "properties": {
           "type": {
             "type": "string",
-            "description": "Always `about:blank`: the status code says it all."
+            "description": "Always `about:blank`: the status code and `code` say it all."
           },
           "title": {
             "type": "string"
@@ -3755,6 +3756,17 @@
             "type": "integer",
             "format": "int32",
             "minimum": 0
+          },
+          "code": {
+            "type": "string",
+            "description": "Which rule failed, stable across releases: clients show their own text for it (RFC 9457 extension member)."
+          },
+          "pointer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The request body member the problem is about, as a JSON Pointer fragment (`#/namespace`), when it is one."
           },
           "detail": {
             "type": [
@@ -3883,6 +3895,7 @@
         "type": "object",
         "required": [
           "row",
+          "code",
           "reason"
         ],
         "properties": {
@@ -3891,8 +3904,20 @@
             "description": "Row number in the file, 1 being the header.",
             "minimum": 0
           },
+          "code": {
+            "type": "string",
+            "description": "Why, stable across releases: `unreadable_date` or `unreadable_amount`. Clients show their own text for it."
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The cell that could not be read, when there is one (the date as written)."
+          },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "description": "Why, in English."
           }
         }
       },

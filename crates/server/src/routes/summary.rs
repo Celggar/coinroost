@@ -61,7 +61,7 @@ async fn summary(
     Query(period): Query<Period>,
 ) -> ApiResult<Json<Summary>> {
     if period.from > period.to {
-        return Err(ApiError::Invalid("from is after to".to_owned()));
+        return Err(ApiError::invalid("dates_reversed", "from is after to".to_owned()));
     }
     let totals: Vec<Totals> = sqlx::query_as(
         "select l.currency,

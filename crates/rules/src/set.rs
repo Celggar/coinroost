@@ -119,6 +119,7 @@ impl NewRule {
             self.then.category.clone(),
             payee,
         )
+        .map_err(String::from)
     }
 }
 

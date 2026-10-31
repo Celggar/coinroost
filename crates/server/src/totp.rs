@@ -3,7 +3,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::error::{ApiError, ApiResult};
+use crate::error::{ApiError, ApiResult, Reason};
 
 const TOTP_STEP: u64 = 30;
 
@@ -64,4 +64,15 @@ fn now_seconds() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs())
+}
+
+/// The code typed does not match the authenticator.
+pub fn wrong_code() -> ApiError {
+    ApiError::Invalid(
+        Reason::new(
+            "wrong_code",
+            "the code does not match; wait for the next one and try again",
+        )
+        .at("code"),
+    )
 }

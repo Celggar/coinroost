@@ -93,9 +93,9 @@ impl<A: PartialEq, C, P> Rule<A, C, P> {
         amount_max: Option<i64>,
         category: Option<C>,
         payee: PayeeAction<P>,
-    ) -> Result<Rule<A, C, P>, String> {
+    ) -> Result<Rule<A, C, P>, RuleError> {
         if contains.as_deref() == Some("") {
-            return Err("the text to look for cannot be empty".to_owned());
+            return Err(RuleError::EmptyText);
         }
         if contains.is_none()
             && direction.is_none()
@@ -103,21 +103,21 @@ impl<A: PartialEq, C, P> Rule<A, C, P> {
             && amount_min.is_none()
             && amount_max.is_none()
         {
-            return Err("a rule needs at least one condition".to_owned());
+            return Err(RuleError::NoCondition);
         }
         if amount_min.is_some_and(|a| a < 0) || amount_max.is_some_and(|a| a < 0) {
-            return Err("amounts in a rule are magnitudes, zero or more".to_owned());
+            return Err(RuleError::NegativeAmount);
         }
         if let (Some(min), Some(max)) = (amount_min, amount_max)
             && min > max
         {
-            return Err("the smallest amount is above the largest".to_owned());
+            return Err(RuleError::MinAboveMax);
         }
         if category.is_none() && matches!(payee, PayeeAction::None) {
-            return Err("a rule needs a category or a payee to set".to_owned());
+            return Err(RuleError::NothingToSet);
         }
         if matches!(payee, PayeeAction::FromText) && contains.is_none() {
-            return Err("a payee read from the text needs the text the rule looks for".to_owned());
+            return Err(RuleError::PayeeTextMissing);
         }
         Ok(Rule {
             contains_upper: contains.as_ref().map(|c| c.to_uppercase()),
@@ -175,6 +175,50 @@ pub fn sort<'r, A: PartialEq, C, P>(
         category: rule.category.as_ref(),
         payee,
     })
+}
+
+/// Why a rule cannot be built.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuleError {
+    EmptyText,
+    NoCondition,
+    NegativeAmount,
+    MinAboveMax,
+    NothingToSet,
+    PayeeTextMissing,
+}
+
+impl RuleError {
+    /// A stable name for it, for clients that show their own text.
+    pub fn code(self) -> &'static str {
+        match self {
+            RuleError::EmptyText => "rule_empty_text",
+            RuleError::NoCondition => "rule_no_condition",
+            RuleError::NegativeAmount => "rule_negative_amount",
+            RuleError::MinAboveMax => "rule_min_above_max",
+            RuleError::NothingToSet => "rule_nothing_to_set",
+            RuleError::PayeeTextMissing => "rule_payee_text_missing",
+        }
+    }
+}
+
+impl std::fmt::Display for RuleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            RuleError::EmptyText => "the text to look for cannot be empty",
+            RuleError::NoCondition => "a rule needs at least one condition",
+            RuleError::NegativeAmount => "amounts in a rule are magnitudes, zero or more",
+            RuleError::MinAboveMax => "the smallest amount is above the largest",
+            RuleError::NothingToSet => "a rule needs a category or a payee to set",
+            RuleError::PayeeTextMissing => "a payee read from the text needs the text the rule looks for",
+        })
+    }
+}
+
+impl From<RuleError> for String {
+    fn from(error: RuleError) -> String {
+        error.to_string()
+    }
 }
 
 #[cfg(test)]
@@ -253,7 +297,7 @@ mod tests {
     #[test]
     fn refuses_rules_that_cannot_work() {
         let none = || PayeeAction::<&str>::None;
-        let bad: [Result<R, String>; 5] = [
+        let bad: [Result<R, RuleError>; 5] = [
             Rule::new(Some(String::new()), None, None, None, None, Some("C"), none()),
             Rule::new(None, None, None, None, None, Some("C"), none()),
             Rule::new(None, None, None, Some(5), Some(1), Some("C"), none()),
@@ -268,8 +312,14 @@ mod tests {
                 PayeeAction::FromText,
             ),
         ];
-        for result in bad {
-            assert!(result.is_err());
-        }
+        let why = bad.map(Result::err);
+        let want = [
+            RuleError::EmptyText,
+            RuleError::NoCondition,
+            RuleError::MinAboveMax,
+            RuleError::NothingToSet,
+            RuleError::PayeeTextMissing,
+        ];
+        assert_eq!(why, want.map(Some));
     }
 }

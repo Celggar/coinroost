@@ -11,7 +11,7 @@ use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::AppState;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 use crate::invites;
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -50,10 +50,11 @@ pub struct FirstAccountLink {
             body = Problem)))]
 async fn start(State(state): State<AppState>) -> ApiResult<(StatusCode, Json<FirstAccountLink>)> {
     if !state.first_account {
-        return Err(ApiError::Forbidden(
+        return Err(ApiError::Forbidden(Reason::new(
+            "first_account_from_console",
             "this deployment makes its first account from the console: coinroost-server invite add"
                 .to_owned(),
-        ));
+        )));
     }
     let link = invites::create_first(&state.db).await?;
     Ok((

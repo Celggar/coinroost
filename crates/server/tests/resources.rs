@@ -40,30 +40,54 @@ async fn creates_and_lists_accounts(db: PgPool) {
             .extend(change.as_object().unwrap().clone());
         body
     };
-    for (body, expected) in [
+    // Each refusal names its rule and the member it is about, so a client can put its own text under that field.
+    let invalid = StatusCode::UNPROCESSABLE_ENTITY;
+    for (change, expected, code, pointer) in [
         (
-            bad(json!({ "currency": "XYZ" })),
-            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({ "currency": "XYZ" }),
+            invalid,
+            "currency_unknown",
+            "#/currency",
         ),
         (
-            bad(json!({ "namespace": "Has Spaces" })),
-            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({ "namespace": "Has Spaces" }),
+            invalid,
+            "namespace_format",
+            "#/namespace",
         ),
-        (bad(json!({ "name": "   " })), StatusCode::UNPROCESSABLE_ENTITY),
+        (json!({ "name": "   " }), invalid, "text_length", "#/name"),
         (
-            bad(json!({ "profile": "no-such-bank" })),
-            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({ "profile": "no-such-bank" }),
+            invalid,
+            "unknown_profile",
+            "#/profile",
         ),
         (
-            bad(json!({ "currency": "EUR", "profile": "bac-account" })),
-            StatusCode::UNPROCESSABLE_ENTITY,
+            json!({ "currency": "EUR", "profile": "bac-account" }),
+            invalid,
+            "profile_currency_mismatch",
+            "#/currency",
         ),
-        (bad(json!({ "namespace": "savings" })), StatusCode::CONFLICT),
+        (
+            json!({ "namespace": "savings" }),
+            StatusCode::CONFLICT,
+            "already_exists",
+            "#/namespace",
+        ),
+        (
+            json!({ "name": "Savings", "namespace": "other" }),
+            StatusCode::CONFLICT,
+            "already_exists",
+            "#/name",
+        ),
     ] {
+        let body = bad(change);
         let (status, problem) = api
             .call("POST", "/api/v1/accounts", Some(&user.token), Some(body.clone()))
             .await;
         assert_eq!(status, expected, "{body} → {problem}");
+        assert_eq!(problem["code"], code, "{body} → {problem}");
+        assert_eq!(problem["pointer"], pointer, "{body} → {problem}");
     }
 }
 

@@ -18,7 +18,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::auth;
-use crate::error::{ApiError, ApiResult};
+use crate::error::{ApiError, ApiResult, Reason};
 use crate::invites;
 use crate::totp;
 
@@ -170,25 +170,24 @@ pub async fn regenerate(db: &PgPool, user_id: Uuid, code: &str) -> ApiResult<New
             .fetch_one(db)
             .await?;
     if locked {
-        return Err(ApiError::Forbidden(
+        return Err(ApiError::Forbidden(Reason::new(
+            "too_many_codes",
             "too many wrong codes: wait 15 minutes and try again".to_owned(),
-        ));
+        )));
     }
     let Some(step) = totp::code_step(&secret, code)? else {
         auth::record_failure(db, user_id).await?;
-        return Err(ApiError::Invalid(WRONG_CODE.to_owned()));
+        return Err(totp::wrong_code());
     };
     let mut tx = db.begin().await?;
     // A code already used, for a login or here, is refused like a wrong one (without counting: it was right once).
     if !auth::claim_step(&mut *tx, user_id, step).await? {
-        return Err(ApiError::Invalid(WRONG_CODE.to_owned()));
+        return Err(totp::wrong_code());
     }
     let set = issue(&mut tx, user_id).await?;
     tx.commit().await?;
     Ok(set)
 }
-
-const WRONG_CODE: &str = "the code does not match; wait for the next one and try again";
 
 /// The authenticator a user sets up after a recovery: made on the first call and the same afterwards, until it is
 /// confirmed or another recovery login replaces it. Refused when the user's authenticator still works.
@@ -221,9 +220,12 @@ pub async fn confirm_authenticator(db: &PgPool, user_id: Uuid, code: &str) -> Ap
         return Err(not_recovering());
     }
     let pending = pending.ok_or_else(|| {
-        ApiError::Invalid("open the new authenticator step first, then send its code".to_owned())
+        ApiError::invalid(
+            "enrollment_not_started",
+            "open the new authenticator step first, then send its code".to_owned(),
+        )
     })?;
-    let step = totp::code_step(&pending, code)?.ok_or_else(|| ApiError::Invalid(WRONG_CODE.to_owned()))?;
+    let step = totp::code_step(&pending, code)?.ok_or_else(totp::wrong_code)?;
     // Only the secret that was checked: a recovery login in between replaced it, and this code no longer counts.
     let swapped = sqlx::query(
         "update users set totp_secret = pending_totp_secret, pending_totp_secret = null, reenroll_required = false,
@@ -236,7 +238,8 @@ pub async fn confirm_authenticator(db: &PgPool, user_id: Uuid, code: &str) -> Ap
     .execute(db)
     .await?;
     if swapped.rows_affected() == 0 {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "enrollment_changed",
             "the new authenticator changed: open the step again and scan it".to_owned(),
         ));
     }
@@ -244,10 +247,11 @@ pub async fn confirm_authenticator(db: &PgPool, user_id: Uuid, code: &str) -> Ap
 }
 
 fn not_recovering() -> ApiError {
-    ApiError::Conflict(
+    ApiError::Conflict(Reason::new(
+        "reenroll_not_needed",
         "this account's authenticator works; a new one is set up only after a login with a recovery code"
             .to_owned(),
-    )
+    ))
 }
 
 #[cfg(test)]

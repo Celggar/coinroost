@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::Session;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new().routes(routes!(delete_transaction))
@@ -40,9 +40,10 @@ async fn delete_transaction(
     match legs {
         None => return Err(ApiError::NotFound),
         Some((count,)) if count > 1 => {
-            return Err(ApiError::Conflict(
+            return Err(ApiError::Conflict(Reason::new(
+                "split_transfer_first",
                 "a transfer between two accounts: split it first, then delete either side".to_owned(),
-            ));
+            )));
         }
         Some(_) => {}
     }

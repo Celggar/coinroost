@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::Session;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 use crate::validate;
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -123,12 +123,17 @@ fn check(when: &Conditions, then: &Actions) -> ApiResult<()> {
         && text.chars().count() > 200
     {
         return Err(ApiError::Invalid(
-            "description_contains has at most 200 characters".to_owned(),
+            Reason::new(
+                "text_too_long",
+                "description_contains has at most 200 characters".to_owned(),
+            )
+            .at("when.description_contains"),
         ));
     }
     let payee = match (then.payee_id, then.payee_from_text) {
         (Some(_), true) => {
-            return Err(ApiError::Invalid(
+            return Err(ApiError::invalid(
+                "payee_named_and_read",
                 "a payee is either named or read from the text, not both".to_owned(),
             ));
         }
@@ -150,7 +155,7 @@ fn check(when: &Conditions, then: &Actions) -> ApiResult<()> {
         payee,
     )
     .map(|_| ())
-    .map_err(ApiError::Invalid)
+    .map_err(|e| ApiError::invalid(e.code(), e.to_string()))
 }
 
 /// One rule change at a time per household, so positions stay a sequence; returns the number of rules.
@@ -204,10 +209,13 @@ async fn create_rule(
     let last = lock(&mut tx, session.household_id).await?;
     let position = body.position.unwrap_or(last + 1);
     if !(1..=last + 1).contains(&position) {
-        return Err(ApiError::Invalid(format!(
-            "position must be between 1 and {}",
-            last + 1
-        )));
+        return Err(ApiError::Invalid(
+            Reason::new(
+                "position_out_of_range",
+                format!("position must be between 1 and {}", last + 1),
+            )
+            .at("position"),
+        ));
     }
     sqlx::query("update rules set position = position + 1 where household_id = $1 and position >= $2")
         .bind(session.household_id)
@@ -248,9 +256,13 @@ async fn make_room(
     last: i32,
 ) -> ApiResult<()> {
     if !(1..=last).contains(&position) {
-        return Err(ApiError::Invalid(format!(
-            "position must be between 1 and {last}"
-        )));
+        return Err(ApiError::Invalid(
+            Reason::new(
+                "position_out_of_range",
+                format!("position must be between 1 and {last}"),
+            )
+            .at("position"),
+        ));
     }
     let (shift, low, high) = if position < from {
         (1, position, from - 1)

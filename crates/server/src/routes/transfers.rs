@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::Session;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{self, ApiError, ApiResult, Problem};
 use crate::pairing::{self, Candidate, Planned};
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -190,15 +190,21 @@ async fn apply_transfers(
     let expected = headers
         .get(header::IF_MATCH)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| ApiError::PreconditionRequired("send the preview's ETag in If-Match".to_owned()))?
+        .ok_or_else(|| {
+            ApiError::PreconditionRequired(error::Reason::new(
+                "preview_tag_required",
+                "send the preview's ETag in If-Match".to_owned(),
+            ))
+        })?
         .to_owned();
     let mut tx = state.db.begin().await?;
     pairing::lock(&mut tx, session.household_id).await?;
     let planned = pairing::planned(&mut tx, session.household_id).await?;
     if pairing::entity_tag(&planned) != expected.trim() {
-        return Err(ApiError::PreconditionFailed(
+        return Err(ApiError::PreconditionFailed(error::Reason::new(
+            "preview_outdated",
             "the pairs are not the ones previewed any more: preview again".to_owned(),
-        ));
+        )));
     }
     for pair in &planned.plan.pairs {
         let (out, inn) = (&planned.pool[pair.outflow], &planned.pool[pair.inflow]);
@@ -243,29 +249,36 @@ async fn pair_transactions(
 ) -> ApiResult<(StatusCode, Json<Paired>)> {
     let [a, b] = body.transaction_ids;
     if a == b {
-        return Err(ApiError::Invalid("choose two different transactions".to_owned()));
+        return Err(ApiError::invalid(
+            "same_transaction",
+            "choose two different transactions".to_owned(),
+        ));
     }
     let mut tx = state.db.begin().await?;
     pairing::lock(&mut tx, session.household_id).await?;
     let found = pairing::single(&mut tx, session.household_id, &[a, b]).await?;
     let [x, y] = found.as_slice() else {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "not_single_leg",
             "both must be transactions of this household with one leg each".to_owned(),
         ));
     };
     let (out, inn) = if x.is_outflow() { (x, y) } else { (y, x) };
     if out.account_id == inn.account_id {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "transfer_same_account",
             "a transfer moves money between two different accounts".to_owned(),
         ));
     }
     if out.currency != inn.currency {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "transfer_currencies_differ",
             "a transfer moves money within one currency".to_owned(),
         ));
     }
     if out.amount_minor.checked_add(inn.amount_minor) != Some(0) || !out.is_outflow() {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "transfer_not_balanced",
             "the two legs of a transfer sum to zero: one leaves an account, the other arrives".to_owned(),
         ));
     }

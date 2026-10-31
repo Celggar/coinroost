@@ -64,7 +64,8 @@ async fn log_in(State(state): State<AppState>, Json(body): Json<LogIn>) -> ApiRe
         (Some(code), None) => Second::Code(code),
         (None, Some(code)) => Second::Recovery(code),
         _ => {
-            return Err(ApiError::Invalid(
+            return Err(ApiError::invalid(
+                "code_or_recovery_code",
                 "send the authenticator's `code` or a `recovery_code`, one of the two".to_owned(),
             ));
         }

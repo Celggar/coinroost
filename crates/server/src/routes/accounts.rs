@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::Session;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 use crate::validate;
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -99,7 +99,11 @@ impl Detection {
         let digits = |p: &String| (1..=6).contains(&p.len()) && p.bytes().all(|b| b.is_ascii_digit());
         if !self.card_prefixes.iter().all(digits) {
             return Err(ApiError::Invalid(
-                "detection.card_prefixes are 1 to 6 digits each".to_owned(),
+                Reason::new(
+                    "card_prefixes_format",
+                    "detection.card_prefixes are 1 to 6 digits each".to_owned(),
+                )
+                .at("detection.card_prefixes"),
             ));
         }
         let label = self
@@ -109,7 +113,11 @@ impl Detection {
         let hex = |h: &String| h.len() == 16 && h.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
         if self.number_hash.as_ref().is_some_and(|h| !hex(h)) {
             return Err(ApiError::Invalid(
-                "detection.number_hash is 16 lower-case hex digits".to_owned(),
+                Reason::new(
+                    "number_hash_format",
+                    "detection.number_hash is 16 lower-case hex digits".to_owned(),
+                )
+                .at("detection.number_hash"),
             ));
         }
         Ok(Detection {
@@ -210,12 +218,20 @@ async fn create_account(
 
 /// The profile exists and reads statements in the account's currency.
 pub(crate) fn check_profile(id: &str, currency: &str) -> ApiResult<()> {
-    let profile = Profile::find(id).ok_or_else(|| ApiError::Invalid(format!("no profile {id}")))?;
+    let profile = Profile::find(id).ok_or_else(|| {
+        ApiError::Invalid(Reason::new("unknown_profile", format!("no profile {id}")).at("profile"))
+    })?;
     if profile.currency != currency {
-        return Err(ApiError::Invalid(format!(
-            "profile {id} reads {} statements, the account is in {currency}",
-            profile.currency
-        )));
+        return Err(ApiError::Invalid(
+            Reason::new(
+                "profile_currency_mismatch",
+                format!(
+                    "profile {id} reads {} statements, the account is in {currency}",
+                    profile.currency
+                ),
+            )
+            .at("currency"),
+        ));
     }
     Ok(())
 }

@@ -154,14 +154,14 @@ async fn manual_pair_checks_its_legs(db: PgPool) {
         { "account_id": checking, "amount_minor": -1000 }, { "account_id": savings, "amount_minor": 1000 }] });
     let two_legs = id(&post(&api, &user, "/api/v1/transactions", body).await).to_owned();
 
-    for (with, why) in [
-        (&out, "different transactions"),
-        (&same_account, "two different accounts"),
-        (&less, "sum to zero"),
-        (&also_out, "sum to zero"),
-        (&in_euros, "one currency"),
-        (&theirs, "one leg each"),
-        (&two_legs, "one leg each"),
+    for (with, why, code) in [
+        (&out, "different transactions", "same_transaction"),
+        (&same_account, "two different accounts", "transfer_same_account"),
+        (&less, "sum to zero", "transfer_not_balanced"),
+        (&also_out, "sum to zero", "transfer_not_balanced"),
+        (&in_euros, "one currency", "transfer_currencies_differ"),
+        (&theirs, "one leg each", "not_single_leg"),
+        (&two_legs, "one leg each", "not_single_leg"),
     ] {
         let (status, problem) = pair(&api, &user, &out, with).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{why}: {problem}");
@@ -169,6 +169,7 @@ async fn manual_pair_checks_its_legs(db: PgPool) {
             problem["detail"].as_str().unwrap().contains(why),
             "{why}: {problem}"
         );
+        assert_eq!(problem["code"], code, "{why}: {problem}");
     }
     let right = one_leg((&api, &user), "2026-05-20", &savings, 1000, None).await;
     assert_eq!(

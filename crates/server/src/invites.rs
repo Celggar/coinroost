@@ -22,7 +22,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::auth::{self, Enrolled};
-use crate::error::{ApiError, ApiResult};
+use crate::error::{ApiError, ApiResult, Reason};
 use crate::recovery;
 use crate::totp;
 
@@ -68,9 +68,10 @@ pub async fn create_first(db: &PgPool) -> ApiResult<NewInvite> {
     .execute(db)
     .await?;
     if made.rows_affected() == 0 {
-        return Err(ApiError::Conflict(
+        return Err(ApiError::Conflict(Reason::new(
+            "already_set_up",
             "this app already has an account; ask its owner for a setup link".to_owned(),
-        ));
+        )));
     }
     Ok(NewInvite { token, expires_at })
 }
@@ -144,10 +145,15 @@ pub struct Accepted {
 pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<Accepted> {
     let invite = live(db, token).await?;
     if !who.email.trim().get(1..).is_some_and(|rest| rest.contains('@')) {
-        return Err(ApiError::Invalid("an email address is needed".to_owned()));
+        return Err(ApiError::Invalid(
+            Reason::new("email_required", "an email address is needed".to_owned()).at("email"),
+        ));
     }
     let secret = invite.totp_secret.ok_or_else(|| {
-        ApiError::Invalid("open the link's authenticator step first, then send its code".to_owned())
+        ApiError::invalid(
+            "enrollment_not_started",
+            "open the link's authenticator step first, then send its code".to_owned(),
+        )
     })?;
     let password_hash = auth::hash_password(who.password)?;
     let Some(step) = totp::code_step(&secret, who.code)? else {
@@ -155,9 +161,7 @@ pub async fn accept(db: &PgPool, token: &str, who: Acceptance<'_>) -> ApiResult<
             .bind(invite.id)
             .execute(db)
             .await?;
-        return Err(ApiError::Invalid(
-            "the code does not match; wait for the next one and try again".to_owned(),
-        ));
+        return Err(totp::wrong_code());
     };
     let mut tx = db.begin().await?;
     if invite.first_account {

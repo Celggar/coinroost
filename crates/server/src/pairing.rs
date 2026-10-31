@@ -12,7 +12,7 @@ use sqlx::PgConnection;
 use time::{Date, Duration};
 use uuid::Uuid;
 
-use crate::error::{ApiError, ApiResult};
+use crate::error::{ApiError, ApiResult, Reason};
 
 /// Transfers made this long before the oldest candidate still teach which account a number in a text names:
 /// a monthly import alone is too short to see the recurring ones twice.
@@ -178,9 +178,10 @@ pub async fn merge(db: &mut PgConnection, household_id: Uuid, outflow: Uuid, inf
     .await?
     .rows_affected();
     if moved != 1 {
-        return Err(ApiError::Conflict(
+        return Err(ApiError::Conflict(Reason::new(
+            "not_single_leg",
             "one of the two is not a single leg any more".to_owned(),
-        ));
+        )));
     }
     sqlx::query("delete from transactions where id = $1 and household_id = $2")
         .bind(inflow)
@@ -222,7 +223,7 @@ pub async fn split(db: &mut PgConnection, household_id: Uuid, transaction_id: Uu
         return Err(if legs.is_empty() {
             ApiError::NotFound
         } else {
-            ApiError::Invalid("only a transfer of two legs splits".to_owned())
+            ApiError::invalid("not_a_transfer", "only a transfer of two legs splits".to_owned())
         });
     };
     let (id,): (Uuid,) = sqlx::query_as(

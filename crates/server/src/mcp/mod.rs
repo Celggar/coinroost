@@ -31,7 +31,7 @@ use rmcp::{ServerHandler, tool_handler};
 use tower::ServiceExt;
 
 use self::client::{Client, Failure};
-use crate::error::ApiError;
+use crate::error::{ApiError, Reason};
 use crate::{AppState, auth};
 
 const INSTRUCTIONS: &str = "Coinroost keeps one household's accounts and transactions. Read tools answer from the \
@@ -103,8 +103,11 @@ pub fn router(state: AppState, hosts: &[String]) -> Router {
 /// Lets through only a request without `Origin` whose bearer the API accepts.
 async fn gate(State(api): State<Router>, request: Request, next: Next) -> Response {
     if request.headers().contains_key(header::ORIGIN) {
-        return ApiError::Forbidden("a browser may not call /mcp: use an MCP client with a token".to_owned())
-            .into_response();
+        return ApiError::Forbidden(Reason::new(
+            "browser_not_allowed",
+            "a browser may not call /mcp: use an MCP client with a token".to_owned(),
+        ))
+        .into_response();
     }
     let Some(token) = auth::bearer(request.headers()) else {
         return ApiError::Unauthorized.into_response();

@@ -1167,11 +1167,15 @@ export interface components {
         };
         /** @description An error response. `title` is fixed per status; `detail` says what to fix, without internals. */
         Problem: {
-            /** @description Always `about:blank`: the status code says it all. */
+            /** @description Always `about:blank`: the status code and `code` say it all. */
             type: string;
             title: string;
             /** Format: int32 */
             status: number;
+            /** @description Which rule failed, stable across releases: clients show their own text for it (RFC 9457 extension member). */
+            code: string;
+            /** @description The request body member the problem is about, as a JSON Pointer fragment (`#/namespace`), when it is one. */
+            pointer?: string | null;
             detail?: string | null;
         };
         /** @description What importing the file into the account would do. */
@@ -1224,6 +1228,11 @@ export interface components {
         RowFailure: {
             /** @description Row number in the file, 1 being the header. */
             row: number;
+            /** @description Why, stable across releases: `unreadable_date` or `unreadable_amount`. Clients show their own text for it. */
+            code: string;
+            /** @description The cell that could not be read, when there is one (the date as written). */
+            value?: string | null;
+            /** @description Why, in English. */
             reason: string;
         };
         Rule: {

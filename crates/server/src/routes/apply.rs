@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::Session;
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 use crate::sorting::{self, Change, PayeeChoice, Sorted};
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -129,7 +129,12 @@ async fn apply_rules(
     let expected = headers
         .get(header::IF_MATCH)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| ApiError::PreconditionRequired("send the preview's ETag in If-Match".to_owned()))?
+        .ok_or_else(|| {
+            ApiError::PreconditionRequired(Reason::new(
+                "preview_tag_required",
+                "send the preview's ETag in If-Match".to_owned(),
+            ))
+        })?
         .to_owned();
     let mut tx = state.db.begin().await?;
     // One apply at a time per household; rule edits take the same lock.
@@ -139,9 +144,10 @@ async fn apply_rules(
         .await?;
     let changes = sorting::changes(&mut tx, session.household_id).await?;
     if sorting::entity_tag(&changes) != expected.trim() {
-        return Err(ApiError::PreconditionFailed(
+        return Err(ApiError::PreconditionFailed(Reason::new(
+            "preview_outdated",
             "the changes are not the ones previewed any more: preview again".to_owned(),
-        ));
+        )));
     }
     for change in &changes {
         sorting::write(&mut tx, session.household_id, change).await?;

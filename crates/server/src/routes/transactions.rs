@@ -167,13 +167,17 @@ async fn list_transactions(
 ) -> ApiResult<Json<Transactions>> {
     let limit = filter.limit.unwrap_or(DEFAULT_LIMIT);
     if !(1..=MAX_LIMIT).contains(&limit) {
-        return Err(ApiError::Invalid(format!(
-            "limit must be between 1 and {MAX_LIMIT}"
-        )));
+        return Err(ApiError::invalid(
+            "limit_out_of_range",
+            format!("limit must be between 1 and {MAX_LIMIT}"),
+        ));
     }
     let text = filter.q.as_deref().map(str::trim);
     if text.is_some_and(|q| q.is_empty() || q.chars().count() > 200) {
-        return Err(ApiError::Invalid("q has 1 to 200 characters".to_owned()));
+        return Err(ApiError::invalid(
+            "search_length",
+            "q has 1 to 200 characters".to_owned(),
+        ));
     }
     let after = filter.cursor.as_deref().map(Cursor::decode).transpose()?;
     let total: i64 = bind_filter!(

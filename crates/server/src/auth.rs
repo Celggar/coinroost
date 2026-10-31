@@ -28,7 +28,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::AppState;
-use crate::error::{ApiError, ApiResult};
+use crate::error::{ApiError, ApiResult, Reason};
 use crate::{recovery, tokens, totp};
 
 pub const SESSION_COOKIE: &str = "coinroost_session";
@@ -56,9 +56,10 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Session, ApiError> {
         let caller = AnySession::from_request_parts(parts, state).await?;
         if caller.reenroll_required {
-            return Err(ApiError::Forbidden(
+            return Err(ApiError::Forbidden(Reason::new(
+                "reenroll_required",
                 "a recovery code was used: set up a new authenticator first".to_owned(),
-            ));
+            )));
         }
         Ok(Session {
             user_id: caller.user_id,
@@ -118,9 +119,10 @@ async fn api_token(state: &AppState, token: &str, method: &Method) -> Result<Any
     .await?;
     let (user_id, household_id, scope) = row.ok_or(ApiError::Unauthorized)?;
     if scope != "write" && !matches!(*method, Method::GET | Method::HEAD) {
-        return Err(ApiError::Forbidden(
+        return Err(ApiError::Forbidden(Reason::new(
+            "read_only_token",
             "this token may only read: ask for a write token".to_owned(),
-        ));
+        )));
     }
     Ok(AnySession {
         user_id,
@@ -161,9 +163,13 @@ pub fn token_hash(token: &str) -> Vec<u8> {
 
 pub fn hash_password(password: &str) -> ApiResult<String> {
     if password.chars().count() < MIN_PASSWORD_CHARS {
-        return Err(ApiError::Invalid(format!(
-            "a password needs at least {MIN_PASSWORD_CHARS} characters"
-        )));
+        return Err(ApiError::Invalid(
+            Reason::new(
+                "password_too_short",
+                format!("a password needs at least {MIN_PASSWORD_CHARS} characters"),
+            )
+            .at("password"),
+        ));
     }
     Argon2::default()
         .hash_password(password.as_bytes())

@@ -48,7 +48,7 @@ pub struct Period {
 impl Period {
     fn check(&self) -> ApiResult<()> {
         if self.from > self.to {
-            return Err(ApiError::Invalid("from is after to".to_owned()));
+            return Err(ApiError::invalid("dates_reversed", "from is after to".to_owned()));
         }
         Ok(())
     }
@@ -182,7 +182,10 @@ async fn by_payee(
     .check()?;
     let limit = query.limit.unwrap_or(10);
     if !(1..=100).contains(&limit) {
-        return Err(ApiError::Invalid("limit must be between 1 and 100".to_owned()));
+        return Err(ApiError::invalid(
+            "limit_out_of_range",
+            "limit must be between 1 and 100".to_owned(),
+        ));
     }
     let items = sqlx::query_as(concat!(
         moving!(),

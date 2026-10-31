@@ -33,15 +33,20 @@ pub(super) async fn attach_legs(db: &PgPool, household_id: Uuid, items: &mut [Tr
 /// The currency of each leg's account, after checking the legs make one valid transaction.
 pub(super) async fn check_legs(db: &PgPool, household_id: Uuid, legs: &[NewLeg]) -> ApiResult<Vec<String>> {
     if legs.is_empty() || legs.len() > 2 {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "leg_count",
             "a transaction has one leg, or two for a transfer".to_owned(),
         ));
     }
     if legs.iter().any(|l| l.amount_minor == 0) {
-        return Err(ApiError::Invalid("a leg moves a non-zero amount".to_owned()));
+        return Err(ApiError::invalid(
+            "zero_amount",
+            "a leg moves a non-zero amount".to_owned(),
+        ));
     }
     if legs.iter().any(|l| l.statement_text.chars().count() > 1000) {
-        return Err(ApiError::Invalid(
+        return Err(ApiError::invalid(
+            "text_too_long",
             "statement_text has at most 1000 characters".to_owned(),
         ));
     }
@@ -53,23 +58,26 @@ pub(super) async fn check_legs(db: &PgPool, household_id: Uuid, legs: &[NewLeg])
                 .bind(household_id)
                 .fetch_optional(db)
                 .await?;
-        let (currency,) =
-            currency.ok_or_else(|| ApiError::Invalid(format!("no account {}", leg.account_id)))?;
+        let (currency,) = currency
+            .ok_or_else(|| ApiError::invalid("unknown_account", format!("no account {}", leg.account_id)))?;
         currencies.push(currency);
     }
     if let [a, b] = legs {
         if a.account_id == b.account_id {
-            return Err(ApiError::Invalid(
+            return Err(ApiError::invalid(
+                "transfer_same_account",
                 "a transfer moves money between two different accounts".to_owned(),
             ));
         }
         if currencies[0] != currencies[1] {
-            return Err(ApiError::Invalid(
+            return Err(ApiError::invalid(
+                "transfer_currencies_differ",
                 "a transfer moves money within one currency".to_owned(),
             ));
         }
         if a.amount_minor.checked_add(b.amount_minor) != Some(0) {
-            return Err(ApiError::Invalid(
+            return Err(ApiError::invalid(
+                "transfer_not_balanced",
                 "the two legs of a transfer sum to zero".to_owned(),
             ));
         }
