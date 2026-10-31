@@ -207,6 +207,13 @@ th.number {
 	border: 1px solid var(--border);
 }
 
+/* Forced colors drop the tints: a frame keeps a chip a chip, not a loose word set in from its column. */
+@media (forced-colors: active) {
+	.chip {
+		border: 1px solid CanvasText;
+	}
+}
+
 /* Disclosures: a marker of our own that turns, and a body that opens (FD9, D46). */
 details > summary {
 	list-style: none;

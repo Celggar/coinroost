@@ -262,6 +262,20 @@
 	.key.spending {
 		background: var(--chart-spending);
 	}
+	/* Forced colors drop backgrounds, which left the legend blank beside coloured bars: the keys and the bars keep
+	   their two colours (they are what tells income from spending), and the keys take a frame. */
+	@media (forced-colors: active) {
+		.swatch,
+		.key,
+		path.income,
+		path.spending {
+			forced-color-adjust: none;
+		}
+		.swatch,
+		.key {
+			border: 1px solid CanvasText;
+		}
+	}
 	.plot {
 		position: relative;
 		min-height: 240px;

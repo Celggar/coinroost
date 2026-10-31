@@ -84,6 +84,13 @@
 		border-radius: 0 4px 4px 0;
 		background: var(--chart-spending);
 	}
+	/* Forced colors drop backgrounds, and the bar is nothing else: it takes the text colour instead. */
+	@media (forced-colors: active) {
+		.fill {
+			forced-color-adjust: none;
+			background: CanvasText;
+		}
+	}
 	summary {
 		cursor: pointer;
 		padding: var(--space-sm) 0;

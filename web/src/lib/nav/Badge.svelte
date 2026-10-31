@@ -39,10 +39,14 @@
 		color: var(--warn);
 		box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--warn) 40%, transparent);
 	}
-	/* Forced colors drop backgrounds and shadows: a border keeps the count a badge, not a loose number. */
+	/* Forced colors drop backgrounds and shadows: a border keeps the count a badge, not a loose number, and the
+	   page's colour fills it, so the icon under its corner does not show through the ring. */
 	@media (forced-colors: active) {
 		.badge {
+			forced-color-adjust: none;
 			border: 1px solid CanvasText;
+			background: Canvas;
+			color: CanvasText;
 		}
 	}
 </style>
