@@ -137,8 +137,9 @@
 		.narrow-only {
 			display: contents;
 		}
-		/* The top bar carries the page's title; the page keeps its heading for screen readers and the outline. */
-		main :global(h1) {
+		/* The top bar carries the page's title; the page keeps its heading for screen readers and the outline. Only
+		   the app's main: the sign-in pages have no top bar, so their title stays in sight. */
+		#main :global(h1) {
 			position: absolute;
 			width: 1px;
 			height: 1px;
