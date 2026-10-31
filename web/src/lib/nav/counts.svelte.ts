@@ -11,6 +11,20 @@ export const counts = $state({
 	accounts: 0
 });
 
+/** What the summary's «Por revisar» card says about those counts (P3), from the same answers, so it never disagrees
+ * with the badges or with the pages it links to. */
+export const pending = $state({
+	ready: false,
+	/** Money that left in the uncategorized transactions, per currency (minor units, positive). */
+	spending: [] as { currency: string; minor: number }[],
+	/** The late accounts, with their latest data. */
+	late: [] as { name: string; latest: string | null }[],
+	pairs: 0,
+	unmatched: 0,
+	/** The first answers failed: the summary shows without the card rather than wait for ever. */
+	failed: false
+});
+
 let asked = 0;
 
 export async function refreshCounts() {
@@ -23,10 +37,27 @@ export async function refreshCounts() {
 	if (mine !== asked) return;
 	// Each count on its own: a failed transfer check left Revisar without a badge while 16 transactions waited
 	// (pass 7). One that fails keeps its last answer.
-	if (open.data) counts.uncategorized = open.data.items.length;
-	if (pairing.data) counts.transfers = pairing.data.pairs.length + pairing.data.unmatched.length;
+	if (open.data) {
+		counts.uncategorized = open.data.items.length;
+		const out = new Map<string, number>();
+		for (const leg of open.data.items.flatMap((x) => x.legs)) {
+			if (leg.amount_minor < 0)
+				out.set(leg.currency, (out.get(leg.currency) ?? 0) - leg.amount_minor);
+		}
+		pending.spending = [...out].map(([currency, minor]) => ({ currency, minor }));
+	}
+	if (pairing.data) {
+		counts.transfers = pairing.data.pairs.length + pairing.data.unmatched.length;
+		pending.pairs = pairing.data.pairs.length;
+		pending.unmatched = pairing.data.unmatched.length;
+	}
 	counts.review = counts.uncategorized + counts.transfers;
 	if (coverage.data) {
-		counts.accounts = coverage.data.items.filter((i) => i.delay === 'late').length;
+		const late = coverage.data.items.filter((i) => i.delay === 'late');
+		counts.accounts = late.length;
+		pending.late = late.map((i) => ({ name: i.name, latest: i.latest ?? null }));
 	}
+	// Once all three answered, the card shows; a later failed refresh keeps the last numbers.
+	if (open.data && pairing.data && coverage.data) pending.ready = true;
+	else if (!pending.ready) pending.failed = true;
 }

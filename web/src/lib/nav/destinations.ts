@@ -14,7 +14,11 @@ export type IconName =
 	| 'logout'
 	| 'chev'
 	| 'check'
-	| 'unknown';
+	| 'unknown'
+	| 'tag'
+	| 'clock'
+	| 'transfer'
+	| 'cash';
 
 export type Destination = {
 	href: string;

@@ -76,6 +76,21 @@ async function ranking(
 
 export async function checkDashboard(page: Page) {
 	const api = async (path: string) => (await page.request.get(path)).json();
+
+	// «Por revisar» leads with the count the uncategorized page lists: one query for both (P3).
+	const open = (await api('/api/v1/transactions?uncategorized=true&limit=1000')).items.length;
+	const review = page.getByRole('region', { name: say('review.title') });
+	await expect(review).toContainText(
+		open === 1
+			? say('review.uncategorized_one', { count: 1 })
+			: open
+				? say('review.uncategorized_other', { count: open })
+				: say('review.all_categorized')
+	);
+
+	// The dates are only there under «Otro…».
+	await expect(page.getByLabel(say('period.from'), { exact: true })).toHaveCount(0);
+	await page.getByRole('button', { name: say('dashboard.other'), exact: true }).click();
 	await page.getByLabel(say('period.from'), { exact: true }).fill(period.from);
 	await page.getByLabel(say('period.to'), { exact: true }).fill(period.to);
 	const q = `from=${period.from}&to=${period.to}`;

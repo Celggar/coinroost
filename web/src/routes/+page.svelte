@@ -1,23 +1,30 @@
 <script lang="ts">
-	// The dashboard: the period's money per currency, then what is owed to the person. Every number comes from
-	// one report of the API, never summed across currencies.
+	// The dashboard: what waits for the person («Por revisar», P3), what is owed to them, then the period's money per
+	// currency. Every number comes from one report of the API, never summed across currencies.
 	import { retry } from '#lib/ui/focus.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import MonthlyChart from '#lib/dashboard/MonthlyChart.svelte';
 	import Payroll from '#lib/dashboard/Payroll.svelte';
+	import Review from '#lib/dashboard/Review.svelte';
+	import { pending } from '#lib/nav/counts.svelte.ts';
+	import { span } from '#lib/format.ts';
+	import { fade, slide } from 'svelte/transition';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import Ranking, { type Ranked } from '#lib/dashboard/Ranking.svelte';
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
-	import { arrive, fadeThrough, placeholder, pop, vanish } from '#lib/motion.ts';
+	import { DURATION, EASE, fadeThrough, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
 	const PAYEES = 10;
-	const presets: { which: Preset; label: Key }[] = [
+	// One segmented control for the period (P3): three presets and «Otro…», which alone shows the two dates.
+	const presets: { which: Preset | 'other'; label: Key }[] = [
 		{ which: 'month', label: 'dashboard.this_month' },
 		{ which: 'year', label: 'dashboard.this_year' },
-		{ which: 'twelve', label: 'dashboard.twelve' }
+		{ which: 'twelve', label: 'dashboard.twelve' },
+		{ which: 'other', label: 'dashboard.other' }
 	];
 
 	type Reports = {
@@ -35,13 +42,18 @@
 
 	let from = $state(preset('year').from);
 	let to = $state(preset('year').to);
+	// «Otro…» chosen: the dates show and are the period, even when they happen to equal a preset.
+	let custom = $state(false);
 	let reports = $state<Reports | null>(null);
+	let payroll = $state<Schemas['Payroll'] | null>(null);
+	let payrollSettled = $state(false);
 	let busy = $state(false);
 	let error = $state('');
 	let latest = 0;
 	let shown = $state<HTMLElement>();
 	// Answers are shown one at a time, each with a fade through (FD9): two quick changes of period never cross.
 	let showing = Promise.resolve();
+	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load(period: Period) {
 		// An end before the start asks nothing: the last answer stays as it is while the field says what is wrong.
@@ -103,9 +115,30 @@
 		load({ from, to });
 	});
 
-	function choose(which: Preset) {
+	function choose(which: Preset | 'other') {
+		if (which === 'other') {
+			custom = true;
+			return;
+		}
+		custom = false;
 		({ from, to } = preset(which));
 	}
+
+	function chosen(which: Preset | 'other'): boolean {
+		if (which === 'other') return custom;
+		const range = preset(which);
+		return !custom && from === range.from && to === range.to;
+	}
+
+	// The dates open under the control and close again (FD9); under reduced motion they only fade.
+	const open = (node: Element) =>
+		prefersReducedMotion.current
+			? fade(node, { duration: DURATION.short })
+			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
+	const close = (node: Element) =>
+		prefersReducedMotion.current
+			? fade(node, { duration: DURATION.short })
+			: slide(node, { duration: DURATION.short, easing: EASE.exit });
 
 	function ranked(
 		items: { id: string | null | undefined; spending: number; count: number }[],
@@ -120,6 +153,7 @@
 		}));
 	}
 
+	const ready = $derived(!!reports && (pending.ready || pending.failed) && payrollSettled);
 	const currencies = $derived(reports?.summary.totals ?? []);
 	const monthList = $derived(reports ? months(reports.period) : []);
 </script>
@@ -131,37 +165,133 @@
 <h1>{t('dashboard.title')}</h1>
 
 <div class="stack">
-	<!-- Three labelled controls in one row (FD4, his #158): the presets are a segmented control as tall as the date
-		 fields, under a label of their own, so labels share their tops and controls theirs, even when «Hasta» shows
-		 an error under it. -->
-	<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
-	{#if reports?.hasAccounts}
-		<!-- After a retry it waits for the alert to fade out, like the figures (pass 11). -->
-		<div class="period" in:arrive>
-			<div class="form-field" role="group" aria-labelledby="period-label">
-				<span class="label" id="period-label">{t('dashboard.period')}</span>
-				<div class="presets">
-					{#each presets as option (option.which)}
-						{@const range = preset(option.which)}
-						{@const chosen = from === range.from && to === range.to}
-						<button class="secondary" aria-pressed={chosen} onclick={() => choose(option.which)}
-							>{#if chosen}<svg
-									class="check"
-									viewBox="0 0 24 24"
-									aria-hidden="true"
-									in:pop
-									out:vanish><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
-								>{/if}{t(option.label)}</button
-						>
-					{/each}
-				</div>
-			</div>
-			<DateRange bind:from bind:to />
-		</div>
-	{/if}
+	<!-- The top shows whole, once the reports, the counts and the payroll have answered: a card or a row arriving
+		 later pushed the period's control down under the pointer. A household with no account gets the empty card. -->
+	{#if ready && reports}
+		<div class="stack" in:fade={{ duration: DURATION.medium }}>
+			{#if reports.hasAccounts && pending.ready}
+				<Review {payroll} />
+			{/if}
 
-	{#if error}
-		<p class="alert" role="alert" in:arrive out:placeholder>
+			<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
+			{#if reports.hasAccounts}
+				<!-- The period (P3): one segmented control under its label, the range it stands for beside it; the two dates
+				 only under «Otro…». The control's segments share its width, so a check coming or going moves nothing else. -->
+				<div class="period">
+					<div class="form-field" role="group" aria-labelledby="period-label">
+						<span class="label" id="period-label">{t('dashboard.period')}</span>
+						<div class="presets">
+							{#each presets as option (option.which)}
+								{@const on = chosen(option.which)}
+								<button
+									class="secondary"
+									aria-pressed={on}
+									aria-controls={option.which === 'other' ? 'period-dates' : undefined}
+									onclick={() => choose(option.which)}
+									>{#if on}<svg
+											class="check"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+											in:pop
+											out:vanish><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+										>{/if}{t(option.label)}</button
+								>
+							{/each}
+						</div>
+					</div>
+					{#if !custom && datesOk}
+						<p class="range" in:fade={{ duration: DURATION.short }}>{span(from, to)}</p>
+					{/if}
+				</div>
+				{#if custom}
+					<div class="dates" id="period-dates" in:open out:close>
+						<DateRange bind:from bind:to />
+					</div>
+				{/if}
+			{/if}
+
+			{#if error}
+				<p class="alert" role="alert">
+					{error}
+					<button class="secondary" onclick={() => retry(() => load({ from, to }))}
+						>{t('app.try_again')}</button
+					>
+				</p>
+			{/if}
+
+			<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
+				{#if currencies.length === 0}
+					<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
+					     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
+					{#if reports.hasBankFile}
+						<EmptyState
+							icon="import"
+							text={t('dashboard.nothing')}
+							href="/import"
+							action={t('dashboard.to_import')}
+						/>
+					{:else if reports.hasAccounts}
+						<!-- Only cash accounts: Import would say there is no account for a bank's file (pass 7). -->
+						<EmptyState
+							icon="bank"
+							text={`${t('dashboard.nothing')} ${t('import.no_bank_file')}`}
+							href="/accounts"
+							action={t('file.open_accounts')}
+						/>
+					{:else}
+						<EmptyState
+							icon="bank"
+							text={t('dashboard.no_accounts')}
+							href="/accounts"
+							action={t('dashboard.to_accounts')}
+						/>
+					{/if}
+				{/if}
+				{#each currencies as totals (totals.currency)}
+					{@const c = totals.currency}
+					<section class="stack" aria-label={t('dashboard.in_currency', { currency: c })}>
+						{#if currencies.length > 1}<h2>{t('dashboard.in_currency', { currency: c })}</h2>{/if}
+						<Tiles {totals} />
+						<div class="card">
+							<MonthlyChart
+								rows={reports.monthly.filter((r) => r.currency === c)}
+								months={monthList}
+								currency={c}
+							/>
+						</div>
+						<div class="rankings">
+							<Ranking
+								title={t('ranking.categories')}
+								hint={t('ranking.categories_hint')}
+								currency={c}
+								items={ranked(
+									reports.categories
+										.filter((i) => i.currency === c)
+										.map((i) => ({ ...i, id: i.category_id })),
+									reports.categoryNames,
+									'ranking.no_category'
+								)}
+							/>
+							<Ranking
+								title={t('ranking.payees')}
+								hint={t('ranking.payees_hint', { count: PAYEES })}
+								currency={c}
+								shown={PAYEES}
+								items={ranked(
+									reports.payees
+										.filter((i) => i.currency === c)
+										.map((i) => ({ ...i, id: i.payee_id })),
+									reports.payeeNames,
+									'ranking.no_payee'
+								)}
+							/>
+						</div>
+					</section>
+				{/each}
+			</div>
+		</div>
+	{:else if error}
+		<p class="alert" role="alert">
 			{error}
 			<button
 				class="secondary"
@@ -169,86 +299,11 @@
 				>{t('app.try_again')}</button
 			>
 		</p>
+	{:else}
+		<p class="hint loading">{t('app.loading')}</p>
 	{/if}
-
-	{#if reports}
-		<div class="reports stack" class:stale={busy} bind:this={shown} in:arrive>
-			{#if currencies.length === 0}
-				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
-				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
-				{#if reports.hasBankFile}
-					<EmptyState
-						icon="import"
-						text={t('dashboard.nothing')}
-						href="/import"
-						action={t('dashboard.to_import')}
-					/>
-				{:else if reports.hasAccounts}
-					<!-- Only cash accounts: Import would say there is no account for a bank's file (pass 7). -->
-					<EmptyState
-						icon="bank"
-						text={`${t('dashboard.nothing')} ${t('import.no_bank_file')}`}
-						href="/accounts"
-						action={t('file.open_accounts')}
-					/>
-				{:else}
-					<EmptyState
-						icon="bank"
-						text={t('dashboard.no_accounts')}
-						href="/accounts"
-						action={t('dashboard.to_accounts')}
-					/>
-				{/if}
-			{/if}
-			{#each currencies as totals (totals.currency)}
-				{@const c = totals.currency}
-				<section class="stack" aria-label={t('dashboard.in_currency', { currency: c })}>
-					{#if currencies.length > 1}<h2>{t('dashboard.in_currency', { currency: c })}</h2>{/if}
-					<Tiles {totals} />
-					<div class="card">
-						<MonthlyChart
-							rows={reports.monthly.filter((r) => r.currency === c)}
-							months={monthList}
-							currency={c}
-						/>
-					</div>
-					<div class="rankings">
-						<Ranking
-							title={t('ranking.categories')}
-							hint={t('ranking.categories_hint')}
-							currency={c}
-							items={ranked(
-								reports.categories
-									.filter((i) => i.currency === c)
-									.map((i) => ({ ...i, id: i.category_id })),
-								reports.categoryNames,
-								'ranking.no_category'
-							)}
-						/>
-						<Ranking
-							title={t('ranking.payees')}
-							hint={t('ranking.payees_hint', { count: PAYEES })}
-							currency={c}
-							shown={PAYEES}
-							items={ranked(
-								reports.payees
-									.filter((i) => i.currency === c)
-									.map((i) => ({ ...i, id: i.payee_id })),
-								reports.payeeNames,
-								'ranking.no_payee'
-							)}
-						/>
-					</div>
-				</section>
-			{/each}
-		</div>
-	{:else if !error}
-		<p class="hint loading" out:placeholder>{t('app.loading')}</p>
-	{/if}
-
-	<!-- What is owed comes after the period's figures: before them it pushed the tiles below the first screen on a
-	     phone (pass 7). -->
-	<Payroll />
+	<!-- What is owed to the person, after the period's figures: «Por revisar» above says who owes and leads here. -->
+	<Payroll bind:payroll bind:settled={payrollSettled} />
 </div>
 
 <style>
@@ -261,8 +316,17 @@
 	/* Material 3 segmented buttons: joined segments, the chosen one filled. Each segment has room for its label and
 	   the check, so the check coming or going never moves the dates beside them. */
 	.presets {
-		display: inline-grid;
-		grid-template-columns: repeat(3, minmax(9.25rem, auto));
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		width: min(100%, 37rem);
+	}
+	/* The range the presets stand for, level with the control's middle (not its label) when beside it; under it on
+	   a narrower page, without a band of empty height. */
+	.range {
+		align-self: end;
+		margin: 0;
+		padding-bottom: calc((var(--field-height) - 1lh) / 2);
+		color: var(--muted);
 	}
 	.presets button {
 		white-space: nowrap;
@@ -317,32 +381,39 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
-	/* A phone: the presets in three equal segments across, the two dates side by side under them. The chosen one
-	   shows by its fill alone, as Material's segmented button allows: with the check, «✓ This month» left its
-	   segment at 320 px and touched the divider at 360 (pass 10). */
+	.period > .form-field {
+		flex: 1 1 auto;
+		max-width: 37rem;
+	}
+	/* A phone: the four segments across the width with a smaller label, the range under them. Each segment takes
+	   its label's width plus an equal share of the rest (UIKit's segments «apportioned by content»): equal ones left
+	   «This month» and «12 meses» touching their borders. The chosen one shows by its fill alone, as Material's
+	   segmented button allows: the check needs room four segments do not have there. */
 	@media (max-width: 560px) {
+		.period > .form-field,
+		.presets {
+			width: 100%;
+			max-width: none;
+		}
+		.range {
+			padding-bottom: 0;
+		}
+		.presets {
+			display: flex;
+		}
+		.presets button {
+			flex: 1 1 auto;
+			padding: 0 var(--space-sm);
+			font-size: var(--text-sm);
+		}
 		.check {
 			display: none;
 		}
-		.period > :global(*),
-		.presets {
-			width: 100%;
-		}
-		.presets {
-			display: grid;
-		}
-		.presets {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-		.presets button {
-			padding: 0 var(--space-sm);
-		}
 	}
-	/* The narrowest phones: a smaller label and padding, so «12 months» stays on one line. */
 	@media (max-width: 359px) {
 		.presets button {
 			padding: 0 var(--space-xs);
-			font-size: var(--text-sm);
+			font-size: var(--text-xs);
 		}
 	}
 	/* Side by side the two cards share their height and their rows: each has a title and a hint line (pass 1). */

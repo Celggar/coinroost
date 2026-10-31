@@ -1,5 +1,6 @@
 <script lang="ts">
-	// «Payments owed to you»: each employer's report at today's date.
+	// «Payments owed to you»: each employer's report at today's date. The page holds the answer (bound), so «Por
+	// revisar» can say who owes without asking again.
 	import { retry } from '#lib/ui/focus.ts';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -8,7 +9,10 @@
 	import Employer from './Employer.svelte';
 	import { arrive, placeholder } from '#lib/motion.ts';
 
-	let payroll = $state<Schemas['Payroll'] | null>(null);
+	let {
+		payroll = $bindable(null),
+		settled = $bindable(false)
+	}: { payroll?: Schemas['Payroll'] | null; settled?: boolean } = $props();
 	let error = $state('');
 
 	// A failed load keeps its alert until the next answer: cleared at the start, it took the whole card away, and the
@@ -19,6 +23,8 @@
 			error: failure,
 			response
 		} = await api.GET('/api/v1/payroll', { params: { query: { as_of: today() } } });
+		// Answered, either way: the summary waits for it so «Por revisar» does not grow a row after it shows.
+		settled = true;
 		if (!data) {
 			error = problem(failure, response?.status, t('payroll.failed'));
 			return;
@@ -31,7 +37,7 @@
 </script>
 
 {#if error || payroll?.employers.length}
-	<section class="card" aria-labelledby="payroll-title" in:arrive>
+	<section class="card" id="payroll" aria-labelledby="payroll-title" in:arrive>
 		<h2 id="payroll-title">{t('payroll.title')}</h2>
 		{#if error}
 			<p class="alert" role="alert" in:arrive out:placeholder>

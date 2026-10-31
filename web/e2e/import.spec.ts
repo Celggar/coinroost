@@ -536,7 +536,9 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 		expect(await overflow(page), path).toBeLessThanOrEqual(0);
 		if (path === '/') {
-			// Every fold open (the month table, each employer's history): tables scroll in their own box.
+			// Every fold open (the month table, each employer's history, the dates under «Otro…»): tables scroll in
+			// their own box.
+			await page.getByRole('button', { name: say('dashboard.other'), exact: true }).click();
 			await page.getByLabel(say('period.from'), { exact: true }).fill('2026-05-01');
 			await page.getByLabel(say('period.to'), { exact: true }).fill('2026-05-31');
 			await expect(page.getByRole('region', { name: say('payroll.title') })).toBeVisible();
