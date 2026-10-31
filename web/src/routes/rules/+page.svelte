@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import Changes from '#lib/rules/Changes.svelte';
@@ -60,7 +61,16 @@
 		// The buttons were disabled while it moved, which drops the focus: it follows the rule, to the same button,
 		// or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).
 		await tick();
-		focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`);
+		if (!focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`)) return;
+		// The rule glides to its place after the focus went to it: once it lands, the page follows it, or near the
+		// top of the screen the focus ended above it (pass 7).
+		const row = (document.activeElement as HTMLElement).closest('li');
+		await new Promise(requestAnimationFrame);
+		await Promise.all(row?.getAnimations().map((a) => a.finished.catch(() => undefined)) ?? []);
+		row?.scrollIntoView({
+			block: 'nearest',
+			behavior: prefersReducedMotion.current ? 'auto' : 'smooth'
+		});
 	}
 
 	async function remove(rule: Schemas['Rule']) {

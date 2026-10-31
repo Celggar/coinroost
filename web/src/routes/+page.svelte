@@ -27,6 +27,8 @@
 		categoryNames: Map<string, string>;
 		payeeNames: Map<string, string>;
 		hasAccounts: boolean;
+		/** An account a bank's file imports into: with only cash accounts, importing is not the way on. */
+		hasBankFile: boolean;
 		period: Period;
 	};
 
@@ -82,6 +84,7 @@
 			categoryNames: new Map(categoryList.data.items.map((c) => [c.id, c.name])),
 			payeeNames: new Map(payeeList.data.items.map((p) => [p.id, p.name])),
 			hasAccounts: accountList.data.items.length > 0,
+			hasBankFile: accountList.data.items.some((a) => a.profile),
 			period
 		};
 		showing = showing.then(() => {
@@ -165,12 +168,20 @@
 			{#if currencies.length === 0}
 				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
 				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
-				{#if reports.hasAccounts}
+				{#if reports.hasBankFile}
 					<EmptyState
 						icon="import"
 						text={t('dashboard.nothing')}
 						href="/import"
 						action={t('dashboard.to_import')}
+					/>
+				{:else if reports.hasAccounts}
+					<!-- Only cash accounts: Import would say there is no account for a bank's file (pass 7). -->
+					<EmptyState
+						icon="bank"
+						text={`${t('dashboard.nothing')} ${t('import.no_bank_file')}`}
+						href="/accounts"
+						action={t('file.open_accounts')}
 					/>
 				{:else}
 					<EmptyState

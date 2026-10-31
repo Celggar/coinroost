@@ -21,11 +21,11 @@ export async function refreshCounts() {
 		api.GET('/api/v1/coverage', { params: { query: { today: today() } } })
 	]);
 	if (mine !== asked) return;
-	if (open.data && pairing.data) {
-		counts.uncategorized = open.data.items.length;
-		counts.transfers = pairing.data.pairs.length + pairing.data.unmatched.length;
-		counts.review = counts.uncategorized + counts.transfers;
-	}
+	// Each count on its own: a failed transfer check left Revisar without a badge while 16 transactions waited
+	// (pass 7). One that fails keeps its last answer.
+	if (open.data) counts.uncategorized = open.data.items.length;
+	if (pairing.data) counts.transfers = pairing.data.pairs.length + pairing.data.unmatched.length;
+	counts.review = counts.uncategorized + counts.transfers;
 	if (coverage.data) {
 		counts.accounts = coverage.data.items.filter((i) => i.delay === 'late').length;
 	}

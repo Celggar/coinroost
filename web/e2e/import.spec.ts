@@ -299,6 +299,54 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 	await checkDashboard(page);
 });
 
+test('a rule moved up keeps its focused button on screen', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	const made: string[] = [];
+	for (const name of ['Moved A', 'Moved B', 'Moved C', 'Moved D']) {
+		const response = await page.request.post('/api/v1/rules', {
+			data: {
+				name,
+				when: { description_contains: name.toUpperCase() },
+				then: { payee_from_text: true }
+			}
+		});
+		expect(response.ok()).toBe(true);
+		made.push((await response.json()).id);
+	}
+	await page.goto('/rules');
+	// A rule near the top of the screen glides up after its button got the focus: the page has to follow it, or the
+	// focus ends above the screen (pass 7, y = -144).
+	const up = page.locator(`[data-move="${made[2]}-up"]`);
+	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 90));
+	await up.focus();
+	const reloaded = page.waitForResponse(
+		(r) => r.url().includes('/api/v1/rules') && r.request().method() === 'GET'
+	);
+	await page.keyboard.press('Enter');
+	await reloaded;
+	await page.evaluate(
+		() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+	);
+	await up.evaluate((e) =>
+		Promise.all(
+			e
+				.closest('li')!
+				.getAnimations()
+				.map((a) => a.finished.catch(() => undefined))
+		)
+	);
+	await expect(up).toBeFocused();
+	await expect
+		.poll(() =>
+			up.evaluate(
+				(e) => e.getBoundingClientRect().top >= 0 && e.getBoundingClientRect().bottom <= innerHeight
+			)
+		)
+		.toBe(true);
+	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+});
+
 test('switches to English and remembers it after a reload', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');
