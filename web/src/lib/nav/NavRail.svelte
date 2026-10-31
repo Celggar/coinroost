@@ -140,9 +140,10 @@
 			outline: 2px solid CanvasText;
 		}
 	}
+	/* The same 4 px between Security and the account button as between the rows above. */
 	.foot {
 		margin-top: auto;
 		display: grid;
-		gap: var(--space-sm);
+		gap: var(--space-xs);
 	}
 </style>

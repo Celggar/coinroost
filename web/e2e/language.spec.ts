@@ -62,6 +62,22 @@ test('the language picked is saved on the account and wins on another browser', 
 	const third = await otherDevice(browser, context);
 	await expect(third.locator('html')).toHaveAttribute('lang', 'es');
 	await expect(third.getByRole('heading', { level: 1 })).toHaveText(say('dashboard.title'));
+
+	// A save that fails keeps the pick on this device, as its notice says, and the next load saves it.
+	await third.route('**/api/v1/me', (route) =>
+		route.request().method() === 'PATCH' ? route.fulfill({ status: 500 }) : route.fallback()
+	);
+	await openAccount(third, 'es');
+	await third.getByRole('radio', { name: 'English' }).check();
+	await expect(third.getByRole('alert')).toHaveText(english('language.not_saved'));
+	await third.unroute('**/api/v1/me');
+	const retried = third.waitForResponse(saved);
+	await third.reload();
+	await retried;
+	await expect(third.locator('html')).toHaveAttribute('lang', 'en');
+	const fourth = await otherDevice(browser, context);
+	await expect(fourth.locator('html')).toHaveAttribute('lang', 'en');
 	await second.context().close();
 	await third.context().close();
+	await fourth.context().close();
 });

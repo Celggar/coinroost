@@ -43,9 +43,38 @@ export async function refresh(): Promise<void> {
 	session.checked = true;
 }
 
-// The language saved on the account wins over this device's on every login (P2). An account with none takes the
-// pick made here, if there was one, so the next device opens in it too.
+// A pick whose save failed waits on this device, for that account, and is tried again on the next load: until the
+// account has it, this device keeps it, as the notice promised.
+const PENDING = 'coinroost.locale.pending';
+
+function pending(user: string): Locale | null {
+	try {
+		const [who, locale] = (localStorage.getItem(PENDING) ?? '').split(' ');
+		return who === user && (locale === 'es' || locale === 'en') ? locale : null;
+	} catch {
+		return null;
+	}
+}
+
+function setPending(user: string, locale: Locale | null) {
+	try {
+		if (locale) localStorage.setItem(PENDING, `${user} ${locale}`);
+		else localStorage.removeItem(PENDING);
+	} catch {
+		// Storage is off (a private window): the pick lasts this visit only.
+	}
+}
+
+// The language saved on the account wins over this device's on every login (P2), unless a pick made here is still
+// waiting to be saved. An account with none takes the pick made here, if there was one, so the next device opens in
+// it too.
 function adopt(saved: string | null | undefined) {
+	const waiting = session.user && pending(session.user.user_id);
+	if (waiting) {
+		if (waiting !== i18n.locale) setLocale(waiting);
+		void saveLocale(waiting);
+		return;
+	}
 	if (saved === 'es' || saved === 'en') {
 		if (saved !== i18n.locale) setLocale(saved);
 		return;
@@ -57,8 +86,10 @@ function adopt(saved: string | null | undefined) {
 /** Saves the language on the account, when someone is logged in; true once the server has it. */
 export async function saveLocale(locale: Locale): Promise<boolean> {
 	if (!session.user) return false;
+	const user = session.user.user_id;
 	const { data } = await api.PATCH('/api/v1/me', { body: { locale } });
 	if (data) session.user = data;
+	setPending(user, data ? null : locale);
 	return Boolean(data);
 }
 

@@ -81,7 +81,9 @@
 			out:vanish
 		>
 			<p class="who">
-				<span>{t('nav.signed_in_as')}</span><span class="address">{shortName}@<wbr />{domain}</span>
+				<span>{t('nav.signed_in_as')}</span><span class="address"
+					><span>{shortName}@</span><wbr /><span>{domain}</span></span
+				>
 			</p>
 			<div class="language">
 				<p class="label" aria-hidden="true">{t('more.language')}</p>
@@ -184,6 +186,12 @@
 	.address {
 		color: var(--text);
 		font-weight: 600;
+	}
+	/* The name and the domain each hold together while they fit the line, so a long address breaks after the @, not
+	   at a hyphen or a dot further on; a part longer than the line still breaks inside. */
+	.address > span {
+		display: inline-block;
+		max-width: 100%;
 		overflow-wrap: anywhere;
 	}
 	.language {
@@ -208,17 +216,34 @@
 		padding-top: var(--space-xs);
 		border-top: 1px solid var(--border);
 	}
-	/* No padding before the icon: its stroke starts 4 px into its box, on the text's line above. */
+	/* The hover tint reaches 8 px past the panel's text on each side, so it does not start right at the icon; the icon's
+	   stroke (4 px into its box) stays on the text's line above. */
 	.leave {
 		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 		justify-content: flex-start;
 		gap: var(--space-md);
-		width: 100%;
+		width: calc(100% + 2 * var(--space-sm));
 		min-height: 48px;
-		padding: 0 var(--space-xs) 0 0;
+		margin-inline: calc(-1 * var(--space-sm));
+		padding: 0 var(--space-sm);
 		border: 0;
 		border-radius: var(--radius-field);
 		background: none;
 		color: var(--text);
+	}
+	/* Its focus ring is drawn inside it, clear of the divider above and the panel's edge below. */
+	.leave:focus-visible {
+		outline-offset: -3px;
+	}
+	/* Where more contrast is asked for, the panel and its dividers take the fields' stronger border, like the cards. */
+	@media (prefers-contrast: more), (forced-colors: active) {
+		.panel {
+			box-shadow: none;
+		}
+		.panel,
+		.language,
+		.foot {
+			border-color: var(--field-border);
+		}
 	}
 </style>
