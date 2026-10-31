@@ -150,10 +150,10 @@
 		display: grid;
 		gap: var(--space-sm);
 	}
-	/* The rail is the surface itself: the chosen language takes the accent tint the rail's current page has. */
+	/* The rail is the surface itself: the chosen language takes the accent tint the rail's current page has. Its pills
+	   start where the destinations' pills do (8 px further in, they looked misplaced, pass 8). */
 	.foot :global(.language) {
 		--language-chosen: color-mix(in oklab, var(--accent) 14%, var(--surface));
-		padding: 0 var(--space-sm);
 	}
 	/* The log-out row is a plain row like the links, not a boxed button. */
 	.row {

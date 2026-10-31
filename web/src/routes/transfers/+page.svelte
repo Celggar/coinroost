@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { retry } from '#lib/ui/focus.ts';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import Made from '#lib/transfers/Made.svelte';
@@ -44,7 +45,7 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
 	</p>
 {/if}
 {#if preview}

@@ -10,6 +10,7 @@
 		fortnightList,
 		fortnightName,
 		historyRows,
+		runParts,
 		statusName,
 		statusTone
 	} from './payroll.ts';
@@ -97,12 +98,14 @@
 										<td data-label={t('column.status')}
 											><span class="chip {statusTone('no_data')}">{statusName('no_data')}</span></td
 										>
-										<td data-label={t('payroll.days')}
-											>{t('payroll.run', {
-												first: fortnightName(row.first),
-												last: fortnightName(row.last, true)
-											})}</td
-										>
+										<td data-label={t('payroll.days')}>
+											<!-- One block, so on a phone card the range sits beside its label whole. -->
+											<span
+												>{#each runParts(row.first, row.last) as part, i (i)}{#if part.end}<span
+															class="end">{part.text}</span
+														>{:else}{part.text}{/if}{/each}</span
+											>
+										</td>
 										<td data-label={t('payroll.payment')}></td>
 									</tr>
 								{:else}
@@ -113,15 +116,18 @@
 											><span class="chip {statusTone(line.status)}">{statusName(line.status)}</span
 											></td
 										>
-										<td data-label={t('payroll.days')}>{daysText(line)}</td>
+										<td class="when" data-label={t('payroll.days')}>{daysText(line)}</td>
 										<td data-label={t('payroll.payment')}>
 											<!-- One block, so on a phone card both lines sit beside the label. -->
 											{#if line.payment}
 												<div>
-													{day(line.payment.date)} · {money(line.payment.amount_minor, c)}
+													<span class="paid"
+														>{[day(line.payment.date), money(line.payment.amount_minor, c)].join(
+															LIST
+														)}</span
+													>
 													<div class="hint">
-														{line.payment.description}{#if line.label}
-															· {t('payroll.named', {
+														{line.payment.description}{#if line.label}{LIST}{t('payroll.named', {
 																fortnight: fortnightName(line.label, true)
 															})}{/if}
 													</div>
@@ -179,5 +185,16 @@
 		cursor: pointer;
 		padding: var(--space-sm) 0;
 		min-height: 44px;
+	}
+	/* Where the table has the room, a fortnight's «Cuándo» keeps to one line and the payment, which has two, takes the
+	   rest: it broke while «Pago» stood empty and wide (pass 8). A run's long range still wraps, or it takes the
+	   payment's room, but only between its two ends; the payment's date and amount stay one line. Narrower, they wrap,
+	   or the table would scroll sideways (900 px). */
+	@media (min-width: 1100px) {
+		.when,
+		.paid,
+		.end {
+			white-space: nowrap;
+		}
 	}
 </style>

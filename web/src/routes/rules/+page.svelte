@@ -10,7 +10,7 @@
 	import { LIST } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
-	import { focusOn } from '#lib/ui/focus.ts';
+	import { focusOn, retry } from '#lib/ui/focus.ts';
 	import { focusShown } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { glide, pop, rise, vanish } from '#lib/motion.ts';
@@ -110,7 +110,7 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">

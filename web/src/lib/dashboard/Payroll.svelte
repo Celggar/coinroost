@@ -1,5 +1,6 @@
 <script lang="ts">
 	// «Payments owed to you»: each employer's report at today's date.
+	import { retry } from '#lib/ui/focus.ts';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { today, wholeDay } from '#lib/format.ts';
@@ -31,7 +32,10 @@
 		<h2 id="payroll-title">{t('payroll.title')}</h2>
 		{#if error}
 			<p class="alert" role="alert">
-				{error} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+				{error}
+				<button class="secondary" onclick={() => retry(load, '#payroll-title')}
+					>{t('app.try_again')}</button
+				>
 			</p>
 		{:else if payroll}
 			<p class="hint">{t('payroll.as_of', { date: wholeDay(payroll.as_of) })}</p>

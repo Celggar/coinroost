@@ -43,6 +43,25 @@ export function fortnightList(fortnights: Schemas['FortnightView'][], inline = f
 	return list(fortnights.map((f) => fortnightName(f, inline)));
 }
 
+/**
+ * A run of fortnights, «{first} a {last}», in parts with its two ends marked, so the page can keep each end whole and
+ * break only between them (it broke inside «I quincena de octubre», pass 8).
+ */
+export function runParts(
+	first: Schemas['FortnightView'],
+	last: Schemas['FortnightView']
+): { text: string; end: boolean }[] {
+	const ends = [fortnightName(first), fortnightName(last, true)];
+	return t('payroll.run', { first: '\u0000', last: '\u0001' })
+		.split(/([\u0000\u0001])/)
+		.filter(Boolean)
+		.map((part) =>
+			part === '\u0000' || part === '\u0001'
+				? { text: ends[part.charCodeAt(0)], end: true }
+				: { text: part, end: false }
+		);
+}
+
 /** How late, early or overdue a fortnight is, in words; empty when there is nothing to say. */
 export function daysText(line: Schemas['FortnightLine']): string {
 	const days = line.days;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { retry } from '#lib/ui/focus.ts';
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
@@ -142,7 +143,7 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">

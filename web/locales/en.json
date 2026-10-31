@@ -38,8 +38,6 @@
 	"login.busy": "Logging in…",
 	"import.title": "Import bank files",
 	"import.accounts_failed": "The accounts could not be loaded",
-	"import.no_accounts": "You have no accounts yet: each file goes into one of them.",
-	"import.create_account": "Create your first account",
 	"import.no_bank_file": "You have no accounts with a bank file yet: each file goes into one of them.",
 	"import.choose": "Choose files",
 	"import.choose_hint": "Statements as the bank exports them (CSV, Excel or PDF), one or many at once. Nothing is imported until you confirm each file.",
@@ -314,10 +312,10 @@
 	"payroll.as_of": "As of {date}, with each account's data up to its latest statement.",
 	"payroll.owes": "Owes you",
 	"payroll.owes_nothing": "Owes you nothing.",
-	"payroll.owed_one": "1 fortnight owed",
-	"payroll.owed_other": "{count} fortnights owed",
+	"payroll.owed_one": "1 fortnight owed",
+	"payroll.owed_other": "{count} fortnights owed",
 	"payroll.no_data": "No data yet for {fortnights}: the account has data up to {date}.",
-	"payroll.no_data_range": "No data yet for {count} fortnights ({first} to {last}): the account has data up to {date}.",
+	"payroll.no_data_range": "No data yet for {count} fortnights ({first} to {last}): the account has data up to {date}.",
 	"payroll.no_deposits": "No deposit in the account matched this employer since {date}.",
 	"payroll.next_due": "Next: {fortnight}, due {date}.",
 	"payroll.paid_one": "1 payment counted",
@@ -493,5 +491,5 @@
 	"payroll.run": "{first} to {last}",
 	"fortnight.1_inline": "first half of {month}",
 	"fortnight.2_inline": "second half of {month}",
-	"payroll.fortnights_other": "{count} fortnights"
+	"payroll.fortnights_other": "{count} fortnights"
 }

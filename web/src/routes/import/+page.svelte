@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { retry } from '#lib/ui/focus.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import Icon from '#lib/nav/Icon.svelte';
 	import { onMount } from 'svelte';
@@ -53,7 +54,7 @@
 
 {#if error}
 	<p class="alert" role="alert">
-		{error} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+		{error} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<div class="stack">
@@ -63,9 +64,9 @@
 			     account to read them into. -->
 			<EmptyState
 				icon="bank"
-				text={accounts.length ? t('import.no_bank_file') : t('import.no_accounts')}
+				text={accounts.length ? t('import.no_bank_file') : t('dashboard.no_accounts')}
 				href="/accounts"
-				action={accounts.length ? t('file.open_accounts') : t('import.create_account')}
+				action={accounts.length ? t('file.open_accounts') : t('dashboard.to_accounts')}
 			/>
 		{:else}
 			<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the

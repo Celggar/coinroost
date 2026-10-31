@@ -2,6 +2,7 @@
 	// The person's recovery codes: how many are left and when they were made, and a new set on demand. Making one asks
 	// for the code the authenticator shows now (the server counts wrong ones toward the login lockout), shows the new
 	// codes once and retires the old ones.
+	import { retry } from '#lib/ui/focus.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CodeField from '#lib/auth/CodeField.svelte';
@@ -119,7 +120,10 @@
 	<p class="hint">{t('security.codes_about')}</p>
 	{#if loadError}
 		<p class="alert" role="alert">
-			{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+			{loadError}
+			<button class="secondary" onclick={() => retry(load, '#codes-title')}
+				>{t('app.try_again')}</button
+			>
 		</p>
 	{:else if status}
 		<p class="count" data-testid="recovery-status" in:rise>

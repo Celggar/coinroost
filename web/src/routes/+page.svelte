@@ -1,6 +1,7 @@
 <script lang="ts">
 	// The dashboard: the period's money per currency, then what is owed to the person. Every number comes from
 	// one report of the API, never summed across currencies.
+	import { retry } from '#lib/ui/focus.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import MonthlyChart from '#lib/dashboard/MonthlyChart.svelte';
 	import Payroll from '#lib/dashboard/Payroll.svelte';
@@ -159,7 +160,9 @@
 	{#if error}
 		<p class="alert" role="alert">
 			{error}
-			<button class="secondary" onclick={() => load({ from, to })}>{t('app.try_again')}</button>
+			<button class="secondary" onclick={() => retry(() => load({ from, to }))}
+				>{t('app.try_again')}</button
+			>
 		</p>
 	{/if}
 

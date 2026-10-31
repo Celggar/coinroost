@@ -51,6 +51,12 @@ input[type='file'] {
 	box-shadow: var(--card-shadow);
 }
 
+/* Inside a card a table lies flat on it, as the figure tiles do: raised, its shadow was clipped by the disclosure it
+   opens in and left a square corner under the round one (pass 8). */
+.card .table-wrap {
+	box-shadow: none;
+}
+
 table {
 	border-collapse: collapse;
 	width: 100%;
@@ -268,11 +274,13 @@ details > summary::before {
 	height: 8px;
 	border-right: 2px solid currentColor;
 	border-bottom: 2px solid currentColor;
-	transform: rotate(-45deg);
+	transform: translateY(0) rotate(-45deg);
 }
 
+/* Turned down, the corner sits low in its box: up 3 px puts the mark on the label's middle, as it is when it points
+   to the side (pass 8 measured it 4 px low). */
 details[open] > summary::before {
-	transform: rotate(45deg);
+	transform: translateY(-3px) rotate(45deg);
 }
 
 /* The body always fades; it also opens in height and the marker turns, unless people ask for less motion (M5).

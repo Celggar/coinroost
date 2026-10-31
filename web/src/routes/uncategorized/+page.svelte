@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { retry } from '#lib/ui/focus.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
@@ -80,7 +81,7 @@
 
 {#if loadError}
 	<p class="alert" role="alert">
-		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
+		{loadError} <button class="secondary" onclick={() => retry(load)}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->

@@ -130,11 +130,18 @@ export function focusShown(
 	const field = control.getBoundingClientRect();
 	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();
 	const start = form.getBoundingClientRect().top;
-	if (field.bottom - start <= bottom - top) {
-		// The title above the screen or under its bar, or the field below the screen.
-		if (title.top < bar || field.bottom > bottom) {
+	// The form's send button too, when the whole form fits: landing on a field at the screen's foot left «Crear
+	// categoría» below it (pass 8).
+	const send = form.querySelector('button[type="submit"]')?.getBoundingClientRect();
+	const end =
+		send && send.bottom - start <= bottom - top
+			? Math.max(send.bottom, field.bottom)
+			: field.bottom;
+	if (end - start <= bottom - top) {
+		// The title above the screen or under its bar, or the field or the button below the screen.
+		if (title.top < bar || end > bottom) {
 			const y = scrollY + start - top;
-			const lo = Math.max(0, scrollY + field.bottom - bottom);
+			const lo = Math.max(0, scrollY + end - bottom);
 			const hi = scrollY + labelTop(control) - top;
 			scrollTo({ top: uncut(y, lo, hi), behavior: behavior() });
 		}
