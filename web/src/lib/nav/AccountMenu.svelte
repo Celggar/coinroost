@@ -120,8 +120,18 @@
 		border: 0;
 		border-radius: 999px;
 		background: none;
-		color: var(--text);
+		color: var(--muted);
 		font-weight: 600;
+	}
+	/* At rest it reads like the rail's other rows, in grey; it takes the text colour under the pointer and while its
+	   panel is open, so it never looks like a second current page. The initial keeps the text colour on its tint. */
+	.trigger[aria-expanded='true'] {
+		color: var(--text);
+	}
+	@media (hover: hover) {
+		.trigger:hover {
+			color: var(--text);
+		}
 	}
 	/* Stronger than the hover's tint, so the circle stays apart from it in both themes. */
 	.initial {
@@ -132,6 +142,7 @@
 		height: 32px;
 		border-radius: 50%;
 		background: color-mix(in oklab, var(--accent) 30%, var(--surface));
+		color: var(--text);
 		font-size: var(--text-sm);
 		font-weight: 700;
 	}

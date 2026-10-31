@@ -56,9 +56,13 @@
 	/* Nothing scrolls under the rail, so it is a plain surface (the layout's column draws it); the bars on a phone,
 	   which content scrolls under, take the login's glass. */
 	/* Fixed, not sticky: at the end of a page whose height is not a whole pixel, a sticky rail met its column's end
-	   and moved up 0.4 px (pass 6). It fills its column, inside the column's 1 px edge. */
+	   and moved up 0.4 px (pass 6). It fills its column, inside the column's 1 px edge. Fixed makes it its own stacking
+	   layer, and the page's positioned parts (the chart, the buttons' state layers) came after it and painted over the
+	   account panel it holds: one layer up keeps the panel on top. The notices (10) and the skip link (20) stay above
+	   it. */
 	.rail {
 		position: fixed;
+		z-index: 1;
 		top: 0;
 		left: 0;
 		width: calc(var(--rail-width, 248px) - 1px);
