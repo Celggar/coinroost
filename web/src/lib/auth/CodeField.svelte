@@ -123,6 +123,11 @@
 	.slot > :global(*) {
 		grid-area: 1 / 1;
 	}
+	/* The real field is hidden, so its error shows on the slots, with the border every other field takes. */
+	.row:has(input[aria-invalid='true']) .slot {
+		border-color: var(--bad);
+		box-shadow: 0 0 0 1px var(--bad);
+	}
 	/* The ring of the active slot is a layer of its own, so only its opacity changes. */
 	.slot::after {
 		content: '';

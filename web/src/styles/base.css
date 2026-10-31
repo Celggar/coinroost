@@ -152,9 +152,12 @@ button::before,
 	transition: opacity var(--duration-short) var(--ease-standard);
 }
 
-button:hover:not(:disabled, [aria-disabled='true'])::before,
-.button:hover::before {
-	opacity: 1;
+/* Only where a pointer can hover: a tap on a touch screen would leave the layer on until the next tap. */
+@media (hover: hover) {
+	button:hover:not(:disabled, [aria-disabled='true'])::before,
+	.button:hover::before {
+		opacity: 1;
+	}
 }
 
 button.secondary {

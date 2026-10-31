@@ -105,9 +105,11 @@
 		flex: 1;
 		text-align: start;
 	}
-	a:not(.brand):hover,
-	.row:hover {
-		color: var(--text);
+	@media (hover: hover) {
+		a:not(.brand):hover,
+		.row:hover {
+			color: var(--text);
+		}
 	}
 	a[aria-current='page'] {
 		color: var(--text);

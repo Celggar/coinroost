@@ -57,9 +57,13 @@
 		font-weight: 600;
 		text-decoration: none;
 	}
-	a:hover,
 	a[aria-current='page'] {
 		color: var(--text);
+	}
+	@media (hover: hover) {
+		a:hover {
+			color: var(--text);
+		}
 	}
 	.name {
 		display: inline-flex;

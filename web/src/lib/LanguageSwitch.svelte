@@ -89,8 +89,10 @@
 		color: var(--text);
 		background: color-mix(in oklab, var(--surface) 70%, transparent);
 	}
-	label:hover:not(.chosen) {
-		color: var(--text);
+	@media (hover: hover) {
+		label:hover:not(.chosen) {
+			color: var(--text);
+		}
 	}
 	input {
 		position: absolute;

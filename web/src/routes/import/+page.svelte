@@ -120,9 +120,13 @@
 			border-color var(--duration-short) var(--ease-standard),
 			background-color var(--duration-short) var(--ease-standard);
 	}
-	.drop:hover,
 	.drop.over {
 		border-color: var(--accent);
+	}
+	@media (hover: hover) {
+		.drop:hover {
+			border-color: var(--accent);
+		}
 	}
 	.drop.over {
 		background: color-mix(in oklab, var(--accent) 8%, var(--surface));
