@@ -158,13 +158,18 @@
 	{#if reports}
 		<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
 			{#if currencies.length === 0}
-				<!-- The way on from an empty period: importing, or before that, the account a file goes into. A card like
-				     the import page's zone, not a lone sentence over an empty page. -->
+				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
+				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
 				<div class="card empty">
-					<span class="empty-icon"><Icon name="import" size={28} /></span>
-					<p>{t('dashboard.nothing')}</p>
-					{#if reports.hasAccounts}<a class="button" href="/import">{t('dashboard.to_import')}</a
-						>{:else}<a class="button" href="/accounts">{t('dashboard.to_accounts')}</a>{/if}
+					{#if reports.hasAccounts}
+						<span class="empty-icon"><Icon name="import" size={28} /></span>
+						<p>{t('dashboard.nothing')}</p>
+						<a class="button" href="/import">{t('dashboard.to_import')}</a>
+					{:else}
+						<span class="empty-icon"><Icon name="bank" size={28} /></span>
+						<p>{t('dashboard.no_accounts')}</p>
+						<a class="button" href="/accounts">{t('dashboard.to_accounts')}</a>
+					{/if}
 				</div>
 			{/if}
 			{#each currencies as totals (totals.currency)}
@@ -221,6 +226,9 @@
 		gap: var(--space-md);
 		padding: var(--space-2xl) var(--space-xl);
 		text-align: center;
+	}
+	.empty p {
+		text-wrap: balance;
 	}
 	.empty-icon {
 		display: grid;
