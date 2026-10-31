@@ -4,14 +4,31 @@
 	// message in again. The transitions are global because the message comes and goes with its `{#key}` block. The
 	// card's height follows the message (the shell's job) and what sits below it slides along; the message rises
 	// once that room is open, so the button never covers it and the card's edge never cuts it.
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { DURATION, lift, rise } from '#lib/motion.ts';
 
 	let { text, n }: { text: string; n: number } = $props();
+
+	// The message lands under the field that keeps the focus; on a short screen it and the button after it could sit
+	// below the fold (setup at 390 × 844: the message at 763–859). Once it is in, the page moves just enough to show
+	// both: the form's send button when there is one, else the message.
+	function reveal(node: HTMLElement) {
+		const end = node.closest('form')?.querySelector<HTMLElement>('button[type="submit"]') ?? node;
+		end.scrollIntoView({
+			block: 'nearest',
+			behavior: prefersReducedMotion.current ? 'auto' : 'smooth'
+		});
+	}
 </script>
 
 <div role="alert">
 	{#key n}
-		{#if text}<p class="alert" in:rise|global={{ delay: DURATION.medium }} out:lift|global>
+		{#if text}<p
+				class="alert"
+				in:rise|global={{ delay: DURATION.medium }}
+				out:lift|global
+				onintroend={(event) => reveal(event.currentTarget)}
+			>
 				{text}
 			</p>{/if}
 	{/key}

@@ -10,6 +10,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
+	import { focusShown } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { glide, pop, rise, vanish } from '#lib/motion.ts';
 
@@ -82,7 +83,10 @@
 		await load();
 		if (location.hash === '#new-category') {
 			await tick();
-			focusOn('#new-category input');
+			const form = document.getElementById('new-category');
+			const name = form?.querySelector('input');
+			// The form from its title, its name field focused and its button in view.
+			if (form && name) focusShown(name, form);
 		}
 	});
 </script>

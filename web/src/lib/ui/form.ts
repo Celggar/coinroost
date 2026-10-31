@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from 'svelte/motion';
 // Form checks in the page's language (FD5). Forms set `novalidate`, so the browser never shows its own bubble (in the
 // browser's language, outside the page); these read the same constraints (`required`, `maxlength`, `type`,
 // `pattern`, `min`/`max`) and give each invalid field its message, keyed by the field's `name`.
@@ -43,11 +44,37 @@ export function check(form: HTMLFormElement): Errors {
 	return errors;
 }
 
+/**
+ * Focuses a field and shows it in context: its form from the title, when the title down to the field fits on screen;
+ * else the field with its label. Scrolled to by itself, a field landed on the screen's edge with its label and its
+ * card's title cut (pass 6). Nothing moves when that much already shows; the bars' room is the page's scroll padding.
+ */
+export function focusShown(
+	control: HTMLElement,
+	form: HTMLElement = control.closest('form') ?? control
+) {
+	control.focus({ preventScroll: true });
+	const page = getComputedStyle(document.documentElement);
+	const top = parseFloat(page.scrollPaddingTop) || 0;
+	const bottom = innerHeight - (parseFloat(page.scrollPaddingBottom) || 0);
+	const bar = parseFloat(page.getPropertyValue('--bar-height')) || 0;
+	const field = control.getBoundingClientRect();
+	const labelled = ('labels' in control && (control as HTMLInputElement).labels?.[0]) || control;
+	const label = labelled.getBoundingClientRect();
+	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();
+	const behavior = prefersReducedMotion.current ? 'auto' : 'smooth';
+	if (field.bottom - form.getBoundingClientRect().top <= bottom - top) {
+		// The title above the screen or under its bar, or the field below the screen.
+		if (title.top < bar || field.bottom > bottom) form.scrollIntoView({ block: 'start', behavior });
+	} else if (Math.min(label.top, field.top) < top || field.bottom > bottom) {
+		control.scrollIntoView({ block: 'center', behavior });
+	}
+}
+
 /** Moves the focus to the first field, in the form's order, that has an error. */
 export function focusFirst(form: HTMLFormElement, errors: Errors) {
-	controls(form)
-		.find(([key]) => errors[key])?.[1]
-		.focus();
+	const control = controls(form).find(([key]) => errors[key])?.[1];
+	if (control) focusShown(control, form);
 }
 
 /**
