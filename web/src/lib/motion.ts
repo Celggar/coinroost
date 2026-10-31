@@ -331,9 +331,15 @@ export function followContent(node: HTMLElement, held = false) {
 	if (!(content instanceof HTMLElement)) return;
 	let hold = held;
 	let last = new Map<HTMLElement, number>();
+	// The end of the glide, or a timer in case no transition ran (a box with none of its own). A cancel is no end: a
+	// glide cancels when a newer one replaces it, and that one is still running.
+	let settle: ReturnType<typeof setTimeout> | undefined;
+	const rest = () => delete node.dataset.moving;
+	const end = (event: TransitionEvent) => {
+		if (event.target === node && event.propertyName === 'height') rest();
+	};
 	const fit = () => {
-		const padding = frame(node);
-		const height = content.offsetHeight + padding;
+		const height = content.offsetHeight + frame(node);
 		if (hold && height < node.offsetHeight) return;
 		const glide = !still() && node.style.height !== '';
 		const now = new Map<HTMLElement, number>();
@@ -351,16 +357,28 @@ export function followContent(node: HTMLElement, held = false) {
 			animation.ready.then(() => (element.style.transform = ''));
 		}
 		last = now;
+		// While the height glides the box is marked, so a card can clip its content then and only then: at rest a
+		// focus ring that reaches past the box shows whole (P3 round 1). Set here, before the frame is painted.
+		if (glide && node.style.height !== `${height}px`) {
+			node.dataset.moving = '';
+			clearTimeout(settle);
+			settle = setTimeout(rest, DURATION.medium + 100);
+		}
 		node.style.height = `${height}px`;
 	};
 	const observer = new ResizeObserver(fit);
+	node.addEventListener('transitionend', end);
 	observer.observe(content);
 	return {
 		update(next: boolean) {
 			hold = next;
 			if (!hold) fit();
 		},
-		destroy: () => observer.disconnect()
+		destroy: () => {
+			observer.disconnect();
+			clearTimeout(settle);
+			node.removeEventListener('transitionend', end);
+		}
 	};
 }
 

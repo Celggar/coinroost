@@ -7,26 +7,16 @@
 	import Payroll from '#lib/dashboard/Payroll.svelte';
 	import Review from '#lib/dashboard/Review.svelte';
 	import { pending } from '#lib/nav/counts.svelte.ts';
-	import { span } from '#lib/format.ts';
-	import { fade, slide } from 'svelte/transition';
-	import { prefersReducedMotion } from 'svelte/motion';
+	import { fade } from 'svelte/transition';
 	import Ranking, { type Ranked } from '#lib/dashboard/Ranking.svelte';
 	import Tiles from '#lib/dashboard/Tiles.svelte';
-	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
+	import { months, preset, type Period } from '#lib/dashboard/period.ts';
+	import PeriodPicker from '#lib/dashboard/PeriodPicker.svelte';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
-	import { DURATION, EASE, fadeThrough, pop, vanish } from '#lib/motion.ts';
-	import DateRange from '#lib/ui/DateRange.svelte';
+	import { DURATION, fadeThrough } from '#lib/motion.ts';
 
 	const PAYEES = 10;
-	// One segmented control for the period (P3): three presets and «Otro…», which alone shows the two dates.
-	const presets: { which: Preset | 'other'; label: Key }[] = [
-		{ which: 'month', label: 'dashboard.this_month' },
-		{ which: 'year', label: 'dashboard.this_year' },
-		{ which: 'twelve', label: 'dashboard.twelve' },
-		{ which: 'other', label: 'dashboard.other' }
-	];
-
 	type Reports = {
 		summary: Schemas['Summary'];
 		monthly: Schemas['MonthTotals'][];
@@ -42,8 +32,6 @@
 
 	let from = $state(preset('year').from);
 	let to = $state(preset('year').to);
-	// «Otro…» chosen: the dates show and are the period, even when they happen to equal a preset.
-	let custom = $state(false);
 	let reports = $state<Reports | null>(null);
 	let payroll = $state<Schemas['Payroll'] | null>(null);
 	let payrollSettled = $state(false);
@@ -115,31 +103,6 @@
 		load({ from, to });
 	});
 
-	function choose(which: Preset | 'other') {
-		if (which === 'other') {
-			custom = true;
-			return;
-		}
-		custom = false;
-		({ from, to } = preset(which));
-	}
-
-	function chosen(which: Preset | 'other'): boolean {
-		if (which === 'other') return custom;
-		const range = preset(which);
-		return !custom && from === range.from && to === range.to;
-	}
-
-	// The dates open under the control and close again (FD9); under reduced motion they only fade.
-	const open = (node: Element) =>
-		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
-	const close = (node: Element) =>
-		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.short, easing: EASE.exit });
-
 	function ranked(
 		items: { id: string | null | undefined; spending: number; count: number }[],
 		names: Map<string, string>,
@@ -175,39 +138,7 @@
 
 			<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
 			{#if reports.hasAccounts}
-				<!-- The period (P3): one segmented control under its label, the range it stands for beside it; the two dates
-				 only under «Otro…». The control's segments share its width, so a check coming or going moves nothing else. -->
-				<div class="period">
-					<div class="form-field" role="group" aria-labelledby="period-label">
-						<span class="label" id="period-label">{t('dashboard.period')}</span>
-						<div class="presets">
-							{#each presets as option (option.which)}
-								{@const on = chosen(option.which)}
-								<button
-									class="secondary"
-									aria-pressed={on}
-									aria-controls={option.which === 'other' ? 'period-dates' : undefined}
-									onclick={() => choose(option.which)}
-									>{#if on}<svg
-											class="check"
-											viewBox="0 0 24 24"
-											aria-hidden="true"
-											in:pop
-											out:vanish><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
-										>{/if}{t(option.label)}</button
-								>
-							{/each}
-						</div>
-					</div>
-					{#if !custom && datesOk}
-						<p class="range" in:fade={{ duration: DURATION.short }}>{span(from, to)}</p>
-					{/if}
-				</div>
-				{#if custom}
-					<div class="dates" id="period-dates" in:open out:close>
-						<DateRange bind:from bind:to />
-					</div>
-				{/if}
+				<PeriodPicker bind:from bind:to shown={reports.period} stale={busy || !datesOk} />
 			{/if}
 
 			{#if error}
@@ -307,115 +238,6 @@
 </div>
 
 <style>
-	.period {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: start;
-		gap: var(--space-md) var(--space-lg);
-	}
-	/* Material 3 segmented buttons: joined segments, the chosen one filled. Each segment has room for its label and
-	   the check, so the check coming or going never moves the dates beside them. */
-	.presets {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		width: min(100%, 37rem);
-	}
-	/* The range the presets stand for, level with the control's middle (not its label) when beside it; under it on
-	   a narrower page, without a band of empty height. */
-	.range {
-		align-self: end;
-		margin: 0;
-		padding-bottom: calc((var(--field-height) - 1lh) / 2);
-		color: var(--muted);
-	}
-	.presets button {
-		white-space: nowrap;
-	}
-	.presets button {
-		min-height: var(--field-height);
-		border-radius: 0;
-		padding: 0 var(--space-lg);
-	}
-	/* Neighbours share one border line; the chosen one draws its own all round, inside. */
-	.presets button + button {
-		border-left-width: 0;
-	}
-	.presets button:first-child {
-		border-radius: var(--radius-field) 0 0 var(--radius-field);
-	}
-	.presets button:last-child {
-		border-radius: 0 var(--radius-field) var(--radius-field) 0;
-	}
-	.label {
-		font-weight: 600;
-		line-height: 1.25;
-	}
-	/* Material 3: the chosen segment is filled and carries a check; the outline stays the group's. */
-	.presets button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-xs);
-	}
-	.presets button[aria-pressed='true'] {
-		background: color-mix(in oklab, var(--accent) 22%, var(--surface));
-		color: var(--text);
-	}
-	/* Forced colors drop the fill: the chosen segment takes the system's selection colors, as a selected item does,
-	   so it shows on a phone too, where it has no check. */
-	@media (forced-colors: active) {
-		.presets button[aria-pressed='true'] {
-			forced-color-adjust: none;
-			background: Highlight;
-			color: HighlightText;
-			border-color: Highlight;
-		}
-	}
-	.check {
-		flex: none;
-		width: 18px;
-		height: 18px;
-		fill: none;
-		stroke: currentColor;
-		stroke-width: 2.5;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-	.period > .form-field {
-		flex: 1 1 auto;
-		max-width: 37rem;
-	}
-	/* A phone: the four segments across the width with a smaller label, the range under them. Each segment takes
-	   its label's width plus an equal share of the rest (UIKit's segments «apportioned by content»): equal ones left
-	   «This month» and «12 meses» touching their borders. The chosen one shows by its fill alone, as Material's
-	   segmented button allows: the check needs room four segments do not have there. */
-	@media (max-width: 560px) {
-		.period > .form-field,
-		.presets {
-			width: 100%;
-			max-width: none;
-		}
-		.range {
-			padding-bottom: 0;
-		}
-		.presets {
-			display: flex;
-		}
-		.presets button {
-			flex: 1 1 auto;
-			padding: 0 var(--space-sm);
-			font-size: var(--text-sm);
-		}
-		.check {
-			display: none;
-		}
-	}
-	@media (max-width: 359px) {
-		.presets button {
-			padding: 0 var(--space-xs);
-			font-size: var(--text-xs);
-		}
-	}
 	/* Side by side the two cards share their height and their rows: each has a title and a hint line (pass 1). */
 	.rankings {
 		display: grid;

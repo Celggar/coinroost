@@ -522,6 +522,8 @@
 	"review.transfers": "Transfers",
 	"review.all_paired": "All have their pair",
 	"dashboard.other": "Other…",
+	"dashboard.this_month_short": "Month",
+	"dashboard.this_year_short": "Year",
 	"review.owed": "{amount} owed to you",
 	"review.owed_by": "{name}: {owed}",
 	"review.see": "See",

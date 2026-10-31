@@ -201,7 +201,9 @@
 	h2 {
 		margin: 0;
 	}
-	.fit {
+	/* The card clips its rows only while its height glides: at rest the focus ring, 5 px outside a row, shows whole
+	   (it lost its sides on the phone and its right edge on the desktop, P3 round 1). */
+	.fit:global([data-moving]) {
 		overflow: clip;
 	}
 	@media (prefers-reduced-motion: no-preference) {
@@ -217,6 +219,7 @@
 	}
 	.rows > li + li {
 		border-top: 1px solid var(--border);
+		transition: border-top-color var(--duration-short) var(--ease-standard);
 	}
 	.row {
 		display: grid;
@@ -283,29 +286,44 @@
 		.row {
 			position: relative;
 			isolation: isolate;
-			grid-template-columns: 40px minmax(0, 1fr) auto;
+			grid-template-columns: 40px minmax(0, 1fr) 20px;
 			border-radius: var(--radius-button);
 		}
+		/* The link itself covers the row, its chevron at the end over the last column, so its box is its tap area
+		   (an ::after did it, and a box of 20 px read as a target too small). */
 		.row > .button {
 			--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
-			position: static;
-			min-height: 0;
-			padding: 0;
-			border: 0;
-			background: none;
-			color: var(--muted);
-		}
-		.row > .button::after {
-			content: '';
 			position: absolute;
 			inset: 0;
+			display: flex;
+			justify-content: flex-end;
+			align-items: center;
+			min-height: 0;
+			/* The row's own padding, so the chevron sits on the words' middle in the first and last rows too. */
+			padding: inherit;
+			border: 0;
+			border-radius: inherit;
+			background: none;
+			color: var(--muted);
 		}
 		.row > .button:focus-visible {
 			outline: none;
 		}
+		/* A press does not scale the link: it is the whole row, and the row stays put, as «Más»'s do. (When its tap
+		   area was an ::after, the scale shrank that area to the chevron and a tap on the words opened nothing, P3
+		   round 1.) */
+		.row > .button:active {
+			transform: none;
+		}
 		.row:has(> .button:focus-visible) {
 			outline: 3px solid var(--focus);
 			outline-offset: 2px;
+		}
+		/* The ring reaches 5 px past the row, over the lines above and under it: those lines step back while it shows,
+		   as a table view's do around its highlighted cell. */
+		.rows > li:has(.button:focus-visible),
+		.rows > li:has(.button:focus-visible) + li {
+			border-top-color: transparent;
 		}
 		.action {
 			position: absolute;

@@ -522,6 +522,8 @@
 	"review.transfers": "Transferencias",
 	"review.all_paired": "Todas tienen pareja",
 	"dashboard.other": "Otro…",
+	"dashboard.this_month_short": "Este mes",
+	"dashboard.this_year_short": "Este año",
 	"review.owed": "Te deben {amount}",
 	"review.owed_by": "{name}: {owed}",
 	"review.see": "Ver",
