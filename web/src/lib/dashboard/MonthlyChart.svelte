@@ -232,6 +232,7 @@
 		font-size: var(--text-lg);
 		font-weight: 700;
 		line-height: 1.3;
+		text-wrap: balance;
 	}
 	.legend {
 		display: flex;

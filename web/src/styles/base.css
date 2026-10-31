@@ -62,6 +62,13 @@ h3 {
 	margin: 0;
 }
 
+/* A title that wraps splits into even lines, never one word alone on the last («… per month · / USD»). */
+h1,
+h2,
+h3 {
+	text-wrap: balance;
+}
+
 a {
 	color: var(--link);
 }
