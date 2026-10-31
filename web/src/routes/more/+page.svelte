@@ -37,6 +37,7 @@
 		<a href="/rules"
 			><Icon name="rules" /><span>{t('nav.rules')}</span><Icon name="chev" size={20} /></a
 		>
+		<span class="divider" aria-hidden="true"></span>
 		<a href="/security"
 			><Icon name="shield" /><span>{t('nav.security')}</span><Icon name="chev" size={20} /></a
 		>
@@ -72,9 +73,20 @@
 			margin-inline: auto;
 		}
 	}
+	/* The rows sit 4 px in from the card, with 4 px, the divider and 4 px between them: the focus ring, 2 px inside a
+	   row, keeps 6 px from the card's edges and from the divider alike (it was 6 px from the top and 2 px from the
+	   sides and the divider, P2 round 9). */
 	.rows {
-		padding: var(--space-xs) 0;
-		gap: 0;
+		padding: var(--space-xs);
+		gap: var(--space-xs);
+	}
+	/* Its own element, not a link's border: under forced colors a link's lines take the link color. It reaches the
+	   card's edges. */
+	.divider {
+		position: relative;
+		left: calc(-1 * var(--space-xs));
+		width: calc(100% + 2 * var(--space-xs));
+		border-top: 1px solid var(--border);
 	}
 	/* The focus ring is drawn inside the row and rounded, so it neither leaves the card at its corners nor covers the
 	   divider; the divider is its own line, which the rounding does not bend. */
@@ -86,19 +98,13 @@
 		gap: var(--space-md);
 		min-height: 56px;
 		/* The icons' strokes start and the chevrons' end on the language card's text edges (16 px in): the icon's
-		   stroke starts 4 px into its box and the chevron's ends 8 px before its own. */
-		padding: 0 var(--space-sm) 0 var(--space-md);
+		   stroke starts 4 px into its box and the chevron's ends 8 px before its own; the row is 4 px in already. */
+		padding: 0 calc(var(--space-sm) - var(--space-xs)) 0 calc(var(--space-md) - var(--space-xs));
 		color: var(--text);
 		text-decoration: none;
 	}
 	.rows a:focus-visible {
 		outline-offset: -5px;
-	}
-	.rows a + a::before {
-		content: '';
-		position: absolute;
-		inset: 0 0 auto;
-		border-top: 1px solid var(--border);
 	}
 	.rows span {
 		flex: 1;
