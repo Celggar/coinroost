@@ -1,8 +1,9 @@
 <script lang="ts">
 	// The wide screen's navigation (P1, N4): an expanded rail on the left (Material 3) with the login's mark, the
-	// five destinations with a neutral pill on the current one, and the account's controls pinned to its foot.
-	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	// five destinations with a neutral pill on the current one, and Security and the account's button (P2) pinned to
+	// its foot.
 	import { t } from '#lib/i18n.svelte.ts';
+	import AccountMenu from './AccountMenu.svelte';
 	import Badge from './Badge.svelte';
 	import Icon from './Icon.svelte';
 	import Mark from './Mark.svelte';
@@ -47,11 +48,7 @@
 			<Icon name="shield" />
 			<span class="label">{t('nav.security')}</span>
 		</a>
-		<LanguageSwitch />
-		<button class="row" onclick={onleave}>
-			<Icon name="logout" />
-			<span class="label">{t('nav.log_out')}</span>
-		</button>
+		<AccountMenu {onleave} />
 	</div>
 </aside>
 
@@ -90,8 +87,7 @@
 		display: grid;
 		gap: var(--space-xs);
 	}
-	a:not(.brand),
-	.row {
+	a:not(.brand) {
 		position: relative;
 		isolation: isolate;
 		display: flex;
@@ -110,8 +106,7 @@
 		text-align: start;
 	}
 	@media (hover: hover) {
-		a:not(.brand):hover,
-		.row:hover {
+		a:not(.brand):hover {
 			color: var(--text);
 		}
 	}
@@ -149,19 +144,5 @@
 		margin-top: auto;
 		display: grid;
 		gap: var(--space-sm);
-	}
-	/* The rail is the surface itself: the chosen language takes the accent tint the rail's current page has. Its pills
-	   start where the destinations' pills do (8 px further in, they looked misplaced, pass 8). */
-	.foot :global(.language) {
-		--language-chosen: color-mix(in oklab, var(--accent) 14%, var(--surface));
-	}
-	/* The log-out row is a plain row like the links, not a boxed button. */
-	.row {
-		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
-		border: 0;
-		background: none;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
 	}
 </style>

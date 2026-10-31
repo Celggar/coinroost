@@ -3,6 +3,7 @@
 // then out, in again with the next code, and the link no longer works.
 import { expect, test } from '@playwright/test';
 import { say } from './messages.ts';
+import { accountButton, logOut } from './account.ts';
 import { totp } from './totp.ts';
 
 const invite = process.env.E2E_INVITE ?? '';
@@ -55,16 +56,16 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 		page.getByRole('list', { name: say('recovery.list') }).getByRole('listitem')
 	).toHaveCount(10);
 	await page.getByRole('button', { name: say('setup.codes_done') }).click();
-	await expect(page.getByRole('button', { name: say('nav.log_out') })).toBeVisible();
+	await expect(accountButton(page)).toBeVisible();
 
-	await page.getByRole('button', { name: say('nav.log_out') }).click();
+	await logOut(page);
 	await expect(page).toHaveURL(/\/login/);
 	await page.getByLabel(say('login.email')).fill(email);
 	await page.getByLabel(say('login.password')).fill(password);
 	// The code that accepted the link is spent; the next one logs in.
 	await page.getByLabel(say('login.code')).fill(totp(secret, Date.now() + 30_000));
 	await page.getByRole('button', { name: say('login.title') }).click();
-	await expect(page.getByRole('button', { name: say('nav.log_out') })).toBeVisible();
+	await expect(accountButton(page)).toBeVisible();
 
 	await page.goto(`/setup#${invite}`);
 	await expect(page.getByRole('heading', { name: say('setup.invalid_title') })).toBeVisible();

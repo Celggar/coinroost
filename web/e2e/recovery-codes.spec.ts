@@ -5,6 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { endsAlone } from './lines.ts';
 import { say, type Key } from './messages.ts';
+import { logOut } from './account.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
@@ -110,7 +111,7 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	);
 
 	// A lost phone: a recovery code, typed loosely, leads to a new authenticator and nowhere else.
-	await page.getByRole('button', { name: say('nav.log_out'), exact: true }).click();
+	await logOut(page);
 	await expect(page).toHaveURL(/\/login/);
 	await logInWithRecovery(page, codes[0].toUpperCase().replace('-', ' '));
 	await expect(page).toHaveURL(/\/authenticator$/);
@@ -222,7 +223,7 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await expect(page.getByRole('button', { name: say('security.regenerate') })).toBeFocused();
 	await page.setViewportSize({ width: 1280, height: 720 });
 
-	await page.getByRole('button', { name: say('nav.log_out'), exact: true }).click();
+	await logOut(page);
 	await logInWithRecovery(page, codes[1]);
 	await expect(page.getByRole('alert')).toHaveText(say('login.recovery_wrong'));
 	await logInWithRecovery(page, renewed[0]);

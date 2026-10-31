@@ -2,6 +2,8 @@
 	import { tick } from 'svelte';
 	import { i18n, setLocale, t, type Locale } from '#lib/i18n.svelte.ts';
 	import { pop } from '#lib/motion.ts';
+	import { saveLocale, session } from '#lib/session.svelte.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	// `wide`: the full names across the width, as a segmented control (the «Más» page), the chosen one filled and
 	// checked like the period presets (Material 3); otherwise the short pills. A place whose background is the
@@ -15,9 +17,15 @@
 		{ code: 'en', short: 'EN', name: 'English' }
 	];
 
-	// The whole page cross-fades into the other language where the browser has view transitions.
+	// The whole page cross-fades into the other language where the browser has view transitions. Inside the app the
+	// pick is saved on the account, so every device opens in it (P2); a save that fails says so.
 	function choose(locale: Locale) {
 		if (locale === i18n.locale) return;
+		if (session.user) {
+			saveLocale(locale).then((saved) => {
+				if (!saved) notify(t('language.not_saved'), 'bad');
+			});
+		}
 		if (!document.startViewTransition) {
 			setLocale(locale);
 			return;

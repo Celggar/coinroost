@@ -9,14 +9,21 @@ export type Locale = 'en' | 'es';
 const catalogs: Record<Locale, Record<Key, string>> = { en, es };
 const STORE = 'coinroost.locale';
 
-/** The saved choice, else the first of the browser's languages the app has, else English. */
-function initial(): Locale {
+/** The language picked on this device, if one was: what the browser detects is not a pick. */
+export function pickedHere(): Locale | null {
 	try {
 		const saved = localStorage.getItem(STORE);
 		if (saved === 'en' || saved === 'es') return saved;
 	} catch {
-		// Storage can be blocked: fall back to the browser's languages.
+		// Storage can be blocked: nothing was remembered here.
 	}
+	return null;
+}
+
+/** The pick made on this device, else the first of the browser's languages the app has, else English. */
+function initial(): Locale {
+	const picked = pickedHere();
+	if (picked) return picked;
 	for (const language of navigator.languages ?? [navigator.language]) {
 		const code = language.toLowerCase().slice(0, 2);
 		if (code === 'es' || code === 'en') return code;

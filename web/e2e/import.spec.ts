@@ -8,6 +8,7 @@ import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
+import { openAccount } from './account.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
@@ -503,6 +504,7 @@ test('a failed money summary on Transfers offers to try again', async ({ context
 test('switches to English and remembers it after a reload', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');
+	await openAccount(page);
 	await page.getByRole('radio', { name: 'English' }).check();
 	const heading = page.getByRole('heading', { name: english('accounts.title'), exact: true });
 	await expect(heading).toBeVisible();
@@ -513,6 +515,14 @@ test('switches to English and remembers it after a reload', async ({ context }) 
 	// Dates follow the language.
 	await page.getByRole('link', { name: english('nav.coverage'), exact: true }).click();
 	await expect(page.getByRole('row', { name: /Checking/ })).toContainText('May 31, 2026');
+
+	// The pick is saved on the account, which the next tests read in Spanish: back to it, saved.
+	const saved = page.waitForResponse(
+		(response) => response.url().endsWith('/api/v1/me') && response.request().method() === 'PATCH'
+	);
+	await openAccount(page, 'en');
+	await page.getByRole('radio', { name: 'Español' }).check();
+	expect((await saved).ok()).toBe(true);
 });
 
 test('every page fits a 390 px screen', async ({ browser }) => {

@@ -3,6 +3,7 @@
 // owner exists sign-up is closed and the login is back.
 import { devices, expect, test, type Page } from '@playwright/test';
 import { say } from './messages.ts';
+import { accountButton, logOut } from './account.ts';
 import { totp } from './totp.ts';
 
 const base = process.env.E2E_FIRST_URL ?? '';
@@ -76,9 +77,9 @@ test('the first person makes the owner account, and then sign-up is closed', asy
 		page.getByRole('list', { name: say('recovery.list') }).getByRole('listitem')
 	).toHaveCount(10);
 	await page.getByRole('button', { name: say('setup.codes_done') }).click();
-	await expect(page.getByRole('button', { name: say('nav.log_out') })).toBeVisible();
+	await expect(accountButton(page)).toBeVisible();
 
-	await page.getByRole('button', { name: say('nav.log_out') }).click();
+	await logOut(page);
 	await expect(page).toHaveURL(/\/login/);
 	await expect(page.getByRole('heading', { name: say('login.title') })).toBeVisible();
 	await page.goto(`${base}/setup`);
