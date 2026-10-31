@@ -58,7 +58,7 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 10px;
+		gap: var(--space-md);
 	}
 	.line {
 		display: flex;
@@ -85,7 +85,7 @@
 		background: var(--chart-spending);
 	}
 	.hint {
-		font-size: 0.85rem;
+		font-size: var(--text-xs);
 	}
 	summary {
 		cursor: pointer;

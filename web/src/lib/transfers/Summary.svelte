@@ -49,22 +49,22 @@
 		{:else}
 			<div class="totals">
 				{#each summary.totals as totals (totals.currency)}
-					<dl aria-label={t('summary.totals_in', { currency: totals.currency })}>
+					<dl class="figures" aria-label={t('summary.totals_in', { currency: totals.currency })}>
 						<div>
 							<dt>{t('summary.spending')}</dt>
-							<dd>{money(totals.spending, totals.currency)}</dd>
+							<dd class="value">{money(totals.spending, totals.currency)}</dd>
 						</div>
 						<div>
 							<dt>{t('summary.income')}</dt>
-							<dd>{money(totals.income, totals.currency)}</dd>
+							<dd class="value">{money(totals.income, totals.currency)}</dd>
 						</div>
 						<div>
 							<dt>{t('summary.unpaired_out')}</dt>
-							<dd>{money(totals.unpaired_transfer_out, totals.currency)}</dd>
+							<dd class="value">{money(totals.unpaired_transfer_out, totals.currency)}</dd>
 						</div>
 						<div>
 							<dt>{t('summary.unpaired_in')}</dt>
-							<dd>{money(totals.unpaired_transfer_in, totals.currency)}</dd>
+							<dd class="value">{money(totals.unpaired_transfer_in, totals.currency)}</dd>
 						</div>
 					</dl>
 				{/each}
@@ -77,26 +77,10 @@
 	.period {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 12px;
+		gap: var(--space-md);
 	}
 	.totals {
 		display: grid;
-		gap: 12px;
-	}
-	dl {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-		gap: 8px;
-		margin: 0;
-	}
-	dt {
-		color: var(--muted);
-		font-size: 0.9rem;
-	}
-	dd {
-		margin: 0;
-		font-size: 1.15rem;
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
+		gap: var(--space-md);
 	}
 </style>

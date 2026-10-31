@@ -2,6 +2,7 @@
 	import type { Schemas } from '#lib/api/client.ts';
 	import { money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import Money from '#lib/ui/Money.svelte';
 
 	let { totals }: { totals: Schemas['Totals'] } = $props();
 
@@ -9,20 +10,20 @@
 	const unpaired = $derived(totals.unpaired_transfer_out + totals.unpaired_transfer_in);
 </script>
 
-<dl class="tiles">
-	<div class="tile">
+<dl class="figures">
+	<div>
 		<dt>{t('tiles.spending')}</dt>
 		<dd class="value">{money(totals.spending, totals.currency)}</dd>
 	</div>
-	<div class="tile">
+	<div>
 		<dt>{t('tiles.income')}</dt>
 		<dd class="value">{money(totals.income, totals.currency)}</dd>
 	</div>
-	<div class="tile">
+	<div>
 		<dt>{t('tiles.net')}</dt>
-		<dd class="value">{money(net, totals.currency)}</dd>
+		<dd class="value"><Money minor={net} currency={totals.currency} /></dd>
 	</div>
-	<div class="tile">
+	<div>
 		<dt>{t('tiles.unpaired')}</dt>
 		<dd>
 			{t('tiles.unpaired_detail', {
@@ -37,32 +38,10 @@
 </dl>
 
 <style>
-	.tiles {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-		gap: 8px;
-		margin: 0;
-	}
-	.tile {
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		padding: 10px 12px;
-	}
-	dt {
-		color: var(--muted);
-		font-size: 0.9rem;
-	}
-	dd {
-		margin: 0;
-	}
-	.value {
-		font-size: 1.5rem;
-		font-weight: 650;
-	}
+	/* A link that is a tap target of its own: 44 px tall. */
 	.target {
-		display: inline-block;
-		padding: 4px 0;
-		min-height: 24px;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 	}
 </style>

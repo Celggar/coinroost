@@ -11,6 +11,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import { pop, vanish } from '#lib/motion.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
+	import { check, focusFirst, single } from '#lib/ui/form.ts';
 
 	let enrollment = $state<Schemas['NewAuthenticator'] | null>(null);
 	let code = $state('');
@@ -35,6 +36,7 @@
 	async function finish(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
+		if (refused(event)) return;
 		busy = true;
 		const { error: failure, response } = await api.POST('/api/v1/me/authenticator/confirm', {
 			body: { code }
@@ -58,6 +60,17 @@
 		await logOut();
 		await goto('/login');
 	}
+
+	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
+	function refused(event: SubmitEvent): boolean {
+		const form = event.currentTarget as HTMLFormElement;
+		const errors = check(form);
+		const why = single(form, errors);
+		if (!why) return false;
+		error = { text: why, n: error.n + 1 };
+		focusFirst(form, errors);
+		return true;
+	}
 </script>
 
 <svelte:head>
@@ -65,7 +78,12 @@
 </svelte:head>
 
 <AuthShell compact>
-	<form class="stack" onsubmit={finish}>
+	<form
+		novalidate
+		oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
+		class="stack"
+		onsubmit={finish}
+	>
 		<div>
 			<h1>{t('authenticator.title')}</h1>
 			<p class="lead">{t('authenticator.lead')}</p>

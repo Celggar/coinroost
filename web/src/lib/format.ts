@@ -13,6 +13,18 @@ export function money(minor: number, currency: string): string {
 	return format.format(minor / 10 ** digits);
 }
 
+/** A movement of money with its sign always written: +$1,462.16, -$45.50 (zero has none). */
+export function signed(minor: number, currency: string): string {
+	const format = new Intl.NumberFormat(tag(), {
+		style: 'currency',
+		currency,
+		currencyDisplay: 'narrowSymbol',
+		signDisplay: 'exceptZero'
+	});
+	const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
+	return format.format(minor / 10 ** digits);
+}
+
 function utc(iso: string): Date {
 	const [year, month, day] = iso.split('-').map(Number);
 	return new Date(Date.UTC(year, month - 1, day));

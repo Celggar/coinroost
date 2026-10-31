@@ -2,6 +2,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 
 	let {
@@ -10,14 +11,10 @@
 		onchanged
 	}: { preview: Schemas['TransferPreview']; names: AccountNames; onchanged: () => void } = $props();
 
-	let error = $state('');
-	let done = $state('');
 	let busy = $state(false);
 
 	async function apply() {
 		busy = true;
-		error = '';
-		done = '';
 		const {
 			data,
 			error: failure,
@@ -27,12 +24,14 @@
 		});
 		busy = false;
 		if (!data) {
-			error =
+			notify(
 				response?.status === 412
 					? t('waiting.stale')
-					: problem(failure, response?.status, t('waiting.failed'));
+					: problem(failure, response?.status, t('waiting.failed')),
+				'bad'
+			);
 		} else {
-			done = plural(data.paired, 'waiting.paired_one', 'waiting.paired_other');
+			notify(plural(data.paired, 'waiting.paired_one', 'waiting.paired_other'));
 		}
 		onchanged();
 	}
@@ -40,8 +39,6 @@
 
 <section class="card" aria-labelledby="waiting-title">
 	<h2 id="waiting-title">{t('waiting.title')}</h2>
-	{#if error}<p class="alert" role="alert">{error}</p>{/if}
-	{#if done}<p class="notice" role="status">{done}</p>{/if}
 	{#if preview.pairs.length === 0}
 		<p>{t('waiting.nothing')}</p>
 	{:else}

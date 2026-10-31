@@ -32,15 +32,17 @@ export async function loadEmployers(page: Page, file: string) {
 	]);
 }
 
-const money = (page: Page, minor: number) =>
+/** An amount as the page writes it; `signed` writes the sign of a movement even when it is positive. */
+const money = (page: Page, minor: number, signed = false) =>
 	page.evaluate(
-		(m) =>
+		([m, sign]) =>
 			new Intl.NumberFormat('es-PA', {
 				style: 'currency',
 				currency: 'USD',
-				currencyDisplay: 'narrowSymbol'
+				currencyDisplay: 'narrowSymbol',
+				signDisplay: sign ? 'exceptZero' : 'auto'
 			}).format(m / 100),
-		minor
+		[minor, signed] as const
 	);
 
 const date = (page: Page, iso: string, options: Intl.DateTimeFormatOptions) =>
@@ -89,10 +91,14 @@ export async function checkDashboard(page: Page) {
 	expect(summary.totals).toHaveLength(1);
 	const totals = summary.totals[0];
 	const tile = (key: Key) =>
-		page.locator('.tile', { has: page.getByText(say(key), { exact: true }) }).locator('dd');
+		page
+			.locator('.figures > div', { has: page.getByText(say(key), { exact: true }) })
+			.locator('dd');
 	await expect(tile('tiles.spending')).toHaveText(await money(page, totals.spending));
 	await expect(tile('tiles.income')).toHaveText(await money(page, totals.income));
-	await expect(tile('tiles.net')).toHaveText(await money(page, totals.income - totals.spending));
+	await expect(tile('tiles.net')).toHaveText(
+		await money(page, totals.income - totals.spending, true)
+	);
 
 	// The chart's table holds the month's report.
 	const may = monthly.months.find((m: { month: string }) => m.month === '2026-05');

@@ -105,6 +105,9 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(other.getByText(say('file.not_found'))).toBeVisible();
 	await other.getByLabel(say('file.account')).selectOption({ label: 'Checking' });
 	await expect(other.getByRole('alert')).not.toBeEmpty();
+	// In the page's language: the text of the problem's code, never the API's English detail.
+	const why = (await other.getByRole('alert').textContent())?.trim();
+	expect([say('problem.file_unreadable'), say('problem.file_missing_columns')]).toContain(why);
 
 	await card
 		.getByRole('button', { name: say('file.import_other', { count: transactions }) })
@@ -234,18 +237,19 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await expect(page.getByText(say('made.none'))).toBeVisible();
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
 
-	// By hand: the same leg twice is refused with the API's reason, which a new choice clears; the right two pair.
+	// By hand: the same leg twice is refused with the API's reason in the page's language (never its English
+	// detail), which a new choice clears; the right two pair.
 	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
 	const outflow = '15 may 2026 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
 	const other = form.getByLabel(say('unmatched.other_side'));
 	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
 	await other.selectOption({ label: outflow });
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
-	await expect(form.getByRole('alert')).toHaveText('choose two different transactions');
+	await expect(form.getByRole('alert')).toHaveText(say('problem.same_transaction'));
 	await other.selectOption({ label: '15 may 2026 · Savings · $500.00 · FROM CHECKING' });
 	await expect(form.getByRole('alert')).toHaveCount(0);
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
-	await expect(form.getByRole('status')).toHaveText(say('unmatched.paired'));
+	await expect(page.getByRole('status')).toHaveText(say('unmatched.paired'));
 	await expect(made.getByRole('listitem')).toHaveCount(1);
 });
 

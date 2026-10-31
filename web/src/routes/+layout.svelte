@@ -3,11 +3,13 @@
 	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
+	import Notices from '#lib/ui/Notices.svelte';
 	import { i18n, t, type Key } from '#lib/i18n.svelte.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	let barHeight = $state(0);
 
 	const links: { href: string; label: Key }[] = [
 		{ href: '/', label: 'nav.summary' },
@@ -64,8 +66,15 @@
 </svelte:head>
 
 {#if session.user && !onPublic && !limited && !onAuthenticator}
-	<header class="top">
-		<a class="brand" href="/">{t('app.name')}</a>
+	<header class="top" bind:clientHeight={barHeight}>
+		<a class="brand" href="/">
+			<svg aria-hidden="true" width="28" height="28" viewBox="0 0 32 32">
+				<rect width="32" height="32" rx="9" class="mark" />
+				<path d="M9 17l7-6 7 6" class="roof" />
+				<circle cx="16" cy="20.5" r="3" class="dot" />
+			</svg>
+			{t('app.name')}
+		</a>
 		<nav aria-label={t('nav.main')}>
 			{#each links as link (link.href)}
 				<a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
@@ -78,6 +87,11 @@
 	</header>
 {/if}
 
+<!-- The sign-in pages keep their own alert next to the button; the app's pages share one notice. -->
+{#if session.user && !onPublic && !limited && !onAuthenticator}
+	<Notices offset={barHeight} />
+{/if}
+
 {#if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
@@ -85,24 +99,54 @@
 {/if}
 
 <style>
+	/* The app's bar takes the login's identity: its mark, and a frosted surface that stays on top. */
 	.top {
+		position: sticky;
+		top: 0;
+		z-index: 5;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px 16px;
-		padding: 8px 16px;
-		border-bottom: 1px solid var(--border);
-		background: var(--surface);
+		gap: var(--space-sm) var(--space-lg);
+		padding: var(--space-sm) var(--space-lg);
+		border-bottom: 1px solid var(--card-edge);
+		background: color-mix(in oklab, var(--surface) 82%, transparent);
+		-webkit-backdrop-filter: blur(16px) saturate(160%);
+		backdrop-filter: blur(16px) saturate(160%);
+	}
+	@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+		.top {
+			background: var(--surface);
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
 	}
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		min-height: 44px;
 		font-weight: 700;
 		text-decoration: none;
 		color: var(--text);
 	}
+	.mark {
+		fill: var(--accent);
+	}
+	.roof {
+		fill: none;
+		stroke: var(--accent-text);
+		stroke-width: 2.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.dot {
+		fill: var(--accent-text);
+	}
 	nav {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: var(--space-xs);
 		flex: 1;
 	}
 	/* On a phone: the name and Log out on the first row, the sections on their own row below. */
@@ -116,12 +160,15 @@
 		}
 	}
 	nav a {
-		padding: 10px 10px;
-		border-radius: var(--radius);
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 var(--space-md);
+		border-radius: var(--radius-button);
 		text-decoration: none;
 	}
 	nav a[aria-current='page'] {
-		background: var(--bg);
+		background: color-mix(in oklab, var(--accent) 12%, transparent);
 		color: var(--text);
 		font-weight: 600;
 	}

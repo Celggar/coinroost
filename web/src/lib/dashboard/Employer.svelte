@@ -99,13 +99,13 @@
 	.employer {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: 6px;
+		gap: var(--space-sm);
 		border-top: 1px solid var(--border);
-		padding-top: 10px;
+		padding-top: var(--space-md);
 	}
 	h3 {
 		margin: 0;
-		font-size: 1.05rem;
+		font-size: var(--text-lg);
 	}
 	p {
 		margin: 0;
@@ -114,18 +114,18 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 4px 10px;
+		gap: var(--space-xs) var(--space-md);
 	}
 	.owed strong {
-		font-size: 1.5rem;
-		font-weight: 650;
+		font-size: var(--text-xl);
+		font-weight: 700;
 	}
 	.label {
 		color: var(--muted);
 	}
 	.fortnights {
 		margin: 0;
-		padding-left: 20px;
+		padding-left: var(--space-xl);
 	}
 	summary {
 		cursor: pointer;

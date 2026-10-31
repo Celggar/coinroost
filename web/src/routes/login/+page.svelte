@@ -12,6 +12,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import { pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh, session } from '#lib/session.svelte.ts';
+	import { check, focusFirst, single } from '#lib/ui/form.ts';
 
 	let email = $state('');
 	let password = $state('');
@@ -27,6 +28,7 @@
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
+		if (refused(event)) return;
 		passwordField?.hide();
 		busy = true;
 		const second = recovering ? { recovery_code: recoveryCode } : { code };
@@ -60,6 +62,17 @@
 		if (recovering) recoveryField?.focus();
 		else codeField?.focus();
 	}
+
+	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
+	function refused(event: SubmitEvent): boolean {
+		const form = event.currentTarget as HTMLFormElement;
+		const errors = check(form);
+		const why = single(form, errors);
+		if (!why) return false;
+		error = { text: why, n: error.n + 1 };
+		focusFirst(form, errors);
+		return true;
+	}
 </script>
 
 <svelte:head>
@@ -71,10 +84,15 @@
 		<h1>{t('login.title')}</h1>
 		<p class="lead">{t('login.subtitle')}</p>
 	</div>
-	<form class="stack" onsubmit={submit}>
+	<form
+		novalidate
+		oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
+		class="stack"
+		onsubmit={submit}
+	>
 		<label>
 			{t('login.email')}
-			<input type="email" autocomplete="username" required bind:value={email} />
+			<input name="email" type="email" autocomplete="username" required bind:value={email} />
 		</label>
 		<PasswordField
 			bind:this={passwordField}
@@ -94,6 +112,7 @@
 							{t('login.recovery_code')}
 							<span class="hint">{t('login.recovery_hint')}</span>
 							<input
+								name="recovery_code"
 								type="text"
 								autocomplete="off"
 								autocapitalize="none"

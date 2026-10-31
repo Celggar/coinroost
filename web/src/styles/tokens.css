@@ -1,0 +1,123 @@
+/* Design tokens: colors, type, spacing, surfaces and motion, for light and dark. */
+:root {
+	/* Neutrals: Tailwind 4.3.3 `mist`; accent: Tailwind `green`. Pairs measured for WCAG AA on --surface and --bg:
+	   text 17:1, muted 7.3:1, field border 4.6:1, accent with its text 4.95:1 (hover 7.1:1). */
+	--bg: #f9fbfb;
+	--surface: #ffffff;
+	--text: #161b1d;
+	--muted: #4b585b;
+	--border: #d0d6d8;
+	--field-border: #67787c;
+	--accent: #008236;
+	--accent-hover: #016630;
+	--accent-text: #ffffff;
+	--link: #016630;
+	--focus: #008236;
+	--ok: #1f6f3f;
+	--ok-bg: #e3f2e8;
+	--warn: #7a4b00;
+	--warn-bg: #fdf0d5;
+	--bad: #9b1c1c;
+	--bad-bg: #fde4e4;
+	--radius: 8px;
+	/* One scale for the app (FD1, FD2). Type: five sizes, weights 400, 600 and 700 only. */
+	--text-xs: 0.8125rem;
+	--text-sm: 0.875rem;
+	--text-md: 1rem;
+	--text-lg: 1.125rem;
+	--text-xl: 1.5rem;
+	/* Spacing: every gap, margin and padding is one of these. */
+	--space-2xs: 2px;
+	--space-xs: 4px;
+	--space-sm: 8px;
+	--space-md: 12px;
+	--space-lg: 16px;
+	--space-xl: 24px;
+	--space-2xl: 32px;
+	--space-3xl: 48px;
+	/* Surfaces and controls take the login's language: soft cards, 10 px fields, 12 px buttons. */
+	--radius-field: 10px;
+	--radius-button: 12px;
+	--radius-card: 16px;
+	--card-edge: rgb(3 46 21 / 0.08);
+	--card-shadow: 0 1px 2px rgb(3 46 21 / 0.06), 0 8px 24px rgb(3 46 21 / 0.06);
+	--field-height: 44px;
+	--primary-height: 48px;
+	--placeholder: #67787c;
+	--danger: #b42318;
+	--danger-hover: #912018;
+	--danger-text: #ffffff;
+	--in: #1f6f3f;
+	--out: #9b1c1c;
+	/* The viewport notice is the inverse surface (Material 3 snackbar). */
+	--inverse-bg: #161b1d;
+	--inverse-text: #f9fbfb;
+	--inverse-ok: #05df72;
+	--inverse-bad: #f97066;
+	/* Charts: income and spending are categorical slots 1 and 2, checked for color blindness against --surface. */
+	--chart-income: #2a78d6;
+	--chart-spending: #eb6834;
+	--chart-grid: #e3e7e8;
+	--chart-axis: #9ca8ab;
+	/* Motion: Material 3 easing and duration tokens. Things enter decelerating and leave accelerating, faster. */
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+	--ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+	--duration-short: 150ms;
+	--duration-exit: 200ms;
+	--duration-medium: 300ms;
+	--duration-long: 500ms;
+	color-scheme: light dark;
+	/* The system font stack: San Francisco on Apple devices, Segoe UI on Windows, Roboto on Android, Noto or
+	   Liberation on Linux (system-ui is left out: on some Linux setups it resolves to a font with no bold). */
+	font-family:
+		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', 'Liberation Sans', Arial,
+		sans-serif;
+	line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #090b0c;
+		--surface: #161b1d;
+		--text: #f9fbfb;
+		--muted: #9ca8ab;
+		--border: #394447;
+		--field-border: #9ca8ab;
+		--accent: #05df72;
+		--accent-hover: #7bf1a8;
+		--accent-text: #032e15;
+		--link: #05df72;
+		--focus: #05df72;
+		--ok: #8fd3a6;
+		--ok-bg: #18311f;
+		--warn: #f2c66d;
+		--warn-bg: #3a2c0d;
+		--bad: #f4a3a3;
+		--bad-bg: #3d1717;
+		--chart-income: #3987e5;
+		--chart-spending: #d95926;
+		--chart-grid: #22292b;
+		--chart-axis: #4b585b;
+		--card-edge: rgb(255 255 255 / 0.08);
+		--card-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+		--placeholder: #9ca8ab;
+		--danger: #f97066;
+		--danger-hover: #fda29b;
+		--danger-text: #3d1717;
+		--in: #8fd3a6;
+		--out: #f4a3a3;
+		--inverse-bg: #e3e7e8;
+		--inverse-text: #161b1d;
+		--inverse-ok: #008236;
+		--inverse-bad: #b42318;
+	}
+}
+
+/* Touch-sized controls where the login has them (its phone layout starts at 899 px). */
+@media (max-width: 899px) {
+	:root {
+		--field-height: 48px;
+		--primary-height: 52px;
+	}
+}

@@ -189,7 +189,7 @@
 	.period button[aria-pressed='true'] {
 		background: var(--bg);
 		color: var(--text);
-		font-weight: 650;
+		font-weight: 700;
 		border-color: var(--text);
 	}
 	.rankings {

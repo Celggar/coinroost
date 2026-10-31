@@ -6,13 +6,14 @@
 	import RuleForm from '#lib/rules/RuleForm.svelte';
 	import { actions, conditions, names as nameMaps } from '#lib/rules/describe.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
+	import { glide, pop, rise, vanish } from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
 	let payees = $state<Schemas['Payee'][]>([]);
 	let accounts = $state<Schemas['Account'][]>([]);
 	let loadError = $state('');
-	let actionError = $state('');
 	let loaded = $state(false);
 	let busy = $state(false);
 	let confirming = $state<string | null>(null);
@@ -41,28 +42,26 @@
 
 	async function move(rule: Schemas['Rule'], to: number) {
 		busy = true;
-		actionError = '';
 		const { error, response } = await api.PATCH('/api/v1/rules/{rule_id}', {
 			params: { path: { rule_id: rule.id } },
 			body: { position: to }
 		});
 		busy = false;
 		if (!response.ok) {
-			actionError = problem(error, response.status, t('rules.move_failed'));
+			notify(problem(error, response.status, t('rules.move_failed')), 'bad');
 		}
 		await load();
 	}
 
 	async function remove(rule: Schemas['Rule']) {
 		busy = true;
-		actionError = '';
 		const { error, response } = await api.DELETE('/api/v1/rules/{rule_id}', {
 			params: { path: { rule_id: rule.id } }
 		});
 		busy = false;
 		confirming = null;
 		if (!response.ok) {
-			actionError = problem(error, response.status, t('rules.delete_failed'));
+			notify(problem(error, response.status, t('rules.delete_failed')), 'bad');
 		}
 		await load();
 	}
@@ -83,11 +82,10 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
-		{#if actionError}<p class="alert" role="alert">{actionError}</p>{/if}
 		{#if rules.length}
 			<ol class="rules" aria-label={t('rules.list')}>
 				{#each rules as rule, index (rule.id)}
-					<li class="card rule">
+					<li class="card rule" in:rise out:vanish animate:glide>
 						<div class="head">
 							<span class="position" aria-hidden="true">{rule.position}</span>
 							<h2>{rule.name}</h2>
@@ -96,29 +94,41 @@
 						<p><strong>{t('rules.when')}</strong> {conditions(rule, names).join(' · ')}</p>
 						<p><strong>{t('rules.sets')}</strong> {actions(rule, names).join(' · ')}</p>
 						<div class="buttons">
-							<button
-								class="secondary"
-								onclick={() => move(rule, rule.position - 1)}
-								disabled={busy || index === 0}
-								aria-label={t('rules.up_named', { name: rule.name })}>{t('rules.up')}</button
-							>
-							<button
-								class="secondary"
-								onclick={() => move(rule, rule.position + 1)}
-								disabled={busy || index === rules.length - 1}
-								aria-label={t('rules.down_named', { name: rule.name })}>{t('rules.down')}</button
-							>
+							<!-- The first rule cannot go up and the last cannot go down: those buttons are not shown. -->
+							{#if index > 0}
+								<button
+									class="secondary"
+									onclick={() => move(rule, rule.position - 1)}
+									disabled={busy}
+									aria-label={t('rules.up_named', { name: rule.name })}>{t('rules.up')}</button
+								>
+							{/if}
+							{#if index < rules.length - 1}
+								<button
+									class="secondary"
+									onclick={() => move(rule, rule.position + 1)}
+									disabled={busy}
+									aria-label={t('rules.down_named', { name: rule.name })}>{t('rules.down')}</button
+								>
+							{/if}
 							{#if confirming === rule.id}
-								<button onclick={() => remove(rule)} disabled={busy}>{t('rules.delete_it')}</button>
-								<button class="secondary" onclick={() => (confirming = null)}
-									>{t('rules.keep_it')}</button
+								<button
+									class="danger"
+									onclick={() => remove(rule)}
+									disabled={busy}
+									in:pop={{ start: 0.9 }}>{t('rules.delete_it')}</button
+								>
+								<button
+									class="secondary"
+									onclick={() => (confirming = null)}
+									in:pop={{ start: 0.9 }}>{t('rules.keep_it')}</button
 								>
 							{:else}
 								<button
 									class="secondary"
 									onclick={() => (confirming = rule.id)}
 									aria-label={t('rules.delete_named', { name: rule.name })}
-									>{t('rules.delete')}</button
+									in:pop={{ start: 0.9 }}>{t('rules.delete')}</button
 								>
 							{/if}
 						</div>
@@ -126,7 +136,7 @@
 				{/each}
 			</ol>
 		{:else}
-			<p>{t('rules.none_yet')}</p>
+			<p in:rise out:vanish>{t('rules.none_yet')}</p>
 		{/if}
 
 		<RuleForm {categories} {payees} {accounts} oncreated={load} />
@@ -143,7 +153,7 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-md);
 	}
 	.rule p {
 		margin: 0;
@@ -152,7 +162,7 @@
 	.head {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-md);
 	}
 	.position {
 		display: inline-grid;
@@ -166,6 +176,6 @@
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 </style>

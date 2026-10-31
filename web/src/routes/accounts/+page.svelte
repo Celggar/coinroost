@@ -1,7 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { onMount, tick } from 'svelte';
+	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
+	import { rise, vanish } from '#lib/motion.ts';
+	import Field from '#lib/ui/Field.svelte';
+	import FormError from '#lib/ui/FormError.svelte';
+	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
 	let profiles = $state<Schemas['BankProfile'][]>([]);
@@ -29,7 +34,7 @@
 	let markers = $state('');
 	let cardPrefixes = $state('');
 	let formError = $state('');
-	let created = $state('');
+	let errors = $state<Errors>({});
 	let busy = $state(false);
 
 	const suggested = $derived(
@@ -71,9 +76,14 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		busy = true;
+		const form = event.currentTarget as HTMLFormElement;
 		formError = '';
-		created = '';
+		errors = check(form);
+		if (Object.keys(errors).length) {
+			focusFirst(form, errors);
+			return;
+		}
+		busy = true;
 		const { data, error, response } = await api.POST('/api/v1/accounts', {
 			body: {
 				name,
@@ -86,10 +96,17 @@
 		});
 		busy = false;
 		if (!data) {
-			formError = problem(error, response?.status, t('accounts.create_failed'));
+			const why = failure(error, response?.status, t('accounts.create_failed'));
+			if (why.field && form.elements.namedItem(why.field)) {
+				errors = { [why.field]: why.message };
+				await tick();
+				focusFirst(form, errors);
+			} else {
+				formError = why.message;
+			}
 			return;
 		}
-		created = data.name;
+		notify(t('accounts.created', { name: data.name }));
 		accounts = [...accounts, data].sort((a, b) => a.name.localeCompare(b.name));
 		name = '';
 		profile = '';
@@ -118,7 +135,7 @@
 {:else if loaded}
 	<div class="stack">
 		{#if accounts.length}
-			<div class="table-wrap">
+			<div class="table-wrap" in:rise>
 				<table>
 					<thead>
 						<tr>
@@ -131,7 +148,7 @@
 					</thead>
 					<tbody>
 						{#each accounts as account (account.id)}
-							<tr>
+							<tr in:rise>
 								<td>{account.name}</td>
 								<td>{kindName(account.kind)}</td>
 								<td>{account.currency}</td>
@@ -143,67 +160,95 @@
 				</table>
 			</div>
 		{:else}
-			<p>{t('accounts.none_yet')}</p>
+			<p out:vanish>{t('accounts.none_yet')}</p>
 		{/if}
 
-		<form class="card" onsubmit={submit}>
+		<form
+			class="card"
+			novalidate
+			onsubmit={submit}
+			oninput={(event) => (errors = without(errors, event))}
+		>
 			<h2>{t('accounts.new')}</h2>
 			<div class="fields">
-				<label>
-					{t('accounts.name')}
-					<input required maxlength="200" bind:value={name} />
-				</label>
-				<label>
-					{t('accounts.kind')}
-					<select bind:value={kind}>
-						{#each kinds as option (option)}
-							<option value={option}>{kindName(option)}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					{t('accounts.bank_file')}
-					<span class="hint">{t('accounts.bank_file_hint')}</span>
-					<select bind:value={profile} onchange={pickProfile}>
-						<option value="">{t('accounts.no_profile')}</option>
-						{#each profiles as option (option.id)}
-							<option value={option.id}>{option.name}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					{t('accounts.currency')}
-					<input required maxlength="3" bind:value={currency} />
-				</label>
-				<label>
-					{t('accounts.key')}
-					<span class="hint">{t('accounts.key_hint')}</span>
-					<input
-						required
-						maxlength="64"
-						value={namespaceEdited ? namespace : suggested}
-						oninput={(event) => {
-							namespace = event.currentTarget.value;
-							namespaceEdited = true;
-						}}
-					/>
-				</label>
-				<label>
-					{t('accounts.markers')}
-					<span class="hint">{t('accounts.markers_hint')}</span>
-					<input bind:value={markers} />
-				</label>
-				<label>
-					{t('accounts.prefixes')}
-					<span class="hint">{t('accounts.prefixes_hint')}</span>
-					<input inputmode="numeric" bind:value={cardPrefixes} />
-				</label>
+				<Field label={t('accounts.name')} name="name" error={errors.name}>
+					{#snippet children(wiring)}
+						<input {...wiring} required maxlength="200" bind:value={name} />
+					{/snippet}
+				</Field>
+				<Field label={t('accounts.kind')} name="kind" error={errors.kind}>
+					{#snippet children(wiring)}
+						<select {...wiring} bind:value={kind}>
+							{#each kinds as option (option)}
+								<option value={option}>{kindName(option)}</option>
+							{/each}
+						</select>
+					{/snippet}
+				</Field>
+				<Field
+					label={t('accounts.bank_file')}
+					name="profile"
+					hint={t('accounts.bank_file_hint')}
+					error={errors.profile}
+				>
+					{#snippet children(wiring)}
+						<select {...wiring} bind:value={profile} onchange={pickProfile}>
+							<option value="">{t('accounts.no_profile')}</option>
+							{#each profiles as option (option.id)}
+								<option value={option.id}>{option.name}</option>
+							{/each}
+						</select>
+					{/snippet}
+				</Field>
+				<Field label={t('accounts.currency')} name="currency" error={errors.currency}>
+					{#snippet children(wiring)}
+						<input {...wiring} required maxlength="3" bind:value={currency} />
+					{/snippet}
+				</Field>
+				<Field
+					label={t('accounts.key')}
+					name="namespace"
+					hint={t('accounts.key_hint')}
+					error={errors.namespace}
+				>
+					{#snippet children(wiring)}
+						<input
+							{...wiring}
+							required
+							maxlength="64"
+							value={namespaceEdited ? namespace : suggested}
+							oninput={(event) => {
+								namespace = event.currentTarget.value;
+								namespaceEdited = true;
+							}}
+						/>
+					{/snippet}
+				</Field>
+				<Field
+					label={t('accounts.markers')}
+					name="detection.markers"
+					hint={t('accounts.markers_hint')}
+					error={errors['detection.markers']}
+				>
+					{#snippet children(wiring)}
+						<input {...wiring} bind:value={markers} />
+					{/snippet}
+				</Field>
+				<Field
+					label={t('accounts.prefixes')}
+					name="detection.card_prefixes"
+					hint={t('accounts.prefixes_hint')}
+					error={errors['detection.card_prefixes']}
+				>
+					{#snippet children(wiring)}
+						<input {...wiring} inputmode="numeric" bind:value={cardPrefixes} />
+					{/snippet}
+				</Field>
 			</div>
-			{#if formError}<p class="alert" role="alert">{formError}</p>{/if}
-			{#if created}<p class="notice" role="status">
-					{t('accounts.created', { name: created })}
-				</p>{/if}
-			<div><button type="submit" disabled={busy}>{t('accounts.create')}</button></div>
+			<FormError text={formError} />
+			<div class="actions">
+				<button type="submit" disabled={busy}>{t('accounts.create')}</button>
+			</div>
 		</form>
 	</div>
 {:else}
@@ -211,12 +256,7 @@
 {/if}
 
 <style>
-	.fields {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-		gap: 12px;
-	}
 	code {
-		font-size: 0.9rem;
+		font-size: var(--text-sm);
 	}
 </style>

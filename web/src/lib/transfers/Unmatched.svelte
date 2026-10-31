@@ -2,6 +2,11 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { vanish } from '#lib/motion.ts';
+	import Field from '#lib/ui/Field.svelte';
+	import FormError from '#lib/ui/FormError.svelte';
+	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
 		preview,
@@ -12,7 +17,7 @@
 	let first = $state('');
 	let second = $state('');
 	let error = $state('');
-	let done = $state('');
+	let errors = $state<Errors>({});
 	let busy = $state(false);
 
 	// Every leg still waiting, paired in the preview or not: by hand, any two can be tried.
@@ -25,34 +30,37 @@
 		)
 	);
 
-	async function pair(a: string, b: string) {
+	/** Pairs the two; the reason it cannot comes back, or '' once they are one transfer. */
+	async function pair(a: string, b: string): Promise<string> {
 		busy = true;
-		error = '';
-		done = '';
 		const {
 			data,
 			error: failure,
 			response
 		} = await api.POST('/api/v1/transfers', { body: { transaction_ids: [a, b] } });
 		busy = false;
-		if (!data) {
-			error = problem(failure, response?.status, t('unmatched.failed'));
-			return;
-		}
-		done = t('unmatched.paired');
+		if (!data) return problem(failure, response?.status, t('unmatched.failed'));
+		notify(t('unmatched.paired'));
 		first = second = '';
 		onchanged();
+		return '';
 	}
 
-	// A new choice makes the last answer stale.
-	function clear() {
-		error = '';
-		done = '';
+	async function suggested(a: string, b: string) {
+		const why = await pair(a, b);
+		if (why) notify(why, 'bad');
 	}
 
-	function submit(event: SubmitEvent) {
+	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (first && second) pair(first, second);
+		const form = event.currentTarget as HTMLFormElement;
+		error = '';
+		errors = check(form);
+		if (Object.keys(errors).length) {
+			focusFirst(form, errors);
+			return;
+		}
+		error = await pair(first, second);
 	}
 </script>
 
@@ -63,14 +71,14 @@
 	{:else}
 		<ul class="legs" aria-label={t('unmatched.title')}>
 			{#each preview.unmatched as item (item.leg.transaction_id)}
-				<li>
+				<li out:vanish>
 					<div class="what">{legText(item.leg, names)}</div>
 					<div class="hint">{reasonLabel(item.reason)}</div>
 					{#each item.candidates as candidate (candidate.transaction_id)}
 						<button
 							class="secondary"
 							disabled={busy}
-							onclick={() => pair(item.leg.transaction_id, candidate.transaction_id)}
+							onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
 							>{t('unmatched.pair_with', { leg: legText(candidate, names) })}</button
 						>
 					{/each}
@@ -79,32 +87,41 @@
 		</ul>
 	{/if}
 
-	<form onsubmit={submit} onchange={clear} aria-label={t('unmatched.by_hand')}>
+	<form
+		novalidate
+		onsubmit={submit}
+		onchange={(event) => {
+			errors = without(errors, event);
+			error = '';
+		}}
+		aria-label={t('unmatched.by_hand')}
+	>
 		<h3>{t('unmatched.by_hand')}</h3>
 		<p class="hint">{t('unmatched.by_hand_hint')}</p>
 		<div class="fields">
-			<label>
-				{t('unmatched.one_side')}
-				<select bind:value={first} required>
-					<option value="" disabled>{t('unmatched.choose')}</option>
-					{#each choices as leg (leg.transaction_id)}
-						<option value={leg.transaction_id}>{legText(leg, names)}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				{t('unmatched.other_side')}
-				<select bind:value={second} required>
-					<option value="" disabled>{t('unmatched.choose')}</option>
-					{#each choices as leg (leg.transaction_id)}
-						<option value={leg.transaction_id}>{legText(leg, names)}</option>
-					{/each}
-				</select>
-			</label>
+			<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
+				{#snippet children(wiring)}
+					<select {...wiring} bind:value={first} required>
+						<option value="" disabled>{t('unmatched.choose')}</option>
+						{#each choices as leg (leg.transaction_id)}
+							<option value={leg.transaction_id}>{legText(leg, names)}</option>
+						{/each}
+					</select>
+				{/snippet}
+			</Field>
+			<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
+				{#snippet children(wiring)}
+					<select {...wiring} bind:value={second} required>
+						<option value="" disabled>{t('unmatched.choose')}</option>
+						{#each choices as leg (leg.transaction_id)}
+							<option value={leg.transaction_id}>{legText(leg, names)}</option>
+						{/each}
+					</select>
+				{/snippet}
+			</Field>
 		</div>
-		{#if error}<p class="alert" role="alert">{error}</p>{/if}
-		{#if done}<p class="notice" role="status">{done}</p>{/if}
-		<div>
+		<FormError text={error} />
+		<div class="actions">
 			<button type="submit" disabled={busy || choices.length < 2}>{t('unmatched.pair_them')}</button
 			>
 		</div>
@@ -117,13 +134,13 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.legs li {
 		border-top: 1px solid var(--border);
-		padding-top: 8px;
+		padding-top: var(--space-sm);
 		display: grid;
-		gap: 6px;
+		gap: var(--space-sm);
 		justify-items: start;
 	}
 	.what,
@@ -133,19 +150,9 @@
 	}
 	form {
 		display: grid;
-		gap: 10px;
+		gap: var(--space-md);
 		border-top: 1px solid var(--border);
-		padding-top: 12px;
-	}
-	h3 {
-		margin: 0;
-		font-size: 1rem;
-	}
-	.fields {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-		gap: 12px;
-		align-items: end;
+		padding-top: var(--space-lg);
 	}
 	select {
 		max-width: 100%;

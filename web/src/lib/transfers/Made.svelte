@@ -2,6 +2,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 
 	let {
@@ -11,8 +12,6 @@
 	}: { transfers: Schemas['Transaction'][]; names: AccountNames; onchanged: () => void } = $props();
 
 	let confirming = $state<string | null>(null);
-	let error = $state('');
-	let done = $state('');
 	let busy = $state(false);
 
 	function sides(transfer: Schemas['Transaction']) {
@@ -23,8 +22,6 @@
 
 	async function split(transfer: Schemas['Transaction']) {
 		busy = true;
-		error = '';
-		done = '';
 		const {
 			data,
 			error: failure,
@@ -35,18 +32,16 @@
 		busy = false;
 		confirming = null;
 		if (!data) {
-			error = problem(failure, response?.status, t('made.failed'));
+			notify(problem(failure, response?.status, t('made.failed')), 'bad');
 			return;
 		}
-		done = t('made.split_done', { description: transfer.description });
+		notify(t('made.split_done', { description: transfer.description }));
 		onchanged();
 	}
 </script>
 
 <section class="card" aria-labelledby="made-title">
 	<h2 id="made-title">{t('made.title')}</h2>
-	{#if error}<p class="alert" role="alert">{error}</p>{/if}
-	{#if done}<p class="notice" role="status">{done}</p>{/if}
 	{#if transfers.length === 0}
 		<p>{t('made.none')}</p>
 	{:else}

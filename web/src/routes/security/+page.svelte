@@ -10,6 +10,7 @@
 	import { plural, tag, t } from '#lib/i18n.svelte.ts';
 	import { pop, rise, swapOut, vanish } from '#lib/motion.ts';
 	import { session } from '#lib/session.svelte.ts';
+	import { check, focusFirst, single } from '#lib/ui/form.ts';
 
 	const LOW = 3;
 
@@ -54,6 +55,7 @@
 	async function regenerate(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
+		if (refused(event)) return;
 		busy = true;
 		const {
 			data,
@@ -86,6 +88,17 @@
 	}
 
 	onMount(load);
+
+	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
+	function refused(event: SubmitEvent): boolean {
+		const form = event.currentTarget as HTMLFormElement;
+		const errors = check(form);
+		const why = single(form, errors);
+		if (!why) return false;
+		error = { text: why, n: error.n + 1 };
+		focusFirst(form, errors);
+		return true;
+	}
 </script>
 
 <svelte:head>
@@ -125,7 +138,12 @@
 						>{t('security.regenerate')}</button
 					>
 				{:else if mode === 'confirm'}
-					<form class="stack" onsubmit={regenerate}>
+					<form
+						novalidate
+						oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
+						class="stack"
+						onsubmit={regenerate}
+					>
 						<p class="hint">{t('security.regenerate_note')}</p>
 						<CodeField
 							bind:this={codeField}
@@ -175,7 +193,7 @@
 		margin: 0;
 	}
 	h3 {
-		font-size: 1.05rem;
+		font-size: var(--text-lg);
 	}
 	/* Focused by the page when the new codes arrive, so a screen reader starts there; it is not a control. */
 	h3:focus {
@@ -189,7 +207,7 @@
 	}
 	.warn {
 		border-radius: var(--radius);
-		padding: 10px 12px;
+		padding: var(--space-md) var(--space-lg);
 		background: var(--warn-bg);
 		color: var(--warn);
 	}

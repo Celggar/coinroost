@@ -224,7 +224,7 @@
 		gap: 8px;
 	}
 	figcaption {
-		font-weight: 650;
+		font-weight: 700;
 	}
 	.legend {
 		display: flex;
@@ -234,12 +234,12 @@
 		padding: 0;
 		list-style: none;
 		color: var(--muted);
-		font-size: 0.9rem;
+		font-size: var(--text-sm);
 	}
 	.legend li {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-sm);
 	}
 	.swatch {
 		width: 12px;
@@ -282,7 +282,7 @@
 	}
 	.tick {
 		fill: var(--muted);
-		font-size: 12px;
+		font-size: var(--text-xs);
 		font-variant-numeric: tabular-nums;
 	}
 	.tip {
@@ -292,18 +292,18 @@
 		display: grid;
 		gap: 2px;
 		min-width: 170px;
-		padding: 8px 10px;
+		padding: var(--space-sm) var(--space-md);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
-		font-size: 0.9rem;
+		font-size: var(--text-sm);
 		pointer-events: none;
 	}
 	.tip span {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-sm);
 		color: var(--muted);
 	}
 	.tip b {

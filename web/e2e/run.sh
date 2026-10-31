@@ -19,6 +19,11 @@ email="e2e-$(date +%s)-$$@example.com"
 password=$(head -c 24 /dev/urandom | base64)
 secret=$(printf '%s\n' "$password" | "$server" user add "$email" | sed -n 's/^secret //p')
 [ -n "$secret" ] || { echo "user add printed no secret" >&2; exit 1; }
+# A second user for the form errors test: a TOTP code is accepted once, so it logs in with its own.
+forms_email="e2e-forms-$(date +%s)-$$@example.com"
+forms_password=$(head -c 24 /dev/urandom | base64)
+forms_secret=$(printf '%s\n' "$forms_password" | "$server" user add "$forms_email" | sed -n 's/^secret //p')
+[ -n "$forms_secret" ] || { echo "user add printed no secret" >&2; exit 1; }
 # Setup links for the web enrollment test and the recovery-code test, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -69,4 +74,5 @@ start "$web/e2e-server-first.log" first open "${DATABASE_URL%/*}/coinroost_e2e_f
 cd "$web"
 npx playwright install chromium >/dev/null
 BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2E_EMAIL="$email" E2E_PASSWORD="$password" E2E_SECRET="$secret" E2E_INVITE="$invite" \
+  E2E_FORMS_EMAIL="$forms_email" E2E_FORMS_PASSWORD="$forms_password" E2E_FORMS_SECRET="$forms_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" npx playwright test "$@"

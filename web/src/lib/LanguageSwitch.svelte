@@ -58,7 +58,7 @@
 		padding: 0 12px;
 		border-radius: 10px;
 		font-weight: 600;
-		font-size: 0.95rem;
+		font-size: var(--text-sm);
 		color: var(--muted);
 		cursor: pointer;
 	}

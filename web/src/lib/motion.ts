@@ -3,6 +3,7 @@
 // moves or grows (MDN: replace the motion, do not only remove it). Svelte runs these with the Web Animations API,
 // which CSS media rules do not reach, so each one reads the setting itself.
 import { prefersReducedMotion } from 'svelte/motion';
+import { flip } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
 
 /** Milliseconds, as in app.css. */
@@ -80,6 +81,14 @@ export function pop(node: Element, { delay = 0, start = 0.6 } = {}): TransitionC
 		start: still() ? 1 : start,
 		duration: DURATION.medium,
 		easing: EASE.enter
+	});
+}
+
+/** A list item slides to its new place when others come or go; under reduced motion it lands there at once. */
+export function glide(node: Element, positions: { from: DOMRect; to: DOMRect }) {
+	return flip(node, positions, {
+		duration: still() ? 0 : DURATION.medium,
+		easing: EASE.standard
 	});
 }
 

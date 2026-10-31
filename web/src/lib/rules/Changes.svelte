@@ -2,13 +2,13 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import Money from '#lib/ui/Money.svelte';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
 
 	let { names, onapplied }: { names: Names; onapplied: () => void } = $props();
 
 	let preview = $state<Schemas['RulePreview'] | null>(null);
-	let error = $state('');
-	let done = $state('');
 	let busy = $state(false);
 
 	/** Only what changes: the category, the payee, or both. */
@@ -26,12 +26,11 @@
 
 	async function check() {
 		busy = true;
-		error = '';
 		const { data, error: failure, response } = await api.POST('/api/v1/rules/preview');
 		busy = false;
 		if (!data) {
 			preview = null;
-			error = problem(failure, response?.status, t('changes.check_failed'));
+			notify(problem(failure, response?.status, t('changes.check_failed')), 'bad');
 			return;
 		}
 		preview = data;
@@ -40,8 +39,6 @@
 	async function apply() {
 		if (!preview) return;
 		busy = true;
-		error = '';
-		done = '';
 		const {
 			data,
 			error: failure,
@@ -51,13 +48,15 @@
 		});
 		busy = false;
 		if (!data) {
-			error =
+			notify(
 				response?.status === 412
 					? t('changes.stale')
-					: problem(failure, response?.status, t('changes.apply_failed'));
+					: problem(failure, response?.status, t('changes.apply_failed')),
+				'bad'
+			);
 			return;
 		}
-		done = plural(data.applied, 'changes.applied_one', 'changes.applied_other');
+		notify(plural(data.applied, 'changes.applied_one', 'changes.applied_other'));
 		onapplied();
 		await check();
 	}
@@ -70,14 +69,11 @@
 		<button
 			class="secondary"
 			onclick={() => {
-				done = '';
 				check();
 			}}
 			disabled={busy}>{t('changes.check')}</button
 		>
 	</div>
-	{#if error}<p class="alert" role="alert">{error}</p>{/if}
-	{#if done}<p class="notice" role="status">{done}</p>{/if}
 	{#if preview}
 		{#if preview.changes.length === 0}
 			<p>{t('changes.nothing')}</p>
@@ -89,7 +85,7 @@
 						<div class="what">
 							<span>{day(change.date)}</span>
 							<span class="description">{change.description}</span>
-							<span class="amount">{money(change.amount_minor, change.currency)}</span>
+							<Money minor={change.amount_minor} currency={change.currency} />
 						</div>
 						<div class="hint">{what(change).join(' · ')}</div>
 					</li>
@@ -125,8 +121,5 @@
 		flex: 1;
 		min-width: 0;
 		overflow-wrap: anywhere;
-	}
-	.amount {
-		font-variant-numeric: tabular-nums;
 	}
 </style>

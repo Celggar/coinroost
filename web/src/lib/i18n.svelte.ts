@@ -45,6 +45,11 @@ export function t(key: Key, params?: Record<string, string | number>): string {
 	);
 }
 
+/** Whether `key` is one of the app's texts, for keys built from what the server sends (a problem's code). */
+export function has(key: string): key is Key {
+	return key in catalogs.en;
+}
+
 /** `one` or `other` by the language's plural rule for `count`, which also fills `{count}`. */
 export function plural(
 	count: number,

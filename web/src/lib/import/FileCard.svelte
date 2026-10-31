@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
-	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { has, plural, t } from '#lib/i18n.svelte.ts';
+	import Money from '#lib/ui/Money.svelte';
 
 	let {
 		file,
@@ -73,6 +74,11 @@
 	onMount(() => {
 		read();
 	});
+	/** Why a row could not be read, in the page's language: the text of its code, else the API's English. */
+	function rowReason(failure: Schemas['RowFailure']): string {
+		const key = `row.${failure.code}`;
+		return has(key) ? t(key, { value: failure.value ?? '' }) : failure.reason;
+	}
 </script>
 
 <article class="card" aria-label={file.name} aria-busy={busy}>
@@ -140,7 +146,7 @@
 				<h3>{t('file.bad_rows')}</h3>
 				<ul class="errors">
 					{#each reading.row_errors as failure (failure.row)}
-						<li>{t('file.bad_row', { row: failure.row, reason: failure.reason })}</li>
+						<li>{t('file.bad_row', { row: failure.row, reason: rowReason(failure) })}</li>
 					{/each}
 				</ul>
 			</section>
@@ -164,7 +170,9 @@
 								<tr>
 									<td>{day(row.date)}</td>
 									<td>{row.description}</td>
-									<td class="number">{money(row.amount_minor, account.currency)}</td>
+									<td class="number"
+										><Money minor={row.amount_minor} currency={account.currency} /></td
+									>
 									<td>{row.duplicate ? t('file.row_already') : t('file.row_new')}</td>
 								</tr>
 							{/each}
@@ -210,25 +218,25 @@
 	.counts div {
 		background: var(--bg);
 		border-radius: var(--radius);
-		padding: 8px 10px;
+		padding: var(--space-sm) var(--space-md);
 	}
 	dt {
 		color: var(--muted);
-		font-size: 0.85rem;
+		font-size: var(--text-xs);
 	}
 	dd {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: var(--text-xl);
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 	}
 	h3 {
-		font-size: 1rem;
+		font-size: var(--text-md);
 		margin: 0 0 4px;
 	}
 	.errors {
 		margin: 0;
-		padding-left: 20px;
+		padding-left: var(--space-xl);
 		color: var(--bad);
 	}
 	/* A 24 px target at least (WCAG 2.5.8), though it sits in a hint. */

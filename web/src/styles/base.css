@@ -1,0 +1,256 @@
+/* Elements and the shared controls: page, headings, buttons and fields. */
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-size: var(--text-md);
+}
+
+.app {
+	display: contents;
+}
+
+main {
+	max-width: 960px;
+	margin: 0 auto;
+	padding: var(--space-lg);
+}
+
+/* The login and setup pages draw their own full-screen frame. */
+main.public {
+	max-width: none;
+	padding: 0;
+}
+
+/* Text blocks take their space from the scale, not from their font size. */
+p,
+ul,
+ol,
+dl,
+figure {
+	margin: 0;
+}
+
+h1 {
+	font-size: var(--text-xl);
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+	margin: var(--space-sm) 0 var(--space-lg);
+}
+
+h2 {
+	font-size: var(--text-lg);
+	font-weight: 700;
+	line-height: 1.3;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+h3 {
+	font-size: var(--text-md);
+	font-weight: 600;
+	margin: 0;
+}
+
+a {
+	color: var(--link);
+}
+
+:focus-visible {
+	outline: 3px solid var(--focus);
+	outline-offset: 2px;
+}
+
+/* Chromium focuses the parts of a date input one by one, and its picker button shows no ring of its own: the
+   whole input shows it while any part has the focus. */
+input[type='date']:focus-within {
+	outline: 3px solid var(--focus);
+	outline-offset: 2px;
+}
+
+/* Buttons. The plain button is the primary action, like the login's; `.secondary` is the quiet one, `.danger`
+   confirms something that cannot be undone. Every one is at least 44 px tall. */
+button,
+.button {
+	font: inherit;
+	font-size: var(--text-md);
+	font-weight: 600;
+	line-height: 1.25;
+	border: 1px solid var(--accent);
+	background: var(--accent);
+	color: var(--accent-text);
+	border-radius: var(--radius-button);
+	padding: 0 var(--space-lg);
+	cursor: pointer;
+	min-height: var(--primary-height);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-sm);
+	text-decoration: none;
+	position: relative;
+	isolation: isolate;
+	transition:
+		transform var(--duration-short) var(--ease-standard),
+		opacity var(--duration-short) var(--ease-standard);
+}
+
+@media (max-width: 899px) {
+	:where(button:not(.secondary, .link), .button) {
+		border-radius: 14px;
+	}
+}
+
+/* Hover is a layer of the hover color under the label (Material 3 state layers), so only its opacity animates. A
+   button sets `--state-layer` to tint differently, or to transparent for none. */
+button::before,
+.button::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: var(--state-layer, var(--accent-hover));
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--duration-short) var(--ease-standard);
+}
+
+button:hover:not(:disabled, [aria-disabled='true'])::before,
+.button:hover::before {
+	opacity: 1;
+}
+
+button.secondary {
+	--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
+	min-height: 44px;
+	background: transparent;
+	color: var(--link);
+	border-color: var(--field-border);
+}
+
+button.danger {
+	--state-layer: var(--danger-hover);
+	background: var(--danger);
+	border-color: var(--danger);
+	color: var(--danger-text);
+}
+
+/* A button that reads as a link inside text or a row: no box, still 44 px to tap. */
+button.link {
+	--state-layer: transparent;
+	min-height: 44px;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: var(--link);
+	text-decoration: underline;
+}
+
+/* Forced colors paint their own states; the layer would only hide the label. */
+@media (forced-colors: active) {
+	button::before,
+	.button::before {
+		display: none;
+	}
+}
+
+/* A press gives way a little. */
+@media (prefers-reduced-motion: no-preference) {
+	button:active:not(:disabled, [aria-disabled='true']),
+	.button:active {
+		transform: scale(0.97);
+	}
+}
+
+button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Fields: the value is plain text (weight 400), never the label's weight. */
+input,
+select,
+textarea {
+	font: inherit;
+	font-size: var(--text-md);
+	font-weight: 400;
+	color: var(--text);
+	background: var(--surface);
+	border: 1px solid var(--field-border);
+	border-radius: var(--radius-field);
+	padding: 0 var(--space-md);
+	min-height: var(--field-height);
+	width: 100%;
+}
+
+/* :where keeps these at an element's weight, so a component's own sizes (the code field's cover input) win. */
+:where(input:not([type='checkbox'], [type='radio'], [type='file']), select) {
+	height: var(--field-height);
+}
+
+input::placeholder {
+	color: var(--placeholder);
+	opacity: 1;
+}
+
+:where(input[type='checkbox'], input[type='radio']) {
+	width: auto;
+	min-height: 0;
+	accent-color: var(--accent);
+}
+
+[aria-invalid='true'] {
+	border-color: var(--bad);
+	box-shadow: 0 0 0 1px var(--bad);
+}
+
+/* A label that wraps its control (the sign-in pages): the text over the control, stacked from the top. */
+label {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-content: start;
+	gap: var(--space-xs);
+	font-weight: 600;
+}
+
+/* One field pattern everywhere (FD4): label, then the control, then its hint and its error under it. A field
+   never stretches to its row: its parts stack from the top, so every control in a row starts at the same height. */
+.form-field {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-content: start;
+	gap: var(--space-xs);
+	min-width: 0;
+}
+
+.form-field > label {
+	line-height: 1.25;
+}
+
+/* Fields side by side: as many 240 px columns as fit; each row's controls line up at the top. */
+.fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+	align-items: start;
+	gap: var(--space-lg) var(--space-md);
+}
+
+.hint {
+	font-weight: 400;
+	color: var(--muted);
+	font-size: var(--text-sm);
+	line-height: 1.4;
+}
+
+.field-error {
+	color: var(--bad);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	line-height: 1.4;
+}

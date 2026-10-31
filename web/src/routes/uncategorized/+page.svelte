@@ -1,14 +1,15 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { day, money } from '#lib/format.ts';
+	import { day } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { glide, pop, rise, vanish } from '#lib/motion.ts';
+	import Money from '#lib/ui/Money.svelte';
+	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let transactions = $state<Schemas['Transaction'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
 	let loadError = $state('');
-	let error = $state('');
-	let done = $state('');
 	let loaded = $state(false);
 	let busy = $state<string | null>(null);
 
@@ -31,8 +32,6 @@
 	async function choose(transaction: Schemas['Transaction'], categoryId: string) {
 		if (!categoryId) return;
 		busy = transaction.id;
-		error = '';
-		done = '';
 		const {
 			data,
 			error: failure,
@@ -43,12 +42,19 @@
 		});
 		busy = null;
 		if (!data) {
-			error = problem(failure, response?.status, t('uncategorized.set_failed'));
+			notify(problem(failure, response?.status, t('uncategorized.set_failed')), 'bad');
 			return;
 		}
 		const name = categories.find((c) => c.id === categoryId)?.name;
-		done = t('uncategorized.done', { description: transaction.description, category: name ?? '' });
+		notify(t('uncategorized.done', { description: transaction.description, category: name ?? '' }));
+		// The focus moves on to the card that takes this one's place (or the one before it, at the end), so the
+		// next choice is one key away and the focus never falls to the page.
+		const at = transactions.findIndex((x) => x.id === transaction.id);
 		transactions = transactions.filter((x) => x.id !== transaction.id);
+		const next = transactions[Math.min(at, transactions.length - 1)];
+		await tick();
+		if (next) document.getElementById(`category-${next.id}`)?.focus();
+		else document.getElementById('all-done')?.focus();
 	}
 
 	onMount(load);
@@ -67,12 +73,18 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
-		{#if error}<p class="alert" role="alert">{error}</p>{/if}
-		{#if done}<p class="notice" role="status">{done}</p>{/if}
 		{#if transactions.length === 0}
-			<p>{t('uncategorized.all_done')}</p>
+			<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
 		{:else}
-			<p>{plural(transactions.length, 'uncategorized.count_one', 'uncategorized.count_other')}</p>
+			<p>
+				{#key transactions.length}<span class="count" in:pop={{ start: 0.9 }}
+						>{plural(
+							transactions.length,
+							'uncategorized.count_one',
+							'uncategorized.count_other'
+						)}</span
+					>{/key}
+			</p>
 			{#if categories.length === 0}
 				<p class="hint">
 					{t('uncategorized.no_categories')}
@@ -82,15 +94,16 @@
 			<ul class="queue" aria-label={t('uncategorized.list')}>
 				{#each transactions as transaction (transaction.id)}
 					{@const leg = transaction.legs[0]}
-					<li class="card">
+					<li class="card" out:vanish animate:glide>
 						<div class="what">
 							<span>{day(transaction.date)}</span>
 							<span class="description">{transaction.description}</span>
-							{#if leg}<span class="amount">{money(leg.amount_minor, leg.currency)}</span>{/if}
+							{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
 						</div>
 						<label>
 							{t('column.category')}
 							<select
+								id="category-{transaction.id}"
 								value=""
 								disabled={busy !== null || categories.length === 0}
 								onchange={(event) => choose(transaction, event.currentTarget.value)}
@@ -116,19 +129,19 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: var(--space-md);
 	}
 	.what {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 12px;
+		gap: var(--space-xs) var(--space-md);
 	}
 	.description {
 		flex: 1;
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
-	.amount {
-		font-variant-numeric: tabular-nums;
+	.count {
+		display: inline-block;
 	}
 </style>
