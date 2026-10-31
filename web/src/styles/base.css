@@ -224,6 +224,30 @@ textarea {
 	width: 100%;
 }
 
+/* A select draws its own chevron: the native one adds 4 px before the value in Chromium, so a select's value stood
+   right of an input's in the same column. The chevron is two gradient halves in the muted ink of each theme. Forced
+   colors get the native control back, since they drop drawn backgrounds. */
+select {
+	appearance: none;
+	padding-right: calc(var(--space-md) + 20px);
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+		linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position:
+		calc(100% - 20px) 50%,
+		calc(100% - 15px) 50%;
+	background-size: 5px 5px;
+	background-repeat: no-repeat;
+	cursor: pointer;
+}
+@media (forced-colors: active) {
+	select {
+		appearance: auto;
+		background-image: none;
+		padding-right: var(--space-md);
+	}
+}
+
 /* :where keeps these at an element's weight, so a component's own sizes (the code field's cover input) win. */
 :where(input:not([type='checkbox'], [type='radio'], [type='file']), select) {
 	height: var(--field-height);
