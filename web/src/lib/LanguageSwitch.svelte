@@ -106,14 +106,23 @@
 		font-size: var(--text-sm);
 		color: var(--muted);
 		cursor: pointer;
+		transition:
+			background-color var(--duration-short) var(--ease-standard),
+			color var(--duration-short) var(--ease-standard);
 	}
 	label.chosen {
 		color: var(--text);
 		background: var(--language-chosen, color-mix(in oklab, var(--surface) 70%, transparent));
 	}
+	/* In the segmented control the half not chosen takes the buttons' hover tint (Material 3 state layer), lighter
+	   than the chosen half's 22 % and without its check. The pills mark their choice with a soft fill only, so there
+	   a tint would read as a second choice: they darken the label. */
 	@media (hover: hover) {
 		label:hover:not(.chosen) {
 			color: var(--text);
+		}
+		.wide label:hover:not(.chosen) {
+			background: color-mix(in oklab, var(--accent) 10%, transparent);
 		}
 	}
 	input {
