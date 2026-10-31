@@ -7,6 +7,7 @@
 	import { focusOn } from '#lib/ui/focus.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
 
 	let { names, onapplied }: { names: Names; onapplied: () => void } = $props();
@@ -64,6 +65,8 @@
 			return;
 		}
 		notify(plural(data.applied, 'changes.applied_one', 'changes.applied_other'));
+		// Rules that set a category empty the uncategorized queue: Revisar's count follows at once (N6).
+		refreshCounts();
 		onapplied();
 		await check();
 		// The apply button is gone with the changes: the focus goes to what the list says now.

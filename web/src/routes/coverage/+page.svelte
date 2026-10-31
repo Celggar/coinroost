@@ -7,6 +7,7 @@
 	import Rich from '#lib/Rich.svelte';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
+	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 
 	let coverage = $state<Schemas['Coverage'] | null>(null);
 	let error = $state('');
@@ -50,7 +51,11 @@
 		}
 		coverage = data;
 		// A refresh the person asked for says it happened: the table often looks the same afterwards.
-		if (asked) notify(t('coverage.refreshed'));
+		if (asked) {
+			notify(t('coverage.refreshed'));
+			// A refresh can change which accounts are late: Cuentas' count follows.
+			refreshCounts();
+		}
 	}
 
 	onMount(load);

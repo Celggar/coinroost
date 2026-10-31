@@ -179,10 +179,16 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	await expect(
 		page.getByText(say('changes.category', { from: '—', to: 'Groceries' }))
 	).toBeVisible();
+	// Revisar's count (read from the words its badge stands for) drops with the sorted transaction, without a page change.
+	const reviewCount = async () =>
+		Number((await page.locator('#rail-review').textContent())?.match(/\d+/)?.[0] ?? 0);
+	const before = await reviewCount();
+	expect(before).toBeGreaterThan(0);
 	await page.getByRole('button', { name: say('changes.apply_one') }).click();
 	const applied = say('changes.applied_one');
 	await expect(page.getByRole('status').filter({ hasText: applied })).toHaveText(applied);
 	await expect(page.getByText(say('changes.nothing'))).toBeVisible();
+	await expect.poll(reviewCount).toBe(before - 1);
 
 	const listed = await page.request.get('/api/v1/transactions?limit=1000');
 	const sorted = (await listed.json()).items.filter((t: { description: string }) =>
