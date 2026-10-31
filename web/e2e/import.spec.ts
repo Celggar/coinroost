@@ -379,6 +379,31 @@ test('a failed recovery status offers no codes to make', async ({ context }) => 
 	).toBeVisible();
 });
 
+test('a failed money summary on Transfers offers to try again', async ({ context }) => {
+	const page = await loggedIn(context);
+	// Its alert says to try again in a moment: without a button the only way back was changing a date.
+	const summary = (url: URL) => url.pathname === '/api/v1/summary';
+	await page.route(summary, (route) =>
+		route.fulfill({
+			status: 503,
+			contentType: 'application/problem+json',
+			body: '{"status":503}'
+		})
+	);
+	await page.goto('/transfers');
+	const card = page.getByRole('region', { name: say('summary.title') });
+	await expect(card.getByRole('alert')).toBeVisible();
+	await page.unroute(summary);
+	await card.getByRole('button', { name: say('app.try_again') }).click();
+	await expect(card.getByRole('alert')).toHaveCount(0);
+	await expect(
+		card
+			.getByText(say('summary.spending'))
+			.or(card.getByText(say('summary.nothing')))
+			.first()
+	).toBeVisible();
+});
+
 test('switches to English and remembers it after a reload', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');

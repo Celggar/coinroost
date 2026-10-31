@@ -4,6 +4,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
+	import { retry } from '#lib/ui/focus.ts';
 	import { lift, rise, vanish } from '#lib/motion.ts';
 
 	// Reloads whenever `version` changes: pairing and splitting move money between the columns.
@@ -45,7 +46,17 @@
 	<h2 id="summary-title">{t('summary.title')}</h2>
 	<p class="hint">{t('summary.hint')}</p>
 	<DateRange bind:from bind:to />
-	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
+	<!-- Its own way back, as every failed load has: the message says to try again. -->
+	{#if error}
+		<p class="alert" role="alert" in:rise out:lift>
+			{error}
+			<button
+				class="secondary"
+				onclick={(event) => retry(event.currentTarget, load, '#summary-title')}
+				>{t('app.try_again')}</button
+			>
+		</p>
+	{/if}
 	<!-- One block for either shape: the figures rise in when they load and fade out when a load fails. -->
 	{#if summary}
 		<div in:rise out:vanish>
