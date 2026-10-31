@@ -154,113 +154,117 @@
 		<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
 	{/if}
 
+	<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
+		 file, instead of leaving in one frame (FD9, pass 3). -->
 	{#if reading && account}
-		<dl class="counts" in:rise>
-			<div>
-				<dt>{t('file.rows_read')}</dt>
-				<dd>
-					<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
-				</dd>
-			</div>
-			<div>
-				<dt>{report ? t('file.added') : t('file.new')}</dt>
-				<dd>
-					<Tick value={report ? report.batch.added : reading.new}
-						>{report ? report.batch.added : reading.new}</Tick
-					>
-				</dd>
-			</div>
-			<div>
-				<dt>{t('file.already')}</dt>
-				<dd>
-					<Tick value={report ? report.batch.duplicates : reading.duplicates}
-						>{report ? report.batch.duplicates : reading.duplicates}</Tick
-					>
-				</dd>
-			</div>
-			<div>
-				<dt>{t('file.unreadable_rows')}</dt>
-				<dd>
-					<Tick value={reading.errors}>{reading.errors}</Tick>
-				</dd>
-			</div>
-		</dl>
-		<!-- The normalizer's layout rows (blank, header or footer lines, an opening balance) are read but are not
+		<div class="reading" in:rise out:vanish>
+			<dl class="counts">
+				<div>
+					<dt>{t('file.rows_read')}</dt>
+					<dd>
+						<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
+					</dd>
+				</div>
+				<div>
+					<dt>{report ? t('file.added') : t('file.new')}</dt>
+					<dd>
+						<Tick value={report ? report.batch.added : reading.new}
+							>{report ? report.batch.added : reading.new}</Tick
+						>
+					</dd>
+				</div>
+				<div>
+					<dt>{t('file.already')}</dt>
+					<dd>
+						<Tick value={report ? report.batch.duplicates : reading.duplicates}
+							>{report ? report.batch.duplicates : reading.duplicates}</Tick
+						>
+					</dd>
+				</div>
+				<div>
+					<dt>{t('file.unreadable_rows')}</dt>
+					<dd>
+						<Tick value={reading.errors}>{reading.errors}</Tick>
+					</dd>
+				</div>
+			</dl>
+			<!-- The normalizer's layout rows (blank, header or footer lines, an opening balance) are read but are not
 			 transactions: said, so the four counts add up to the rows read. -->
-		{#if layoutRows > 0}
-			<p class="hint">{plural(layoutRows, 'file.layout_one', 'file.layout_other')}</p>
-		{/if}
-		{#if reading.first_date && reading.last_date}
-			<p class="hint">
-				{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
-			</p>
-		{/if}
-
-		{#if reading.row_errors.length}
-			<section aria-label={t('file.bad_rows')}>
-				<h3>{t('file.bad_rows')}</h3>
-				<ul class="errors">
-					{#each reading.row_errors as failure (failure.row)}
-						<li>{t('file.bad_row', { row: failure.row, reason: rowReason(failure) })}</li>
-					{/each}
-				</ul>
-			</section>
-		{/if}
-
-		{#if reading.rows.length}
-			<details>
-				<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
-				<div class="table-wrap" use:scrollable={t('file.rows')}>
-					<table class="rows-on-phone">
-						<thead>
-							<tr>
-								<th>{t('column.date')}</th>
-								<th>{t('column.description')}</th>
-								<th class="number">{t('column.amount')}</th>
-								<th>{t('column.status')}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each reading.rows as row (row.external_id)}
-								<tr>
-									<td data-label={t('column.date')}>{day(row.date)}</td>
-									<td data-label={t('column.description')}>{row.description}</td>
-									<td data-label={t('column.amount')} class="number"
-										><Money minor={row.amount_minor} currency={account.currency} /></td
-									>
-									<td data-label={t('column.status')}
-										>{row.duplicate
-											? t('file.row_already')
-											: report
-												? t('file.row_added')
-												: t('file.row_new')}</td
-									>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</details>
-		{/if}
-
-		<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
-		{#if report}
-			<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
-				<span class="check" aria-hidden="true"></span>
-				{t('file.imported')}
-			</p>
-		{:else}
-			<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
-			{#if reading.new === 0}
-				<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
-			{:else}
-				<div class="actions" out:vanish>
-					<button onclick={commit} disabled={busy}>
-						{plural(reading.new, 'file.import_one', 'file.import_other')}
-					</button>
-				</div>
+			{#if layoutRows > 0}
+				<p class="hint">{plural(layoutRows, 'file.layout_one', 'file.layout_other')}</p>
 			{/if}
-		{/if}
+			{#if reading.first_date && reading.last_date}
+				<p class="hint">
+					{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
+				</p>
+			{/if}
+
+			{#if reading.row_errors.length}
+				<section aria-label={t('file.bad_rows')}>
+					<h3>{t('file.bad_rows')}</h3>
+					<ul class="errors">
+						{#each reading.row_errors as failure (failure.row)}
+							<li>{t('file.bad_row', { row: failure.row, reason: rowReason(failure) })}</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+
+			{#if reading.rows.length}
+				<details>
+					<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
+					<div class="table-wrap" use:scrollable={t('file.rows')}>
+						<table class="rows-on-phone">
+							<thead>
+								<tr>
+									<th>{t('column.date')}</th>
+									<th>{t('column.description')}</th>
+									<th class="number">{t('column.amount')}</th>
+									<th>{t('column.status')}</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each reading.rows as row (row.external_id)}
+									<tr>
+										<td data-label={t('column.date')}>{day(row.date)}</td>
+										<td data-label={t('column.description')}>{row.description}</td>
+										<td data-label={t('column.amount')} class="number"
+											><Money minor={row.amount_minor} currency={account.currency} /></td
+										>
+										<td data-label={t('column.status')}
+											>{row.duplicate
+												? t('file.row_already')
+												: report
+													? t('file.row_added')
+													: t('file.row_new')}</td
+										>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</details>
+			{/if}
+
+			<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
+			{#if report}
+				<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
+					<span class="check" aria-hidden="true"></span>
+					{t('file.imported')}
+				</p>
+			{:else}
+				<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
+				{#if reading.new === 0}
+					<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
+				{:else}
+					<div class="actions" out:vanish>
+						<button onclick={commit} disabled={busy}>
+							{plural(reading.new, 'file.import_one', 'file.import_other')}
+						</button>
+					</div>
+				{/if}
+			{/if}
+		</div>
 	{/if}
 </article>
 
@@ -274,6 +278,12 @@
 	}
 	.head h2 {
 		min-width: 0;
+	}
+	/* Its parts keep the card's rhythm. */
+	.reading {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-lg);
 	}
 	.counts {
 		display: grid;

@@ -2,6 +2,7 @@
 // decelerates, leaving accelerates and is faster. With the reduced-motion setting on, things still fade but nothing
 // moves or grows (MDN: replace the motion, do not only remove it). Svelte runs these with the Web Animations API,
 // which CSS media rules do not reach, so each one reads the setting itself.
+import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import { flip } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
@@ -132,6 +133,38 @@ export function stepOut(node: Element, { direction = 1 } = {}): TransitionConfig
 		duration: DURATION.exit,
 		easing: EASE.exit
 	});
+}
+
+/** Material 3's fade through, for content replaced in place by a new answer (a new period's figures): the old fades
+ * out (35 % of 300 ms), `change` swaps it while nothing shows, and the new fades in, growing a little (65 %). The
+ * fade out starts from the element's current opacity, so a dimmed «loading» state does not flash back first. With
+ * reduced motion it only fades. */
+export async function fadeThrough(
+	element: HTMLElement | undefined,
+	change: () => void | Promise<void>
+): Promise<void> {
+	if (!element) {
+		await change();
+		return;
+	}
+	const out = element.animate([{ opacity: 0 }], {
+		duration: 105,
+		easing: EASE_CSS.exit,
+		fill: 'forwards'
+	});
+	await out.finished.catch(() => {});
+	await change();
+	await tick();
+	const enter = element.animate(
+		[
+			{ opacity: 0, transform: still() ? 'none' : 'scale(0.98)' },
+			{ opacity: 1, transform: 'none' }
+		],
+		{ duration: 195, easing: EASE_CSS.enter }
+	);
+	// The held end of the fade out would hide the element again once the fade in is over.
+	out.cancel();
+	await enter.finished.catch(() => {});
 }
 
 /** A short shake that says "not this one"; never alone, always next to the message that says why. */

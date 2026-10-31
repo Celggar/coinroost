@@ -8,7 +8,7 @@
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
-	import { pop, vanish } from '#lib/motion.ts';
+	import { fadeThrough, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
 	const PAYEES = 10;
@@ -35,6 +35,9 @@
 	let busy = $state(false);
 	let error = $state('');
 	let latest = 0;
+	let shown = $state<HTMLElement>();
+	// Answers are shown one at a time, each with a fade through (FD9): two quick changes of period never cross.
+	let showing = Promise.resolve();
 	// An end before the start asks nothing: the last answer stays, dimmed, while the field says what is wrong.
 	const datesOk = $derived(!!from && !!to && from <= to);
 
@@ -70,7 +73,7 @@
 			error = problem(failed?.error, failed?.response?.status, t('dashboard.failed'));
 			return;
 		}
-		reports = {
+		const next: Reports = {
 			summary: summary.data,
 			monthly: monthly.data.months,
 			categories: categories.data.items,
@@ -80,6 +83,13 @@
 			hasAccounts: accountList.data.items.length > 0,
 			period
 		};
+		showing = showing.then(() => {
+			// A newer answer is on its way: it is the one to show.
+			if (ticket !== latest) return;
+			return fadeThrough(reports ? shown : undefined, () => {
+				reports = next;
+			});
+		});
 	}
 
 	$effect(() => {
@@ -145,7 +155,7 @@
 	{/if}
 
 	{#if reports}
-		<div class="reports stack" class:stale={busy || !datesOk}>
+		<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
 			{#if currencies.length === 0}
 				<!-- The way on from an empty period: importing, or before that, the account a file goes into. -->
 				<p>
