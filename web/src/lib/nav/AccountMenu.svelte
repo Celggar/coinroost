@@ -38,7 +38,9 @@
 	function toggle() {
 		if (!open && button) {
 			const box = button.getBoundingClientRect();
-			place = { left: box.left, bottom: innerHeight - box.top + 8 };
+			// 13 px above the button: its focus ring reaches 5 px out (3 px wide, 2 px off) and keeps 8 px from the
+			// panel's edge, as the log-out row's ring does inside it.
+			place = { left: box.left, bottom: innerHeight - box.top + 13 };
 		}
 		open = !open;
 	}
@@ -201,12 +203,15 @@
 		color: var(--text);
 		font-weight: 600;
 	}
-	/* The name and the domain each hold together while they fit the line, so a long address breaks after the @, not
-	   at a hyphen or a dot further on; a part longer than the line still breaks inside. */
-	.address > span {
+	/* The domain holds together while it fits the line, so a long address breaks after the @, not at a hyphen or a dot
+	   in the domain; a name longer than the line breaks inside it and its end shares a line with the domain (as one
+	   block it took the whole width and pushed the domain to a third line). */
+	.address {
+		overflow-wrap: anywhere;
+	}
+	.address > span:last-child {
 		display: inline-block;
 		max-width: 100%;
-		overflow-wrap: anywhere;
 	}
 	/* The dividers reach 8 px past the panel's text, as wide as the log-out row's hover tint below them. */
 	.language {
