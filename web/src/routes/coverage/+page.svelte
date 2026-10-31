@@ -51,16 +51,18 @@
 	<title>{t('app.title', { page: t('coverage.title') })}</title>
 </svelte:head>
 
-<div class="title">
+<div class="head">
 	<h1>{t('coverage.title')}</h1>
-	<!-- aria-disabled, not disabled: a disabled button drops the focus, and the person pressed this one. -->
-	<button class="secondary" onclick={() => busy || load()} aria-disabled={busy}
-		>{busy ? t('coverage.refreshing') : t('coverage.refresh')}</button
-	>
+	<p class="hint">
+		<Rich text={t('coverage.hint', { check: t('delay.warning'), late: t('delay.late') })} />
+	</p>
+	<!-- aria-disabled, not disabled: a disabled button drops the focus, and the person pressed this one. Both labels
+	     share one cell, so the button keeps its width while one fades into the other; the hidden one is not read. -->
+	<button class="secondary refresh" onclick={() => busy || load()} aria-disabled={busy}>
+		<span class:shown={!busy} aria-hidden={busy}>{t('coverage.refresh')}</span>
+		<span class:shown={busy} aria-hidden={!busy}>{t('coverage.refreshing')}</span>
+	</button>
 </div>
-<p class="hint">
-	<Rich text={t('coverage.hint', { check: t('delay.warning'), late: t('delay.late') })} />
-</p>
 
 {#if error}
 	<p class="alert" role="alert">{error}</p>
@@ -121,23 +123,50 @@
 {/if}
 
 <style>
-	/* The title's margins move to the row, so «Actualizar» is centred on the title's text, not on its margins. */
-	.title {
-		display: flex;
-		justify-content: space-between;
+	/* The title's margins move to the grid, so «Actualizar» is centred on the title's text, not on its margins; the
+	   explanation runs under both. */
+	.head {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'title action' 'hint hint';
 		align-items: center;
-		gap: var(--space-md);
+		gap: var(--space-lg) var(--space-md);
 		margin: var(--space-sm) 0 var(--space-lg);
 	}
-	.title h1 {
+	.head h1 {
+		grid-area: title;
 		margin: 0;
 	}
-	/* A phone shows the title in its top bar: the button keeps its place at the end of the row, beside nothing. */
+	.head .hint {
+		grid-area: hint;
+	}
+	/* A phone shows the title in its top bar: alone at the row's end the button read as a leftover, so it follows the
+	   explanation instead, where the eye arrives after reading it. */
 	@media (max-width: 899px) {
-		.title {
-			justify-content: flex-end;
-			margin-bottom: var(--space-md);
+		.head {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas: 'hint' 'action';
+			row-gap: var(--space-md);
 		}
+		.head h1 {
+			grid-area: auto;
+		}
+		.refresh {
+			justify-self: start;
+		}
+	}
+	.refresh {
+		grid-area: action;
+		display: inline-grid;
+		place-items: center;
+	}
+	.refresh > span {
+		grid-area: 1 / 1;
+		opacity: 0;
+		transition: opacity var(--duration-short) var(--ease-standard);
+	}
+	.refresh > .shown {
+		opacity: 1;
 	}
 	.date {
 		white-space: nowrap;

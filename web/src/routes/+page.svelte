@@ -8,6 +8,7 @@
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
+	import Icon from '#lib/nav/Icon.svelte';
 	import { fadeThrough, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
@@ -157,13 +158,14 @@
 	{#if reports}
 		<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
 			{#if currencies.length === 0}
-				<!-- The way on from an empty period: importing, or before that, the account a file goes into. -->
-				<p>
-					{t('dashboard.nothing')}
-					{#if reports.hasAccounts}<a href="/import">{t('dashboard.to_import')}</a>{:else}<a
-							href="/accounts">{t('dashboard.to_accounts')}</a
-						>{/if}
-				</p>
+				<!-- The way on from an empty period: importing, or before that, the account a file goes into. A card like
+				     the import page's zone, not a lone sentence over an empty page. -->
+				<div class="card empty">
+					<span class="empty-icon"><Icon name="import" size={28} /></span>
+					<p>{t('dashboard.nothing')}</p>
+					{#if reports.hasAccounts}<a class="button" href="/import">{t('dashboard.to_import')}</a
+						>{:else}<a class="button" href="/accounts">{t('dashboard.to_accounts')}</a>{/if}
+				</div>
 			{/if}
 			{#each currencies as totals (totals.currency)}
 				{@const c = totals.currency}
@@ -213,6 +215,22 @@
 </div>
 
 <style>
+	.empty {
+		display: grid;
+		justify-items: center;
+		gap: var(--space-md);
+		padding: var(--space-2xl) var(--space-xl);
+		text-align: center;
+	}
+	.empty-icon {
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+		color: var(--accent);
+	}
 	.period {
 		display: flex;
 		flex-wrap: wrap;

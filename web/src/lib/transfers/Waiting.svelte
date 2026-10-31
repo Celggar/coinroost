@@ -107,8 +107,10 @@
 		gap: var(--space-xs);
 		justify-items: start;
 	}
-	/* The amount ends the first line, as in every list of transactions; the pair's text wraps beside it. */
+	/* The amount ends the first line, as in every list of transactions; the pair's text wraps beside it. The line
+	   spans the row (the row's other items start at its start), so the amount ends on the card's edge. */
 	.line {
+		justify-self: stretch;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: baseline;
