@@ -123,3 +123,12 @@
 		--radius-primary: 14px;
 	}
 }
+
+/* Where more contrast is asked for, every edge and divider takes the fields' stronger line, as a system's own higher
+   contrast darkens its separators: the faint edge left the bars, the rail and the phone's rows a tone apart (pass 7). */
+@media (prefers-contrast: more) {
+	:root {
+		--card-edge: var(--field-border);
+		--border: var(--field-border);
+	}
+}

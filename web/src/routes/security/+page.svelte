@@ -193,6 +193,12 @@
 	.codes {
 		max-width: 560px;
 	}
+	/* On the phone layout the column sits on the bottom bar's axis, not left of it (pass 7, at 899 px). */
+	@media (max-width: 899px) {
+		.codes {
+			margin-inline: auto;
+		}
+	}
 	h2,
 	h3 {
 		margin: 0;

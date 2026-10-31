@@ -49,7 +49,15 @@
 
 	<button class="secondary leave" onclick={leave}><Icon name="logout" />{t('nav.log_out')}</button>
 	{#if session.user}
-		<p class="hint who">{t('more.signed_in', { email: session.user.email })}</p>
+		{@const [before, after] = t('more.signed_in', { email: '\u0001' }).split('\u0001')}
+		{@const at = session.user.email.lastIndexOf('@') + 1}
+		<p class="hint who">
+			{before}<span class="address"
+				><span>{session.user.email.slice(0, at)}</span><wbr /><span
+					>{session.user.email.slice(at)}</span
+				></span
+			>{after}
+		</p>
 	{/if}
 </div>
 
@@ -57,6 +65,12 @@
 	/* As wide as the cards on Security: a wide screen does not stretch the switch and the button across it. */
 	.stack {
 		max-width: 560px;
+	}
+	/* On the phone layout the column sits on the bottom bar's axis, not left of it (pass 7, at 899 px). */
+	@media (max-width: 899px) {
+		.stack {
+			margin-inline: auto;
+		}
 	}
 	.rows {
 		padding: var(--space-xs) 0;
@@ -104,5 +118,11 @@
 	.who {
 		text-align: center;
 		overflow-wrap: anywhere;
+	}
+	/* The address keeps together, on a line of its own when it does not fit beside the words; longer than the line,
+	   it breaks after its «@» before any hyphen of its name, as in the account panel (pass 7). */
+	.address {
+		display: inline-block;
+		max-width: 100%;
 	}
 </style>

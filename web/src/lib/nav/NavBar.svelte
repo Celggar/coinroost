@@ -165,12 +165,22 @@
 	.corner {
 		position: absolute;
 		top: -6px;
-		left: 38px;
+		left: calc(50% + 6px);
 	}
 	.label {
 		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	/* There the five targets fill the screen: the pill and the labels keep clear of their edges, so the outer ones do
+	   not touch the screen's (pass 7); after the rules they narrow. */
+	@media (max-width: 359px) {
+		.indicator {
+			width: 56px;
+		}
+		a {
+			font-size: 0.75rem;
+		}
 	}
 </style>
