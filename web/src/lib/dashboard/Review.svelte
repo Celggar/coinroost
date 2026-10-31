@@ -6,7 +6,7 @@
 	import { counts, pending } from '#lib/nav/counts.svelte.ts';
 	import { LIST, list, money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, pop, vanish } from '#lib/motion.ts';
+	import { DURATION, followContent, pop, vanish } from '#lib/motion.ts';
 	import Icon from '#lib/nav/Icon.svelte';
 	import type { IconName } from '#lib/nav/destinations.ts';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -73,6 +73,18 @@
 						detail: t('review.nobody_owes')
 					}
 	);
+
+	// The leaving row's place is held while it fades out (its height on the item), then given up.
+	function leave(event: Event) {
+		const row = event.currentTarget as HTMLElement;
+		const item = row.parentElement;
+		if (item) item.style.minHeight = `${row.offsetHeight}px`;
+		row.classList.add('leaving');
+	}
+	function left(event: Event) {
+		const item = (event.currentTarget as HTMLElement).parentElement;
+		if (item) item.style.minHeight = '';
+	}
 
 	const rows = $derived<Row[]>([
 		counts.uncategorized > 0
@@ -169,18 +181,21 @@
 	<div class="fit" use:followContent>
 		<ul class="rows">
 			{#each rows as row (row.key)}
-				<!-- A row that turns «al día» fades out and the quiet line pops in, in the same place. -->
+				<!-- A row that turns «al día» fades out, then the quiet line pops in, in the same place: crossing, the two
+				     texts read on top of each other (P3 round 2). -->
 				<!-- `data-flip`: when a row changes height the rows under it glide to their places with the card, not
-				     in one frame (P3 round 2: 24 px). The row that leaves fades out of the flow, so the new height
-				     counts from the start. -->
+				     in one frame (P3 round 2: 24 px). The row that leaves fades out of the flow but keeps its place
+				     until it is gone, and only then the rows glide: sliding up at once, the next row passed under
+				     its last line while it still showed (P3 round 3). -->
 				<li class="in-place" data-flip>
 					{#key row.open}
 						<div
 							class="row"
 							class:done={!row.open}
-							in:pop={{ start: 0.96 }}
+							in:pop={{ start: 0.96, delay: DURATION.short }}
 							out:vanish
-							onoutrostart={(event) => event.currentTarget.classList.add('leaving')}
+							onoutrostart={leave}
+							onoutroend={left}
 						>
 							<span class="badge {row.tone}"><Icon name={row.icon} size={20} /></span>
 							<span class="text">

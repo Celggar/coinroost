@@ -41,7 +41,6 @@
 	let shown = $state<HTMLElement>();
 	// Answers are shown one at a time, each with a fade through (FD9): two quick changes of period never cross.
 	let showing = Promise.resolve();
-	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load(period: Period) {
 		// An end before the start asks nothing: the last answer stays as it is while the field says what is wrong.
@@ -138,7 +137,7 @@
 
 			<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
 			{#if reports.hasAccounts}
-				<PeriodPicker bind:from bind:to shown={reports.period} stale={busy || !datesOk} />
+				<PeriodPicker bind:from bind:to shown={reports.period} stale={busy} />
 			{/if}
 
 			{#if error}
@@ -152,7 +151,7 @@
 				</p>
 			{/if}
 
-			<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
+			<div class="reports stack" class:stale={busy} bind:this={shown}>
 				{#if currencies.length === 0}
 					<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
 					     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->

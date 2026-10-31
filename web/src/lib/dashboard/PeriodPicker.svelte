@@ -85,7 +85,7 @@
 		</div>
 		<p class="range in-place" class:stale>
 			{#key `${shown.from}/${shown.to}`}<span
-					in:fade={{ duration: DURATION.short }}
+					in:fade={{ duration: DURATION.short, delay: DURATION.short }}
 					out:fade={{ duration: DURATION.short }}>{span(shown.from, shown.to)}</span
 				>{/key}
 		</p>
@@ -114,9 +114,11 @@
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 	}
+	/* The transition lives here, not on the dimmed state: there, taking the class away lit the range in one frame. */
 	.range {
 		margin: 0;
 		color: var(--muted);
+		transition: opacity 0.2s;
 	}
 	@container period (min-width: 54rem) {
 		.period-row {
@@ -221,6 +223,5 @@
 	/* While another period loads, the range dims with the figures. */
 	.stale {
 		opacity: 0.6;
-		transition: opacity 0.2s;
 	}
 </style>
