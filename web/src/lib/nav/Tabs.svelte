@@ -93,6 +93,14 @@
 				transform var(--duration-medium) var(--ease-standard);
 		}
 	}
+	/* Forced colors repaint backgrounds with the page's own colour: the bar would vanish and cut the line under the tabs.
+	   It keeps a system colour instead. */
+	@media (forced-colors: active) {
+		.line {
+			forced-color-adjust: none;
+			background: Highlight;
+		}
+	}
 	/* A phone: the two tabs share the width. */
 	@media (max-width: 899px) {
 		.tabs {

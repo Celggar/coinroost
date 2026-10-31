@@ -39,4 +39,10 @@
 		color: var(--warn);
 		box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--warn) 40%, transparent);
 	}
+	/* Forced colors drop backgrounds and shadows: a border keeps the count a badge, not a loose number. */
+	@media (forced-colors: active) {
+		.badge {
+			border: 1px solid CanvasText;
+		}
+	}
 </style>

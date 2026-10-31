@@ -184,6 +184,12 @@
 		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
 		font-weight: 700;
 	}
+	/* Forced colors drop the tint: a border keeps the number in its disc. */
+	@media (forced-colors: active) {
+		.position {
+			border: 1px solid CanvasText;
+		}
+	}
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
