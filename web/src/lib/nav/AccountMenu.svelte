@@ -33,6 +33,10 @@
 	const shortName = $derived(email.split('@')[0]);
 	// A long address breaks between the name and the domain before it breaks anywhere else.
 	const domain = $derived(email.slice(shortName.length + 1));
+	// The name's last two letters stay with the @: a name that filled the line exactly put the @ first on the next
+	// one (P2 round 8).
+	const nameHead = $derived(shortName.slice(0, -2));
+	const nameTail = $derived(shortName.slice(-2));
 
 	afterNavigate(() => (open = false));
 
@@ -89,7 +93,8 @@
 		>
 			<p class="who">
 				<span>{t('nav.signed_in_as')}</span><span class="address"
-					><span>{shortName}@</span><wbr /><span>{domain}</span></span
+					><span>{nameHead}<span class="glue">{nameTail}@</span></span><wbr /><span>{domain}</span
+					></span
 				>
 			</p>
 			<div class="language">
@@ -226,6 +231,9 @@
 	.address > span:last-child {
 		display: inline-block;
 		max-width: 100%;
+	}
+	.glue {
+		white-space: nowrap;
 	}
 	/* The dividers reach 8 px past the panel's text, as wide as the log-out row's hover tint below them. */
 	.language {
