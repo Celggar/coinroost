@@ -63,7 +63,8 @@
 		--ring-gap: #ffffff;
 		position: relative;
 		min-height: 100dvh;
-		overflow: hidden;
+		/* Clip, not hidden: the glows stay inside, and the page is still what scrolls, so the brand can stick. */
+		overflow: clip;
 		isolation: isolate;
 		background: var(--shell-bg);
 		color: var(--text);
@@ -107,11 +108,17 @@
 		gap: 48px;
 	}
 
+	/* The brand stays in the middle of the window, as the lines behind it are fixed to the window: centred on the page
+	   instead, a card taller than the window pushed it down onto the lower waves and scrolled it through them. */
 	.brand {
 		color: var(--brand-text);
 		max-width: 460px;
 		display: grid;
 		gap: 20px;
+		align-self: start;
+		position: sticky;
+		top: 50dvh;
+		translate: 0 -50%;
 	}
 	.brand > * {
 		margin: 0;
@@ -275,6 +282,10 @@
 	}
 
 	@media (max-width: 899px) {
+		.brand {
+			position: static;
+			translate: none;
+		}
 		.language {
 			top: 56px;
 			/* Lines up with the edge of the centered column on a tablet. */
