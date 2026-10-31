@@ -4,6 +4,7 @@
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { focusOn } from '#lib/ui/focus.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
@@ -37,6 +38,9 @@
 			return;
 		}
 		preview = data;
+		// The answer may land below the window or under the bottom bar: the focus takes it there.
+		await tick();
+		focusOn(data.changes.length ? '#changes-some' : '#changes-none');
 	}
 
 	async function apply() {

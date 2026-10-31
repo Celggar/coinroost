@@ -106,11 +106,14 @@
 						)}</Tick
 					>
 				</p>
+				<!-- With no category to choose, the way on comes first and the cards hold no control that cannot work. -->
 				{#if categories.length === 0}
-					<p class="hint">
-						{t('uncategorized.no_categories')}
-						<a href="/rules">{t('nav.rules')}</a>
-					</p>
+					<EmptyState
+						icon="rules"
+						text={t('uncategorized.no_categories')}
+						href="/rules#new-category"
+						action={t('uncategorized.create_categories')}
+					/>
 				{/if}
 				<ul class="queue" aria-label={t('uncategorized.list')}>
 					{#each transactions as transaction (transaction.id)}
@@ -121,20 +124,20 @@
 								<span class="description">{transaction.description}</span>
 								{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
 							</div>
-							<label>
-								{t('column.category')}
-								<select
-									id="category-{transaction.id}"
-									value=""
-									disabled={busy !== null || categories.length === 0}
-									onchange={(event) => choose(transaction, event.currentTarget.value)}
-								>
-									<option value="" disabled>{t('uncategorized.choose')}</option>
-									{#each categories as category (category.id)}
-										<option value={category.id}>{category.name}</option>
-									{/each}
-								</select>
-							</label>
+							{#if categories.length > 0}<label>
+									{t('column.category')}
+									<select
+										id="category-{transaction.id}"
+										value=""
+										disabled={busy !== null}
+										onchange={(event) => choose(transaction, event.currentTarget.value)}
+									>
+										<option value="" disabled>{t('uncategorized.choose')}</option>
+										{#each categories as category (category.id)}
+											<option value={category.id}>{category.name}</option>
+										{/each}
+									</select>
+								</label>{/if}
 						</li>
 					{/each}
 				</ul>

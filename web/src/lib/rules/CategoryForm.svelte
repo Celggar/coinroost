@@ -59,6 +59,7 @@
 		errors = without(errors, event);
 		error = '';
 	}}
+	id="new-category"
 	aria-label={t('categoryform.title')}
 >
 	<h2>{t('categoryform.title')}</h2>

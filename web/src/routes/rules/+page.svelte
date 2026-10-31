@@ -76,7 +76,15 @@
 		if (response.ok) title?.focus();
 	}
 
-	onMount(load);
+	// A link to the category form (from an uncategorized queue with no category to choose) lands in its name field:
+	// the form only exists once the page has loaded, too late for the browser's own jump to the anchor.
+	onMount(async () => {
+		await load();
+		if (location.hash === '#new-category') {
+			await tick();
+			focusOn('#new-category input');
+		}
+	});
 </script>
 
 <svelte:head>
