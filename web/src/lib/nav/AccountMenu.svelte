@@ -124,6 +124,12 @@
 		font-size: var(--text-sm);
 		font-weight: 700;
 	}
+	/* Forced colors drop the tint: a border keeps the initial in its circle. */
+	@media (forced-colors: active) {
+		.initial {
+			border: 1px solid CanvasText;
+		}
+	}
 	.name {
 		flex: 1;
 		min-width: 0;
