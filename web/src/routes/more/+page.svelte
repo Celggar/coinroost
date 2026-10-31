@@ -62,7 +62,11 @@
 		padding: var(--space-xs) 0;
 		gap: 0;
 	}
+	/* The focus ring is drawn inside the row and rounded, so it neither leaves the card at its corners nor covers the
+	   divider; the divider is its own line, which the rounding does not bend. */
 	.rows a {
+		position: relative;
+		border-radius: var(--radius-button);
 		display: flex;
 		align-items: center;
 		gap: var(--space-md);
@@ -73,7 +77,13 @@
 		color: var(--text);
 		text-decoration: none;
 	}
-	.rows a + a {
+	.rows a:focus-visible {
+		outline-offset: -5px;
+	}
+	.rows a + a::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 auto;
 		border-top: 1px solid var(--border);
 	}
 	.rows span {
