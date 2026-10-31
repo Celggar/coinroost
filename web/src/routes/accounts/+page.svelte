@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
@@ -135,7 +136,7 @@
 {:else if loaded}
 	<div class="stack">
 		{#if accounts.length}
-			<div class="table-wrap" in:rise>
+			<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
 				<table>
 					<thead>
 						<tr>

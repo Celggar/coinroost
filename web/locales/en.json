@@ -36,6 +36,7 @@
 	"file.remove": "Remove",
 	"file.remove_named": "Remove {name}",
 	"file.account": "Account",
+	"file.rows": "The file's transactions",
 	"file.choose_account": "Choose the account",
 	"file.open_accounts": "Open Accounts",
 	"file.reading": "Reading…",

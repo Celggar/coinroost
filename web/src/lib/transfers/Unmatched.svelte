@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
+	import { api, failure, type Failure, type Schemas } from '#lib/api/client.ts';
+	import { day } from '#lib/format.ts';
+	import { accountName, legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
+	import Money from '#lib/ui/Money.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
@@ -30,25 +32,33 @@
 		)
 	);
 
-	/** Pairs the two; the reason it cannot comes back, or '' once they are one transfer. */
-	async function pair(a: string, b: string): Promise<string> {
+	/** Why a pair was not made, and whether the API refused the two chosen (422) rather than failing to answer. */
+	type Refusal = Failure & { refused: boolean };
+
+	/** Pairs the two; why it cannot comes back, or null once they are one transfer. */
+	async function pair(a: string, b: string): Promise<Refusal | null> {
 		busy = true;
 		const {
 			data,
-			error: failure,
+			error: problem,
 			response
 		} = await api.POST('/api/v1/transfers', { body: { transaction_ids: [a, b] } });
 		busy = false;
-		if (!data) return problem(failure, response?.status, t('unmatched.failed'));
+		if (!data) {
+			return {
+				...failure(problem, response?.status, t('unmatched.failed')),
+				refused: response?.status === 422
+			};
+		}
 		notify(t('unmatched.paired'));
 		first = second = '';
 		onchanged();
-		return '';
+		return null;
 	}
 
 	async function suggested(a: string, b: string) {
 		const why = await pair(a, b);
-		if (why) notify(why, 'bad');
+		if (why) notify(why.message, 'bad');
 	}
 
 	async function submit(event: SubmitEvent) {
@@ -60,7 +70,16 @@
 			focusFirst(form, errors);
 			return;
 		}
-		error = await pair(first, second);
+		const why = await pair(first, second);
+		if (!why) return;
+		if (!why.refused) {
+			error = why.message;
+			return;
+		}
+		// A refusal is about the second choice next to the first: its message goes under «Otro lado», which takes
+		// the focus, as a check of one field does.
+		errors = { second: why.message };
+		focusFirst(form, errors);
 	}
 </script>
 
@@ -72,7 +91,12 @@
 		<ul class="legs" aria-label={t('unmatched.title')}>
 			{#each preview.unmatched as item (item.leg.transaction_id)}
 				<li out:vanish>
-					<div class="what">{legText(item.leg, names)}</div>
+					<div class="what">
+						<span>{day(item.leg.date)}</span>
+						<span>{accountName(item.leg.account_id, names)}</span>
+						<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
+						<span class="description">{item.leg.description}</span>
+					</div>
 					<div class="hint">{reasonLabel(item.reason)}</div>
 					{#each item.candidates as candidate (candidate.transaction_id)}
 						<button
@@ -143,7 +167,12 @@
 		gap: var(--space-sm);
 		justify-items: start;
 	}
-	.what,
+	.what {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-xs) var(--space-md);
+	}
+	.description,
 	button {
 		overflow-wrap: anywhere;
 		text-align: start;

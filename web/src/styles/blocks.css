@@ -111,7 +111,7 @@ th.number {
 	padding: var(--space-md) var(--space-lg);
 	background: var(--surface);
 	border: 1px solid var(--card-edge);
-	border-radius: var(--radius-button);
+	border-radius: var(--radius-card);
 	box-shadow: var(--card-shadow);
 }
 
@@ -205,18 +205,34 @@ details > summary::before {
 	border-right: 2px solid currentColor;
 	border-bottom: 2px solid currentColor;
 	transform: rotate(-45deg);
-	transition: transform var(--duration-short) var(--ease-standard);
 }
 
 details[open] > summary::before {
 	transform: rotate(45deg);
 }
 
+/* The body always fades; it also opens in height and the marker turns, unless people ask for less motion (M5).
+   Where `interpolate-size` is missing (Safari), the height jumps but the fade still runs. */
+details::details-content {
+	opacity: 0;
+	transition:
+		opacity var(--duration-medium) var(--ease-standard),
+		content-visibility var(--duration-medium) var(--ease-standard) allow-discrete;
+}
+
+details[open]::details-content {
+	opacity: 1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
+	details > summary::before {
+		transition: transform var(--duration-short) var(--ease-standard);
+	}
 	details::details-content {
 		block-size: 0;
 		overflow: clip;
 		transition:
+			opacity var(--duration-medium) var(--ease-standard),
 			block-size var(--duration-medium) var(--ease-standard),
 			content-visibility var(--duration-medium) var(--ease-standard) allow-discrete;
 	}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	// What one employer owes, from GET /payroll: the owed fortnights and their total, the ones not known yet, and
 	// the history folded.
+	import { scrollable } from '#lib/ui/scrollable.ts';
 	import type { Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
@@ -57,7 +58,7 @@
 		{#if employer.history.length}
 			<details>
 				<summary>{t('payroll.history')}</summary>
-				<div class="table-wrap">
+				<div class="table-wrap" use:scrollable={t('payroll.history')}>
 					<table>
 						<thead>
 							<tr>

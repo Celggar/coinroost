@@ -103,10 +103,15 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	// A file no account recognizes asks for the account, and the server says why it cannot read it.
 	const other = page.getByRole('article', { name: 'notes.txt' });
 	await expect(other.getByText(say('file.not_found'))).toBeVisible();
-	await other.getByLabel(say('file.account')).selectOption({ label: 'Checking' });
-	await expect(other.getByRole('alert')).not.toBeEmpty();
+	const account = other.getByLabel(say('file.account'));
+	await account.selectOption({ label: 'Checking' });
+	// The reason goes under «Cuenta», tied to it, in place of the hint that no longer holds.
+	await expect(account).toHaveAttribute('aria-invalid', 'true');
+	await expect(other.getByText(say('file.not_found'))).toHaveCount(0);
+	const reason = other.locator(`[id="${await account.getAttribute('aria-describedby')}"]`);
+	await expect(reason).not.toBeEmpty();
 	// In the page's language: the text of the problem's code, never the API's English detail.
-	const why = (await other.getByRole('alert').textContent())?.trim();
+	const why = (await reason.textContent())?.trim();
 	expect([say('problem.file_unreadable'), say('problem.file_missing_columns')]).toContain(why);
 
 	await card
@@ -239,16 +244,20 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
 
 	// By hand: the same leg twice is refused with the API's reason in the page's language (never its English
-	// detail), which a new choice clears; the right two pair.
+	// detail), under «Otro lado», which is marked and takes the focus; a new choice clears it; the right two pair.
 	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
 	const outflow = '15 may 2026 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
 	const other = form.getByLabel(say('unmatched.other_side'));
 	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
 	await other.selectOption({ label: outflow });
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
-	await expect(form.getByRole('alert')).toHaveText(say('problem.same_transaction'));
+	await expect(other).toHaveAttribute('aria-invalid', 'true');
+	await expect(other).toBeFocused();
+	const reason = form.locator(`[id="${await other.getAttribute('aria-describedby')}"]`);
+	await expect(reason).toHaveText(say('problem.same_transaction'));
 	await other.selectOption({ label: '15 may 2026 · Savings · $500.00 · FROM CHECKING' });
-	await expect(form.getByRole('alert')).toHaveCount(0);
+	await expect(other).not.toHaveAttribute('aria-invalid', 'true');
+	await expect(form).not.toContainText(say('problem.same_transaction'));
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('unmatched.paired'));
 	await expect(made.getByRole('listitem')).toHaveCount(1);

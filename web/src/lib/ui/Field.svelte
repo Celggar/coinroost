@@ -1,7 +1,8 @@
 <script lang="ts">
 	// One field (FD4): the label, the control, then its hint and its error under it. The control comes in as a
 	// snippet that receives the attributes tying it to them (`id`, `aria-describedby`, `aria-invalid`); `name` is the
-	// key its error is kept under. The error opens under the control and closes again (FD9).
+	// key its error is kept under. The hint is text, or a snippet when it holds a link. The error opens under the
+	// control and closes again (FD9); a hint that comes and goes fades.
 	import type { Snippet } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
@@ -23,7 +24,7 @@
 	}: {
 		label: string;
 		name: string;
-		hint?: string;
+		hint?: string | Snippet;
 		error?: string;
 		children: Snippet<[Wiring]>;
 	} = $props();
@@ -47,6 +48,13 @@
 <div class="form-field">
 	<label for={id}>{label}</label>
 	{@render children(wiring)}
-	{#if hint}<p class="hint" id={hintId}>{hint}</p>{/if}
+	{#if hint}<p
+			class="hint"
+			id={hintId}
+			in:fade={{ duration: DURATION.short }}
+			out:fade={{ duration: DURATION.short }}
+		>
+			{#if typeof hint === 'string'}{hint}{:else}{@render hint()}{/if}
+		</p>{/if}
 	{#if error}<p class="field-error" id={errorId} transition:open>{error}</p>{/if}
 </div>

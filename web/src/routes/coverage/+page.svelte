@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, span, today } from '#lib/format.ts';
@@ -66,7 +67,7 @@
 	{#if coverage.items.length === 0}
 		<p>{t('coverage.no_accounts')} <a href="/accounts">{t('coverage.create_one')}</a></p>
 	{:else}
-		<div class="table-wrap">
+		<div class="table-wrap" use:scrollable={t('coverage.title')}>
 			<table>
 				<thead>
 					<tr>

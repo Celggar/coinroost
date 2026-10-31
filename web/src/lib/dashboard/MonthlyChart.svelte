@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Income and spending per month as grouped columns, one currency per chart. The table below holds every value,
 	// for whoever cannot see or hover the chart.
+	import { scrollable } from '#lib/ui/scrollable.ts';
 	import type { Schemas } from '#lib/api/client.ts';
 	import { compact, money, month, monthShort } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -188,7 +189,7 @@
 	</div>
 	<details>
 		<summary>{t('chart.table')}</summary>
-		<div class="table-wrap">
+		<div class="table-wrap" use:scrollable={title}>
 			<table>
 				<caption class="visually-hidden">{title}</caption>
 				<thead>

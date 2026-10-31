@@ -52,7 +52,7 @@
 				<li in:rise out:vanish animate:glide>
 					<div class="line">
 						<span>{day(transfer.date)}</span>
-						{#if out}<strong>{money(-out.amount_minor, out.currency)}</strong>{/if}
+						{#if out}<strong class="money">{money(-out.amount_minor, out.currency)}</strong>{/if}
 						{#if out && inn}
 							<span
 								>{accountName(out.account_id, names)} → {accountName(inn.account_id, names)}</span

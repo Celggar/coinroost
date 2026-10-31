@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import Changes from '#lib/rules/Changes.svelte';
@@ -66,6 +66,13 @@
 		await load();
 	}
 
+	/** Opens or closes the delete question, and moves the focus to the button that takes the pressed one's place. */
+	async function ask(rule: string | null, focus: string) {
+		confirming = rule;
+		await tick();
+		document.getElementById(focus)?.focus();
+	}
+
 	onMount(load);
 </script>
 
@@ -100,7 +107,9 @@
 									class="secondary"
 									onclick={() => move(rule, rule.position - 1)}
 									disabled={busy}
-									aria-label={t('rules.up_named', { name: rule.name })}>{t('rules.up')}</button
+									aria-label={t('rules.up_named', { name: rule.name })}
+									in:pop={{ start: 0.9 }}
+									out:vanish>{t('rules.up')}</button
 								>
 							{/if}
 							{#if index < rules.length - 1}
@@ -108,29 +117,37 @@
 									class="secondary"
 									onclick={() => move(rule, rule.position + 1)}
 									disabled={busy}
-									aria-label={t('rules.down_named', { name: rule.name })}>{t('rules.down')}</button
+									aria-label={t('rules.down_named', { name: rule.name })}
+									in:pop={{ start: 0.9 }}
+									out:vanish>{t('rules.down')}</button
 								>
 							{/if}
-							{#if confirming === rule.id}
-								<button
-									class="danger"
-									onclick={() => remove(rule)}
-									disabled={busy}
-									in:pop={{ start: 0.9 }}>{t('rules.delete_it')}</button
-								>
-								<button
-									class="secondary"
-									onclick={() => (confirming = null)}
-									in:pop={{ start: 0.9 }}>{t('rules.keep_it')}</button
-								>
-							{:else}
-								<button
-									class="secondary"
-									onclick={() => (confirming = rule.id)}
-									aria-label={t('rules.delete_named', { name: rule.name })}
-									in:pop={{ start: 0.9 }}>{t('rules.delete')}</button
-								>
-							{/if}
+							<!-- Deleting asks first. The question takes the button's place: both sit in one cell, so the one
+								 leaving fades over the one coming (and cannot be clicked while it does), and the focus moves along. -->
+							<span class="swap">
+								{#if confirming === rule.id}
+									<span class="choice" in:pop={{ start: 0.9 }} out:vanish>
+										<button class="danger" onclick={() => remove(rule)} disabled={busy}
+											>{t('rules.delete_it')}</button
+										>
+										<button
+											class="secondary"
+											id="keep-{rule.id}"
+											onclick={() => ask(null, `delete-${rule.id}`)}>{t('rules.keep_it')}</button
+										>
+									</span>
+								{:else}
+									<span class="choice" in:pop={{ start: 0.9 }} out:vanish>
+										<button
+											class="secondary"
+											id="delete-{rule.id}"
+											onclick={() => ask(rule.id, `keep-${rule.id}`)}
+											aria-label={t('rules.delete_named', { name: rule.name })}
+											>{t('rules.delete')}</button
+										>
+									</span>
+								{/if}
+							</span>
 						</div>
 					</li>
 				{/each}
@@ -176,6 +193,19 @@
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm);
+		/* As tall as the delete confirm, so the card does not grow when the question opens. */
+		min-height: var(--primary-height);
+	}
+	.swap {
+		display: grid;
+	}
+	.choice {
+		grid-area: 1 / 1;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
 		gap: var(--space-sm);
 	}
 </style>

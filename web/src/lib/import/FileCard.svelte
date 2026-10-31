@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
 	import { lift, pop, rise, vanish } from '#lib/motion.ts';
+	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
+	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -18,6 +20,9 @@
 	let busy = $state(true);
 	let answered = $state(false);
 	let error = $state('');
+	// Why the chosen account cannot read the file: it goes under «Cuenta», in place of the hint (FD5).
+	let accountError = $state('');
+	let resultLine = $state<HTMLElement>();
 	let report = $state<Schemas['ImportReport'] | null>(null);
 
 	const importable = $derived(accounts.filter((a) => a.profile));
@@ -51,9 +56,12 @@
 			// Keep the choice open: another account may read it.
 			preview = preview ? { ...preview, reading: null } : null;
 			accountId = chosen ?? '';
-			error = problem(failure, response?.status, t('file.unreadable'));
+			const why = problem(failure, response?.status, t('file.unreadable'));
+			if (chosen) accountError = why;
+			else error = why;
 			return;
 		}
+		accountError = '';
 		preview = data;
 		accountId = data.account_id ?? '';
 	}
@@ -70,6 +78,9 @@
 		}
 		report = data;
 		notify(t('file.added', { added: data.batch.added, duplicates: data.batch.duplicates }));
+		// The import button is gone: the focus goes to what it did, not to the page's start.
+		await tick();
+		resultLine?.focus();
 		// Read it again so the counts and rows show what the account has now.
 		await read(accountId);
 	}
@@ -97,24 +108,30 @@
 	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
 
 	{#if answered}
-		<label>
-			{t('file.account')}
-			<select
-				bind:value={accountId}
-				onchange={() => read(accountId || undefined)}
-				disabled={busy || report !== null}
-			>
-				<option value="" disabled>{t('file.choose_account')}</option>
-				{#each choices as choice (choice.id)}
-					<option value={choice.id}>{choice.name}</option>
-				{/each}
-			</select>
-			{#if note}<span class="hint" out:vanish
-					>{note}
-					{#if !importable.length}<a class="target" href="/accounts">{t('file.open_accounts')}</a
-						>{/if}</span
-				>{/if}
-		</label>
+		{#snippet found()}
+			{note}
+			{#if !importable.length}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/if}
+		{/snippet}
+		<Field
+			label={t('file.account')}
+			name="account"
+			hint={note && !accountError ? found : ''}
+			error={accountError}
+		>
+			{#snippet children(wiring)}
+				<select
+					{...wiring}
+					bind:value={accountId}
+					onchange={() => read(accountId || undefined)}
+					disabled={busy || report !== null}
+				>
+					<option value="" disabled>{t('file.choose_account')}</option>
+					{#each choices as choice (choice.id)}
+						<option value={choice.id}>{choice.name}</option>
+					{/each}
+				</select>
+			{/snippet}
+		</Field>
 	{:else if busy}
 		<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
 	{/if}
@@ -166,7 +183,7 @@
 		{#if reading.rows.length}
 			<details>
 				<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
-				<div class="table-wrap">
+				<div class="table-wrap" use:scrollable={t('file.rows')}>
 					<table>
 						<thead>
 							<tr>
@@ -195,7 +212,7 @@
 
 		<!-- What the file comes to is the card's own state; what the import did also goes to the page's notice. -->
 		{#if report}
-			<p class="result" in:rise>
+			<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
 				<span class="check" aria-hidden="true"></span>
 				{t('file.added', { added: report.batch.added, duplicates: report.batch.duplicates })}
 			</p>

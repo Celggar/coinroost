@@ -132,7 +132,7 @@
 
 	<div class="cell">
 		{#key mode}
-			<div class="mode" in:rise={{ delay: 150 }} out:swapOut>
+			<div class="mode" in:rise={{ delay: 100 }} out:swapOut>
 				{#if mode === 'view'}
 					<button type="button" class="primary" onclick={ask} bind:this={regenerateButton}
 						>{t('security.regenerate')}</button

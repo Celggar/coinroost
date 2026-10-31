@@ -48,7 +48,8 @@
 			{#each preview.pairs as pair (pair.outflow.transaction_id)}
 				<li in:rise out:vanish animate:glide>
 					<div class="line">
-						<strong>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong>
+						<strong class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong
+						>
 						<span>
 							{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)}) → {accountName(
 								pair.inflow.account_id,

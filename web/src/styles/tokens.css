@@ -38,6 +38,7 @@
 	/* Surfaces and controls take the login's language: soft cards, 10 px fields, 12 px buttons. */
 	--radius-field: 10px;
 	--radius-button: 12px;
+	--radius-primary: 12px;
 	--radius-card: 16px;
 	--card-edge: rgb(3 46 21 / 0.08);
 	--card-shadow: 0 1px 2px rgb(3 46 21 / 0.06), 0 8px 24px rgb(3 46 21 / 0.06);
@@ -119,5 +120,6 @@
 	:root {
 		--field-height: 48px;
 		--primary-height: 52px;
+		--radius-primary: 14px;
 	}
 }

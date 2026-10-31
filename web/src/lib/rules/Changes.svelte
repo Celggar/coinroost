@@ -76,11 +76,14 @@
 		>
 	</div>
 	{#if preview}
+		<!-- `global`: these also enter when the first check opens the block around them. -->
 		{#if preview.changes.length === 0}
-			<p in:rise>{t('changes.nothing')}</p>
+			<p in:rise|global out:vanish>{t('changes.nothing')}</p>
 		{:else}
-			<p in:rise>{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}</p>
-			<ul class="changes" in:rise out:vanish>
+			<p in:rise|global out:vanish>
+				{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
+			</p>
+			<ul class="changes" in:rise|global out:vanish>
 				{#each preview.changes as change (change.transaction_id)}
 					<li out:vanish animate:glide>
 						<div class="what">
@@ -92,7 +95,7 @@
 					</li>
 				{/each}
 			</ul>
-			<div class="actions" out:vanish>
+			<div class="actions" in:rise|global out:vanish>
 				<button onclick={apply} disabled={busy}>
 					{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
 				</button>
