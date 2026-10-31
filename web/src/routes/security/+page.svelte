@@ -36,10 +36,11 @@
 		else regenerateButton?.focus();
 	}
 
+	// Its spaces do not break: «31 oct» never ends a line with «2026» alone under it.
 	const made = (iso: string) =>
-		new Intl.DateTimeFormat(tag(), { day: 'numeric', month: 'short', year: 'numeric' }).format(
-			new Date(iso)
-		);
+		new Intl.DateTimeFormat(tag(), { day: 'numeric', month: 'short', year: 'numeric' })
+			.format(new Date(iso))
+			.replaceAll(' ', '\u00a0');
 
 	async function load() {
 		loadError = '';

@@ -132,9 +132,11 @@ th.number {
 	box-shadow: none;
 }
 
+/* A label of two or three words that wraps splits evenly, never one word under the rest («… / unpaired»). */
 .figures dt {
 	color: var(--muted);
 	font-size: var(--text-sm);
+	text-wrap: balance;
 }
 
 .figures dd {
