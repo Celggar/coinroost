@@ -178,6 +178,20 @@ th.number {
 	color: var(--bad);
 }
 
+/* A load that failed says so and offers to try again: the button keeps apart from the words, at the end of a wide
+   line or under the message on a short one (set inline it touched the text and stretched its line). It stands on the
+   tint as a button on its own surface. */
+.alert:has(> button) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-sm) var(--space-lg);
+}
+.alert > button {
+	background: var(--surface);
+}
+
 .notice {
 	border-radius: var(--radius-button);
 	padding: var(--space-md) var(--space-lg);
