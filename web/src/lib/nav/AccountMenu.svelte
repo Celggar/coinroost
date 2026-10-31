@@ -25,6 +25,8 @@
 	const initial = $derived(email.slice(0, 1).toUpperCase());
 	// The button shows the part before the @, which is what fits; the panel and the button's name say it whole.
 	const shortName = $derived(email.split('@')[0]);
+	// A long address breaks between the name and the domain before it breaks anywhere else.
+	const domain = $derived(email.slice(shortName.length + 1));
 
 	afterNavigate(() => (open = false));
 
@@ -78,15 +80,19 @@
 			in:pop={{ start: 0.92 }}
 			out:vanish
 		>
-			<p class="who"><span>{t('nav.signed_in_as')}</span><span class="address">{email}</span></p>
+			<p class="who">
+				<span>{t('nav.signed_in_as')}</span><span class="address">{shortName}@<wbr />{domain}</span>
+			</p>
 			<div class="language">
 				<p class="label" aria-hidden="true">{t('more.language')}</p>
 				<LanguageSwitch wide />
 			</div>
-			<button class="leave" onclick={onleave}>
-				<Icon name="logout" />
-				<span>{t('nav.log_out')}</span>
-			</button>
+			<div class="foot">
+				<button class="leave" onclick={onleave}>
+					<Icon name="logout" />
+					<span>{t('nav.log_out')}</span>
+				</button>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -159,15 +165,15 @@
 		width: 288px;
 		display: grid;
 		gap: var(--space-md);
-		padding: var(--space-lg) var(--space-lg) var(--space-md);
+		padding: var(--space-lg) var(--space-lg) var(--space-xs);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		background: var(--surface);
 		box-shadow: var(--card-shadow);
 		transform-origin: bottom left;
 	}
-	/* The address on a line of its own, so it breaks only when it is longer than the panel. */
-	/* The panel's text and the log-out icon start 4 px in, on one line. */
+	/* The address on a line of its own, so it breaks only when it is longer than the panel. The panel's text starts
+	   4 px in, where the log-out icon's stroke starts. */
 	.who {
 		display: grid;
 		gap: var(--space-2xs);
@@ -196,16 +202,22 @@
 	.language :global(.language) {
 		--language-chosen: color-mix(in oklab, var(--accent) 14%, var(--surface));
 	}
+	/* The same 12 px above both dividers; the row sits in the middle between its divider and the panel's edge (4 px
+	   and the button's own half on each side). */
+	.foot {
+		padding-top: var(--space-xs);
+		border-top: 1px solid var(--border);
+	}
+	/* No padding before the icon: its stroke starts 4 px into its box, on the text's line above. */
 	.leave {
 		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 		justify-content: flex-start;
 		gap: var(--space-md);
+		width: 100%;
 		min-height: 48px;
-		margin-top: var(--space-xs);
-		padding: 0 var(--space-xs);
+		padding: 0 var(--space-xs) 0 0;
 		border: 0;
-		border-top: 1px solid var(--border);
-		border-radius: 0;
+		border-radius: var(--radius-field);
 		background: none;
 		color: var(--text);
 	}
