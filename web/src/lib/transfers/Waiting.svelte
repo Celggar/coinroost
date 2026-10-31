@@ -40,41 +40,46 @@
 
 <section class="card" aria-labelledby="waiting-title">
 	<h2 id="waiting-title">{t('waiting.title')}</h2>
-	{#if preview.pairs.length === 0}
-		<p in:rise>{t('waiting.nothing')}</p>
-	{:else}
-		<p class="hint">{t('waiting.hint')}</p>
-		<ul class="pairs" aria-label={t('waiting.title')}>
-			{#each preview.pairs as pair (pair.outflow.transaction_id)}
-				<li in:rise out:vanish animate:glide>
-					<div class="line">
-						<strong class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong
-						>
-						<span>
-							{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)}) → {accountName(
-								pair.inflow.account_id,
-								names
-							)} ({day(pair.inflow.date)})
-						</span>
-					</div>
-					<div class="hint">
-						{t('waiting.found', {
-							description: pair.outflow.description,
-							why: passLabel(pair.pass)
-						})}
-					</div>
-					{#if pair.drops_manual}
-						<span class="chip warn">{t('waiting.drops_manual')}</span>
-					{/if}
-				</li>
-			{/each}
-		</ul>
-		<div class="actions" out:vanish>
-			<button onclick={apply} disabled={busy}
-				>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
-			>
-		</div>
-	{/if}
+	<div class="swap">
+		{#if preview.pairs.length === 0}
+			<p in:rise out:vanish>{t('waiting.nothing')}</p>
+		{:else}
+			<div class="stack" in:rise out:vanish>
+				<p class="hint">{t('waiting.hint')}</p>
+				<ul class="pairs" aria-label={t('waiting.title')}>
+					{#each preview.pairs as pair (pair.outflow.transaction_id)}
+						<li in:rise out:vanish animate:glide>
+							<div class="line">
+								<strong class="money"
+									>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong
+								>
+								<span>
+									{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)}) → {accountName(
+										pair.inflow.account_id,
+										names
+									)} ({day(pair.inflow.date)})
+								</span>
+							</div>
+							<div class="hint">
+								{t('waiting.found', {
+									description: pair.outflow.description,
+									why: passLabel(pair.pass)
+								})}
+							</div>
+							{#if pair.drops_manual}
+								<span class="chip warn">{t('waiting.drops_manual')}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<div class="actions">
+					<button onclick={apply} disabled={busy}
+						>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
+					>
+				</div>
+			</div>
+		{/if}
+	</div>
 </section>
 
 <style>

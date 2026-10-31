@@ -54,6 +54,7 @@
 
 	async function regenerate(event: SubmitEvent) {
 		event.preventDefault();
+		const form = event.currentTarget as HTMLFormElement;
 		if (busy) return;
 		if (refused(event)) return;
 		busy = true;
@@ -80,6 +81,11 @@
 					: problem(failure, response.status, t('security.failed'));
 		error = { text, n: error.n + 1 };
 		codeField?.shake();
+		// A wrong code is about the field: it is marked, and the caret goes back to it for the next try (FD5).
+		if (response.status === 422) {
+			form.querySelector('input')?.setAttribute('aria-invalid', 'true');
+			codeField?.focus();
+		}
 	}
 
 	function done() {

@@ -72,51 +72,54 @@
 		{loadError} <button class="secondary" onclick={load}>{t('app.try_again')}</button>
 	</p>
 {:else if loaded}
-	<div class="stack">
+	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->
+	<div class="swap">
 		{#if transactions.length === 0}
 			<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
 		{:else}
-			<p>
-				{#key transactions.length}<span class="count" in:pop={{ start: 0.9 }}
-						>{plural(
-							transactions.length,
-							'uncategorized.count_one',
-							'uncategorized.count_other'
-						)}</span
-					>{/key}
-			</p>
-			{#if categories.length === 0}
-				<p class="hint">
-					{t('uncategorized.no_categories')}
-					<a href="/rules">{t('nav.rules')}</a>
+			<div class="stack" out:vanish>
+				<p>
+					{#key transactions.length}<span class="count" in:pop={{ start: 0.9 }}
+							>{plural(
+								transactions.length,
+								'uncategorized.count_one',
+								'uncategorized.count_other'
+							)}</span
+						>{/key}
 				</p>
-			{/if}
-			<ul class="queue" aria-label={t('uncategorized.list')}>
-				{#each transactions as transaction (transaction.id)}
-					{@const leg = transaction.legs[0]}
-					<li class="card" out:vanish animate:glide>
-						<div class="what">
-							<span>{day(transaction.date)}</span>
-							<span class="description">{transaction.description}</span>
-							{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
-						</div>
-						<label>
-							{t('column.category')}
-							<select
-								id="category-{transaction.id}"
-								value=""
-								disabled={busy !== null || categories.length === 0}
-								onchange={(event) => choose(transaction, event.currentTarget.value)}
-							>
-								<option value="" disabled>{t('uncategorized.choose')}</option>
-								{#each categories as category (category.id)}
-									<option value={category.id}>{category.name}</option>
-								{/each}
-							</select>
-						</label>
-					</li>
-				{/each}
-			</ul>
+				{#if categories.length === 0}
+					<p class="hint">
+						{t('uncategorized.no_categories')}
+						<a href="/rules">{t('nav.rules')}</a>
+					</p>
+				{/if}
+				<ul class="queue" aria-label={t('uncategorized.list')}>
+					{#each transactions as transaction (transaction.id)}
+						{@const leg = transaction.legs[0]}
+						<li class="card" out:vanish animate:glide>
+							<div class="what">
+								<span>{day(transaction.date)}</span>
+								<span class="description">{transaction.description}</span>
+								{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
+							</div>
+							<label>
+								{t('column.category')}
+								<select
+									id="category-{transaction.id}"
+									value=""
+									disabled={busy !== null || categories.length === 0}
+									onchange={(event) => choose(transaction, event.currentTarget.value)}
+								>
+									<option value="" disabled>{t('uncategorized.choose')}</option>
+									{#each categories as category (category.id)}
+										<option value={category.id}>{category.name}</option>
+									{/each}
+								</select>
+							</label>
+						</li>
+					{/each}
+				</ul>
+			</div>
 		{/if}
 	</div>
 {:else}

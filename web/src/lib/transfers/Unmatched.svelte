@@ -3,7 +3,7 @@
 	import { day } from '#lib/format.ts';
 	import { accountName, legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { vanish } from '#lib/motion.ts';
+	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
@@ -85,31 +85,33 @@
 
 <section class="card" aria-labelledby="unmatched-title">
 	<h2 id="unmatched-title">{t('unmatched.title')}</h2>
-	{#if preview.unmatched.length === 0}
-		<p>{t('unmatched.nothing')}</p>
-	{:else}
-		<ul class="legs" aria-label={t('unmatched.title')}>
-			{#each preview.unmatched as item (item.leg.transaction_id)}
-				<li out:vanish>
-					<div class="what">
-						<span>{day(item.leg.date)}</span>
-						<span>{accountName(item.leg.account_id, names)}</span>
-						<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
-						<span class="description">{item.leg.description}</span>
-					</div>
-					<div class="hint">{reasonLabel(item.reason)}</div>
-					{#each item.candidates as candidate (candidate.transaction_id)}
-						<button
-							class="secondary"
-							disabled={busy}
-							onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
-							>{t('unmatched.pair_with', { leg: legText(candidate, names) })}</button
-						>
-					{/each}
-				</li>
-			{/each}
-		</ul>
-	{/if}
+	<div class="swap">
+		{#if preview.unmatched.length === 0}
+			<p in:rise out:vanish>{t('unmatched.nothing')}</p>
+		{:else}
+			<ul class="legs" aria-label={t('unmatched.title')} in:rise out:vanish>
+				{#each preview.unmatched as item (item.leg.transaction_id)}
+					<li in:rise out:vanish animate:glide>
+						<div class="what">
+							<span>{day(item.leg.date)}</span>
+							<span>{accountName(item.leg.account_id, names)}</span>
+							<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
+							<span class="description">{item.leg.description}</span>
+						</div>
+						<div class="hint">{reasonLabel(item.reason)}</div>
+						{#each item.candidates as candidate (candidate.transaction_id)}
+							<button
+								class="secondary"
+								disabled={busy}
+								onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
+								>{t('unmatched.pair_with', { leg: legText(candidate, names) })}</button
+							>
+						{/each}
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</div>
 
 	<form
 		novalidate

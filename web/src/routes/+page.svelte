@@ -108,17 +108,23 @@
 <div class="stack">
 	<Payroll />
 
+	<!-- The presets are one segmented control, as tall as the date fields beside them, so every control of the row
+		 shares its top and bottom edges (his #158); the two dates sit in a grid of their own. -->
 	<div class="period" role="group" aria-label={t('dashboard.period')}>
-		{#each presets as option (option.which)}
-			{@const range = preset(option.which)}
-			<button
-				class="secondary"
-				aria-pressed={from === range.from && to === range.to}
-				onclick={() => choose(option.which)}>{t(option.label)}</button
-			>
-		{/each}
-		<label>{t('period.from')} <input type="date" bind:value={from} /></label>
-		<label>{t('period.to')} <input type="date" bind:value={to} /></label>
+		<div class="presets">
+			{#each presets as option (option.which)}
+				{@const range = preset(option.which)}
+				<button
+					class="secondary"
+					aria-pressed={from === range.from && to === range.to}
+					onclick={() => choose(option.which)}>{t(option.label)}</button
+				>
+			{/each}
+		</div>
+		<div class="range">
+			<label>{t('period.from')} <input type="date" bind:value={from} /></label>
+			<label>{t('period.to')} <input type="date" bind:value={to} /></label>
+		</div>
 	</div>
 
 	{#if error}
@@ -184,13 +190,57 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: end;
-		gap: var(--space-sm) var(--space-md);
+		gap: var(--space-md) var(--space-lg);
 	}
-	.period button[aria-pressed='true'] {
-		background: var(--bg);
+	/* Material 3 segmented buttons: joined segments, the chosen one filled. */
+	.presets {
+		display: inline-flex;
+	}
+	.presets button {
+		min-height: var(--field-height);
+		border-radius: 0;
+		padding: 0 var(--space-lg);
+	}
+	/* Neighbours share one border line; the chosen one draws its own all round, inside. */
+	.presets button + button {
+		border-left-width: 0;
+	}
+	.presets button:first-child {
+		border-radius: var(--radius-field) 0 0 var(--radius-field);
+	}
+	.presets button:last-child {
+		border-radius: 0 var(--radius-field) var(--radius-field) 0;
+	}
+	.presets button[aria-pressed='true'] {
+		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
 		color: var(--text);
-		font-weight: 700;
-		border-color: var(--text);
+		box-shadow: inset 0 0 0 1px var(--text);
+	}
+	.range {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(160px, 1fr));
+		gap: var(--space-md);
+	}
+	/* A phone: the presets in three equal segments across, the two dates side by side under them. */
+	@media (max-width: 560px) {
+		.presets,
+		.range {
+			display: grid;
+			width: 100%;
+		}
+		.presets {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+		.presets button {
+			padding: 0 var(--space-sm);
+		}
+		.range {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+		.range input {
+			min-width: 0;
+			width: 100%;
+		}
 	}
 	.rankings {
 		display: grid;

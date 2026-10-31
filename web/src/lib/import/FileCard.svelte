@@ -46,10 +46,15 @@
 		}
 	});
 
+	// Each read is numbered: the answer of an earlier choice that comes back late is dropped.
+	let reads = 0;
+
 	async function read(chosen?: string) {
+		const mine = ++reads;
 		busy = true;
 		error = '';
 		const { data, error: failure, response } = await previewFile(file, chosen);
+		if (mine !== reads) return;
 		busy = false;
 		answered = true;
 		if (!data) {
@@ -123,7 +128,7 @@
 					{...wiring}
 					bind:value={accountId}
 					onchange={() => read(accountId || undefined)}
-					disabled={busy || report !== null}
+					disabled={report !== null}
 				>
 					<option value="" disabled>{t('file.choose_account')}</option>
 					{#each choices as choice (choice.id)}

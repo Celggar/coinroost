@@ -264,3 +264,14 @@ details[open]::details-content {
 	animation-duration: var(--duration-medium);
 	animation-timing-function: var(--ease-standard);
 }
+
+/* Two states that replace each other in place (a list and its empty line): both sit in one cell, so the one leaving
+   fades over the one coming instead of stacking under it (FD9). */
+.swap {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.swap > * {
+	grid-area: 1 / 1;
+}
