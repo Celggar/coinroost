@@ -23,6 +23,9 @@
 	// edge; at 320 that is near 1344 px, while at 1280 the panel clearly overlaps the page (by 32 px) and at 1366 it
 	// stays 11 px clear.
 	let place = $state({ left: 0, bottom: 0 });
+	// 13 px above the button: its focus ring reaches 5 px out (3 px wide, 2 px off) and keeps 8 px from the panel's
+	// edge, as the log-out row's ring does inside it.
+	const GAP = 13;
 
 	const email = $derived(session.user?.email ?? '');
 	const initial = $derived(email.slice(0, 1).toUpperCase());
@@ -38,9 +41,7 @@
 	function toggle() {
 		if (!open && button) {
 			const box = button.getBoundingClientRect();
-			// 13 px above the button: its focus ring reaches 5 px out (3 px wide, 2 px off) and keeps 8 px from the
-			// panel's edge, as the log-out row's ring does inside it.
-			place = { left: box.left, bottom: innerHeight - box.top + 13 };
+			place = { left: box.left, bottom: innerHeight - box.top + GAP };
 		}
 		open = !open;
 	}
@@ -82,6 +83,7 @@
 			id="{id}-panel"
 			style:left="{place.left}px"
 			style:bottom="{place.bottom}px"
+			style:--gap="{GAP}px"
 			in:pop={{ start: 0.92 }}
 			out:vanish
 		>
@@ -100,6 +102,7 @@
 					<span>{t('nav.log_out')}</span>
 				</button>
 			</div>
+			<span class="bridge" aria-hidden="true"></span>
 		</div>
 	{/if}
 </div>
@@ -191,6 +194,15 @@
 		background: var(--surface);
 		box-shadow: var(--raised-shadow);
 		transform-origin: bottom left;
+	}
+	/* The gap down to the button belongs to the panel: through it showed the foot of «Seguridad», a 9 px strip that
+	   took the click while the panel was open (P2 round 8). An element, not a pseudo-element, so checkers that read
+	   what covers a target see it too. */
+	.bridge {
+		position: absolute;
+		inset-inline: -1px;
+		top: 100%;
+		height: calc(var(--gap) + 1px);
 	}
 	/* The address on a line of its own, so it breaks only when it is longer than the panel. The panel's text starts
 	   4 px in, where the log-out icon's stroke starts. */
