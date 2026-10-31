@@ -58,9 +58,13 @@
 <style>
 	/* Nothing scrolls under the rail, so it is a plain surface (the layout's column draws it); the bars on a phone,
 	   which content scrolls under, take the login's glass. */
+	/* Fixed, not sticky: at the end of a page whose height is not a whole pixel, a sticky rail met its column's end
+	   and moved up 0.4 px (pass 6). It fills its column, inside the column's 1 px edge. */
 	.rail {
-		position: sticky;
+		position: fixed;
 		top: 0;
+		left: 0;
+		width: calc(var(--rail-width, 248px) - 1px);
 		height: 100dvh;
 		display: flex;
 		flex-direction: column;

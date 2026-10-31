@@ -12,6 +12,7 @@
 	import AuthLines from '#lib/auth/AuthLines.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { followContent } from '#lib/motion.ts';
+	import { wholePixels } from '#lib/ui/whole-pixels.ts';
 
 	let { children, compact = false }: { children: Snippet; compact?: boolean } = $props();
 </script>
@@ -33,7 +34,7 @@
 			</p>
 			<p class="tagline" class:compact>{t('auth.tagline')}</p>
 		</div>
-		<div class="stage">
+		<div class="stage" use:wholePixels>
 			<div class="glow first" aria-hidden="true"></div>
 			<div class="glow second" aria-hidden="true"></div>
 			<section class="glass">

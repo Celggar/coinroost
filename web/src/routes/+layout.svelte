@@ -100,8 +100,9 @@
 	/* A wide screen: the rail on the left, the page beside it. A phone: the page under its top bar, the destinations in
 	   a bar fixed at the bottom. */
 	.shell {
+		--rail-width: 248px;
 		display: grid;
-		grid-template-columns: 248px minmax(0, 1fr);
+		grid-template-columns: var(--rail-width) minmax(0, 1fr);
 		min-height: 100dvh;
 	}
 	/* The page's column: the top bar, the page (centred, 960 px at most), and on a phone the navigation bar last,
@@ -122,7 +123,7 @@
 	.narrow-only {
 		display: none;
 	}
-	/* The rail's column carries its surface and edge the whole height of the page; the rail sticks inside it. */
+	/* The rail's column carries its surface and edge the whole height of the page; the rail stays on screen over it. */
 	.wide-only {
 		background: var(--surface);
 		border-right: 1px solid var(--card-edge);
