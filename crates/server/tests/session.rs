@@ -228,3 +228,38 @@ async fn user_add_enrolls_a_user(db: PgPool) {
             .is_err()
     );
 }
+
+/// The language is saved on the account (null until picked). The API checks it itself: a direct call with a
+/// language the web app has no texts for is refused on its field, and the saved one stays.
+#[sqlx::test]
+async fn the_language_is_saved_on_the_account(db: PgPool) {
+    let api = Api::new(db);
+    let user = api.household("Language").await;
+    let (status, me) = api.call("GET", "/api/v1/me", Some(&user.token), None).await;
+    assert_eq!((status, me["locale"].is_null()), (StatusCode::OK, true), "{me}");
+
+    let english = json!({"locale": "en"});
+    let (status, me) = api
+        .call("PATCH", "/api/v1/me", Some(&user.token), Some(english))
+        .await;
+    assert_eq!(
+        (status, me["locale"].as_str()),
+        (StatusCode::OK, Some("en")),
+        "{me}"
+    );
+
+    for locale in ["fr", "EN", "", "es-PA"] {
+        let body = json!({"locale": locale});
+        let (status, problem) = api
+            .call("PATCH", "/api/v1/me", Some(&user.token), Some(body))
+            .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{locale:?}: {problem}");
+        assert_eq!(
+            (problem["code"].as_str(), problem["pointer"].as_str()),
+            (Some("unknown_locale"), Some("#/locale")),
+            "{locale:?}: {problem}"
+        );
+    }
+    let (_, me) = api.call("GET", "/api/v1/me", Some(&user.token), None).await;
+    assert_eq!(me["locale"], "en", "a refused change touched the saved language");
+}

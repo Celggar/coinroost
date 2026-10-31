@@ -218,7 +218,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Saves the user's language on their account, so it wins over the browser's on every device after login. The API
+         *     is where it is checked: a language the app has no texts for is refused, whoever calls.
+         */
+        patch: operations["change_me"];
         trace?: never;
     };
     "/api/v1/me/authenticator": {
@@ -1022,6 +1026,15 @@ export interface components {
              *     (`POST /api/v1/me/authenticator`); until then every other route answers 403.
              */
             reenroll_required: boolean;
+            /**
+             * @description The language the user picked (`es` or `en`), saved for every device; null until they pick one, and then the
+             *     browser's language decides.
+             */
+            locale?: string | null;
+        };
+        MeChange: {
+            /** @description The language the app speaks to this user: `es` or `en`. */
+            locale: string;
         };
         MonthTotals: {
             /** @description `YYYY-MM`. */
@@ -2000,6 +2013,57 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    change_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeChange"];
+            };
+        };
+        responses: {
+            /** @description The user, as saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A new authenticator must be set up first */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A language the app has no texts for (`unknown_locale`) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

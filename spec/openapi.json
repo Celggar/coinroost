@@ -711,6 +711,65 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "session"
+        ],
+        "summary": "Saves the user's language on their account, so it wins over the browser's on every device after login. The API\nis where it is checked: a language the app has no texts for is refused, whoever calls.",
+        "operationId": "change_me",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The user, as saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A new authenticator must be set up first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A language the app has no texts for (`unknown_locale`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/me/authenticator": {
@@ -3339,8 +3398,28 @@
           "reenroll_required": {
             "type": "boolean",
             "description": "True after a login with a recovery code, until a new authenticator is confirmed\n(`POST /api/v1/me/authenticator`); until then every other route answers 403."
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The language the user picked (`es` or `en`), saved for every device; null until they pick one, and then the\nbrowser's language decides."
           }
         }
+      },
+      "MeChange": {
+        "type": "object",
+        "required": [
+          "locale"
+        ],
+        "properties": {
+          "locale": {
+            "type": "string",
+            "description": "The language the app speaks to this user: `es` or `en`."
+          }
+        },
+        "additionalProperties": false
       },
       "MonthTotals": {
         "type": "object",

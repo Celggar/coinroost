@@ -12,15 +12,18 @@ use utoipa_axum::routes;
 use uuid::Uuid;
 
 use crate::AppState;
-use crate::auth::{self, AnySession, Second};
-use crate::error::{ApiError, ApiResult, Problem};
+use crate::auth::{self, AnySession, Second, Session};
+use crate::error::{ApiError, ApiResult, Problem, Reason};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(log_in))
         .routes(routes!(log_out))
-        .routes(routes!(me))
+        .routes(routes!(me, change_me))
 }
+
+/// The languages the web app has texts for, as BCP 47 primary tags.
+const LOCALES: [&str; 2] = ["es", "en"];
 
 #[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -106,6 +109,16 @@ pub struct Me {
     /// True after a login with a recovery code, until a new authenticator is confirmed
     /// (`POST /api/v1/me/authenticator`); until then every other route answers 403.
     reenroll_required: bool,
+    /// The language the user picked (`es` or `en`), saved for every device; null until they pick one, and then the
+    /// browser's language decides.
+    locale: Option<String>,
+}
+
+#[derive(Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MeChange {
+    /// The language the app speaks to this user: `es` or `en`.
+    locale: String,
 }
 
 /// The user and household of the current session; it also answers a session that must set up a new authenticator.
@@ -114,14 +127,49 @@ pub struct Me {
         (status = OK, description = "The session's user", body = Me),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
 async fn me(State(state): State<AppState>, session: AnySession) -> ApiResult<Json<Me>> {
-    let (email,): (String,) = sqlx::query_as("select email from users where id = $1")
-        .bind(session.user_id)
-        .fetch_one(&state.db)
-        .await?;
+    let (email, locale): (String, Option<String>) =
+        sqlx::query_as("select email, locale from users where id = $1")
+            .bind(session.user_id)
+            .fetch_one(&state.db)
+            .await?;
     Ok(Json(Me {
         user_id: session.user_id,
         household_id: session.household_id,
         email,
         reenroll_required: session.reenroll_required,
+        locale,
     }))
+}
+
+/// Saves the user's language on their account, so it wins over the browser's on every device after login. The API
+/// is where it is checked: a language the app has no texts for is refused, whoever calls.
+#[utoipa::path(patch, path = "/api/v1/me", tag = "session", request_body = MeChange,
+    responses(
+        (status = OK, description = "The user, as saved", body = Me),
+        (status = UNAUTHORIZED, description = "No valid session", body = Problem),
+        (status = FORBIDDEN, description = "A new authenticator must be set up first", body = Problem),
+        (status = UNPROCESSABLE_ENTITY, description = "A language the app has no texts for (`unknown_locale`)",
+            body = Problem)))]
+async fn change_me(
+    State(state): State<AppState>,
+    session: Session,
+    Json(change): Json<MeChange>,
+) -> ApiResult<Json<Me>> {
+    if !LOCALES.contains(&change.locale.as_str()) {
+        let detail = format!("no texts for {:?}: use es or en", change.locale);
+        return Err(ApiError::Invalid(
+            Reason::new("unknown_locale", detail).at("locale"),
+        ));
+    }
+    sqlx::query("update users set locale = $2 where id = $1")
+        .bind(session.user_id)
+        .bind(&change.locale)
+        .execute(&state.db)
+        .await?;
+    let caller = AnySession {
+        user_id: session.user_id,
+        household_id: session.household_id,
+        reenroll_required: false,
+    };
+    me(State(state), caller).await
 }
