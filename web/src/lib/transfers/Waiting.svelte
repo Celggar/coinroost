@@ -5,6 +5,7 @@
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
+	import { focusOn } from '#lib/ui/focus.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -38,6 +39,8 @@
 			refreshCounts();
 		}
 		onchanged();
+		// The pairs and this button leave: the focus goes to the list the pairs join, not to the page's start.
+		if (data) focusOn('#made-title');
 	}
 </script>
 

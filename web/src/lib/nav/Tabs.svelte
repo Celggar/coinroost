@@ -28,7 +28,7 @@
 					>{t(tab.label)}
 					{#if tab.badge}<Badge
 							count={count(tab)}
-							tone={tab.badge === 'accounts' && !counts.late ? 'warn' : 'bad'}
+							tone={tab.badge === 'accounts' ? 'warn' : 'bad'}
 						/>{/if}</span
 				>
 				<span class="line" aria-hidden="true"></span>

@@ -53,7 +53,8 @@
 
 <div class="title">
 	<h1>{t('coverage.title')}</h1>
-	<button class="secondary" onclick={load} disabled={busy}
+	<!-- aria-disabled, not disabled: a disabled button drops the focus, and the person pressed this one. -->
+	<button class="secondary" onclick={() => busy || load()} aria-disabled={busy}
 		>{busy ? t('coverage.refreshing') : t('coverage.refresh')}</button
 	>
 </div>

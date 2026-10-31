@@ -49,6 +49,9 @@
 			error = { text, n: error.n + 1 };
 			code = '';
 			codeField?.shake();
+			// The code is spent either way: the caret goes to the second step, ready for the next one.
+			if (recovering) recoveryField?.focus();
+			else codeField?.focus();
 			return;
 		}
 		await refresh();

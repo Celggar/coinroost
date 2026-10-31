@@ -16,7 +16,7 @@
 	"nav.more": "Más",
 	"nav.skip": "Saltar al contenido",
 	"nav.badge_review": "{count} por revisar",
-	"nav.badge_accounts": "{count} sin datos recientes",
+	"nav.badge_accounts": "{count} atrasadas",
 	"more.title": "Más",
 	"more.language": "Idioma",
 	"more.signed_in": "Sesión iniciada como {email}",

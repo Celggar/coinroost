@@ -60,6 +60,9 @@
 				: problem(failure, response.status, t('authenticator.failed'));
 		error = { text, n: error.n + 1 };
 		codeField?.shake();
+		// The code is cleared: marked when it was the wrong one, and the caret back in it either way.
+		if (response.status === 422) codeField?.mark();
+		else codeField?.focus();
 	}
 
 	async function leave() {

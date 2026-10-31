@@ -33,7 +33,7 @@
 						{#if destination.badge}
 							<Badge
 								count={count(destination.badge)}
-								tone={destination.badge === 'accounts' && !counts.late ? 'warn' : 'bad'}
+								tone={destination.badge === 'accounts' ? 'warn' : 'bad'}
 							/>
 						{/if}
 					</a>

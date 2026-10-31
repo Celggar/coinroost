@@ -8,6 +8,7 @@
 	import { actions, conditions, names as nameMaps } from '#lib/rules/describe.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
+	import { focusOn } from '#lib/ui/focus.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { glide, pop, rise, vanish } from '#lib/motion.ts';
 
@@ -55,12 +56,9 @@
 		}
 		await load();
 		// The buttons were disabled while it moved, which drops the focus: it follows the rule, to the same button,
-		// or to its other one when the rule reached the top or the bottom.
+		// or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).
 		await tick();
-		(
-			document.querySelector<HTMLElement>(`[data-move="${rule.id}-${way}"]`) ??
-			document.querySelector<HTMLElement>(`[data-move^="${rule.id}-"]`)
-		)?.focus();
+		focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`);
 	}
 
 	async function remove(rule: Schemas['Rule']) {
