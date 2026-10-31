@@ -141,12 +141,13 @@
 		{#key mode}
 			<div class="mode" in:rise={{ delay: 100 }} out:swapOut>
 				{#if mode === 'view'}
+					<!-- With no codes yet there is nothing to replace: the button makes the first ones. -->
 					<button type="button" class="primary" onclick={ask} bind:this={regenerateButton}
-						>{t('security.regenerate')}</button
+						>{status?.created_at ? t('security.regenerate') : t('security.confirm')}</button
 					>
 				{:else if mode === 'confirm'}
 					<form novalidate oninput={() => (codeError = '')} class="stack" onsubmit={regenerate}>
-						<p class="hint">{t('security.regenerate_note')}</p>
+						{#if status?.created_at}<p class="hint">{t('security.regenerate_note')}</p>{/if}
 						<CodeField
 							bind:this={codeField}
 							label={t('login.code')}
