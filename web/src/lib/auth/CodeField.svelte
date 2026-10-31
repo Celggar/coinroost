@@ -168,10 +168,11 @@
 		height: 0;
 		border-top: 2px solid var(--field-border);
 	}
+	/* A border, like the dash: a background would vanish in forced colors. */
 	.caret {
-		width: 2px;
+		width: 0;
 		height: 24px;
-		background: var(--text);
+		border-left: 2px solid var(--text);
 	}
 	@media (prefers-reduced-motion: no-preference) {
 		.caret {

@@ -1,14 +1,21 @@
 <script lang="ts">
 	// A count on a destination (P1, N6): a number in a small pill that pops in, fades out at zero, and pops again when
-	// the number changes. It is drawn only; the link it sits on is described by the sentence in `NavCounts`.
-	import { pop, vanish } from '#lib/motion.ts';
+	// the number changes, each in 150 ms (N8). It is drawn only; the link it sits on is described by the sentence in `NavCounts`.
+	import { DURATION, pop, vanish } from '#lib/motion.ts';
 
 	let { count, tone = 'bad' }: { count: number; tone?: 'bad' | 'warn' } = $props();
 </script>
 
 {#if count > 0}
-	<span class="badge {tone}" aria-hidden="true" in:pop={{ start: 0.6 }} out:vanish>
-		{#key count}<span in:pop={{ start: 0.8 }} out:vanish>{count > 99 ? '99+' : count}</span>{/key}
+	<span
+		class="badge {tone}"
+		aria-hidden="true"
+		in:pop={{ start: 0.6, duration: DURATION.short }}
+		out:vanish
+	>
+		{#key count}<span in:pop={{ start: 0.8, duration: DURATION.short }} out:vanish
+				>{count > 99 ? '99+' : count}</span
+			>{/key}
 	</span>
 {/if}
 

@@ -138,6 +138,7 @@
 	"uncategorized.all_done": "Every transaction has a category.",
 	"uncategorized.none_yet": "No transactions yet.",
 	"uncategorized.import_first": "Import a statement",
+	"uncategorized.to_summary": "See the summary",
 	"uncategorized.count_one": "1 without a category.",
 	"uncategorized.count_other": "{count} without a category.",
 	"uncategorized.no_categories": "You have no categories yet: create them to sort these transactions.",

@@ -76,11 +76,14 @@ export function lift(node: Element, { y = -8 } = {}): TransitionConfig {
 }
 
 /** In: grows from a little smaller. */
-export function pop(node: Element, { delay = 0, start = 0.6 } = {}): TransitionConfig {
+export function pop(
+	node: Element,
+	{ delay = 0, start = 0.6, duration = DURATION.medium as number } = {}
+): TransitionConfig {
 	return scale(node, {
 		delay,
 		start: still() ? 1 : start,
-		duration: DURATION.medium,
+		duration,
 		easing: EASE.enter
 	});
 }

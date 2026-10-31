@@ -4,7 +4,7 @@
 import type { Key } from '#lib/i18n.svelte.ts';
 
 export type IconName =
-	'home' | 'import' | 'review' | 'bank' | 'rules' | 'more' | 'shield' | 'logout' | 'chev';
+	'home' | 'import' | 'review' | 'bank' | 'rules' | 'more' | 'shield' | 'logout' | 'chev' | 'check';
 
 export type Destination = {
 	href: string;

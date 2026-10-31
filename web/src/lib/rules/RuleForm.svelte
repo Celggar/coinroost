@@ -41,6 +41,8 @@
 		if (Number.isNaN(low)) found.min ??= t('form.amount');
 		if (Number.isNaN(high)) found.max ??= t('form.amount');
 		if (low !== null && high !== null && low > high) found.max ??= t('problem.rule_min_above_max');
+		// The server refuses a rule that sets nothing; saying it here puts the message on the first of the two fields.
+		if (!category && !payee) found.category ??= t('problem.rule_nothing_to_set');
 		return found;
 	}
 
@@ -85,6 +87,9 @@
 				focusFirst(form, errors);
 			} else {
 				error = why.message;
+				// The button was disabled while it worked, which drops the focus: it goes back to the button.
+				await tick();
+				form.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
 			}
 			return;
 		}
@@ -103,6 +108,14 @@
 	onsubmit={submit}
 	oninput={(event) => {
 		errors = without(errors, event);
+		// Either of the two answers «a category or a payee», so a payee clears the category's message too. The field
+		// is read, not its binding: a select's binding updates on change, after this.
+		const target = event.target as HTMLSelectElement;
+		if (target.name === 'payee' && target.value && errors.category) {
+			const rest = { ...errors };
+			delete rest.category;
+			errors = rest;
+		}
 		error = '';
 	}}
 	aria-label={t('ruleform.title')}

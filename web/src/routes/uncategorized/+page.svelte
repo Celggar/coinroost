@@ -62,7 +62,7 @@
 		const next = transactions[Math.min(at, transactions.length - 1)];
 		await tick();
 		if (next) document.getElementById(`category-${next.id}`)?.focus();
-		else document.getElementById('all-done')?.focus();
+		else document.querySelector<HTMLElement>('#all-done a')?.focus();
 	}
 
 	onMount(load);
@@ -83,8 +83,9 @@
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->
 	<div class="in-place">
 		{#if transactions.length === 0}
+			<!-- Global: these blocks come with the one above them, where a local transition does not play. -->
 			{#if empty}
-				<div in:rise>
+				<div in:rise|global>
 					<EmptyState
 						icon="import"
 						text={t('uncategorized.none_yet')}
@@ -93,7 +94,14 @@
 					/>
 				</div>
 			{:else}
-				<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
+				<div id="all-done" in:rise|global>
+					<EmptyState
+						icon="check"
+						text={t('uncategorized.all_done')}
+						href="/"
+						action={t('uncategorized.to_summary')}
+					/>
+				</div>
 			{/if}
 		{:else}
 			<div class="stack" out:vanish>
