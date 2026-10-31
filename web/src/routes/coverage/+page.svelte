@@ -142,10 +142,18 @@
 	.date {
 		white-space: nowrap;
 	}
-	/* In the wide table a range stays on one line; the account's name, which wraps well, gives up the room. */
-	@media (min-width: 900px) {
+	/* A range stays on one line once the account's name keeps room beside it: from 1100 px, with the rail, the name
+	   column is 184 px wide. Below that a range breaks at its dash (each date holds together), and from the rail's
+	   900 px the cells are tighter: at 900 px the six columns were 97 px wider than the card. */
+	@media (min-width: 1100px) {
 		.ranges div {
 			white-space: nowrap;
+		}
+	}
+	@media (min-width: 900px) and (max-width: 1099px) {
+		th,
+		td {
+			padding-inline: var(--space-sm);
 		}
 	}
 	td div + div {
