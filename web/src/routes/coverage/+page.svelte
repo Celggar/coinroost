@@ -160,6 +160,13 @@
 		display: inline-grid;
 		place-items: center;
 	}
+	/* Beside the title the button is 14 px taller than it (44 against 30): negative margins let the row take the
+	   title's height, so the title sits where it sits on the sibling tabs and does not jump when they switch. */
+	@media (min-width: 900px) {
+		.refresh {
+			margin-block: -7px;
+		}
+	}
 	.refresh > span {
 		grid-area: 1 / 1;
 		opacity: 0;
