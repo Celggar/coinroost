@@ -138,6 +138,15 @@ th.number {
 	box-shadow: none;
 }
 
+/* Raised tiles take the cards' stronger edge where more contrast is asked for (after their own rule, which it must
+   win); inset tiles have no border and stay as they are. */
+@media (prefers-contrast: more), (forced-colors: active) {
+	.figures > div {
+		box-shadow: none;
+		border-color: var(--field-border);
+	}
+}
+
 /* A label of two or three words that wraps splits evenly, never one word under the rest («… / unpaired»). */
 .figures dt {
 	color: var(--muted);
