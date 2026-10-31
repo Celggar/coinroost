@@ -7,14 +7,13 @@
 	import Payroll from '#lib/dashboard/Payroll.svelte';
 	import Review from '#lib/dashboard/Review.svelte';
 	import { pending } from '#lib/nav/counts.svelte.ts';
-	import { fade } from 'svelte/transition';
 	import Ranking, { type Ranked } from '#lib/dashboard/Ranking.svelte';
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period } from '#lib/dashboard/period.ts';
 	import PeriodPicker from '#lib/dashboard/PeriodPicker.svelte';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
-	import { DURATION, fadeThrough } from '#lib/motion.ts';
+	import { arrive, fadeThrough, lift, placeholder, rise } from '#lib/motion.ts';
 
 	const PAYEES = 10;
 	type Reports = {
@@ -130,7 +129,7 @@
 	<!-- The top shows whole, once the reports, the counts and the payroll have answered: a card or a row arriving
 		 later pushed the period's control down under the pointer. A household with no account gets the empty card. -->
 	{#if ready && reports}
-		<div class="stack" in:fade={{ duration: DURATION.medium }}>
+		<div class="stack" in:arrive>
 			{#if reports.hasAccounts && pending.ready}
 				<Review {payroll} />
 			{/if}
@@ -141,7 +140,7 @@
 			{/if}
 
 			{#if error}
-				<p class="alert" role="alert">
+				<p class="alert" role="alert" in:rise out:lift>
 					{error}
 					<button
 						class="secondary"
@@ -223,7 +222,7 @@
 			</div>
 		</div>
 	{:else if error}
-		<p class="alert" role="alert">
+		<p class="alert" role="alert" in:arrive out:placeholder>
 			{error}
 			<button
 				class="secondary"
@@ -232,7 +231,7 @@
 			>
 		</p>
 	{:else}
-		<p class="hint loading">{t('app.loading')}</p>
+		<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 	{/if}
 	<!-- What is owed to the person, after the period's figures: «Por revisar» above says who owes and leads here. -->
 	<Payroll bind:payroll bind:settled={payrollSettled} />
