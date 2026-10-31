@@ -55,6 +55,8 @@
 	"file.rows_read": "Filas leídas",
 	"file.new": "Nuevas",
 	"file.row_new": "Nueva",
+	"file.added": "Agregadas",
+	"file.row_added": "Agregada",
 	"file.already": "Ya importadas",
 	"file.row_already": "Ya importada",
 	"file.unreadable_rows": "Ilegibles",

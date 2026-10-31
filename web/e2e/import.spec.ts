@@ -122,9 +122,11 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(page.getByRole('status').filter({ hasText: added })).toHaveText(added);
 	await expect(card.getByText(added)).toHaveCount(0);
 	await expect(card.getByText(say('file.imported'))).toBeVisible();
-	await expect(count(card, say('file.new'))).toHaveText('0');
+	// The card is the record of that import: it says what it added, like the notice, not «0 new».
+	await expect(count(card, say('file.added'))).toHaveText(String(transactions));
+	await expect(count(card, say('file.already'))).toHaveText('0');
 
-	// The same file again: everything is already there, and the import button stays off.
+	// The same file again: everything is already there, said once, with no import button to press.
 	await page.getByLabel(say('import.choose')).setInputFiles(statement);
 	const again = page.getByRole('article', { name: 'input.csv' }).nth(1);
 	await expect(count(again, say('file.new'))).toHaveText('0');
@@ -132,7 +134,7 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(again.getByRole('status')).toHaveText(say('file.nothing_new'));
 	await expect(
 		again.getByRole('button', { name: say('file.import_other', { count: 0 }) })
-	).toBeDisabled();
+	).toHaveCount(0);
 
 	const listed = await page.request.get('/api/v1/transactions?limit=1000');
 	expect((await listed.json()).items).toHaveLength(transactions);

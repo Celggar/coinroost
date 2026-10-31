@@ -97,11 +97,10 @@
 		report = data;
 		notify(added(data.batch.added, data.batch.duplicates));
 		refreshCounts();
-		// The import button is gone: the focus goes to what it did, not to the page's start.
+		// The import button is gone: the focus goes to what it did, not to the page's start. The card stays the record
+		// of this import (its counts and rows say what it added), so the file is not read again.
 		await tick();
 		resultLine?.focus();
-		// Read it again so the counts and rows show what the account has now.
-		await read(accountId);
 	}
 
 	onMount(() => {
@@ -164,15 +163,19 @@
 				</dd>
 			</div>
 			<div>
-				<dt>{t('file.new')}</dt>
+				<dt>{report ? t('file.added') : t('file.new')}</dt>
 				<dd>
-					<Tick value={reading.new}>{reading.new}</Tick>
+					<Tick value={report ? report.batch.added : reading.new}
+						>{report ? report.batch.added : reading.new}</Tick
+					>
 				</dd>
 			</div>
 			<div>
 				<dt>{t('file.already')}</dt>
 				<dd>
-					<Tick value={reading.duplicates}>{reading.duplicates}</Tick>
+					<Tick value={report ? report.batch.duplicates : reading.duplicates}
+						>{report ? report.batch.duplicates : reading.duplicates}</Tick
+					>
 				</dd>
 			</div>
 			<div>
@@ -226,7 +229,11 @@
 										><Money minor={row.amount_minor} currency={account.currency} /></td
 									>
 									<td data-label={t('column.status')}
-										>{row.duplicate ? t('file.row_already') : t('file.row_new')}</td
+										>{row.duplicate
+											? t('file.row_already')
+											: report
+												? t('file.row_added')
+												: t('file.row_new')}</td
 									>
 								</tr>
 							{/each}
@@ -243,14 +250,16 @@
 				{t('file.imported')}
 			</p>
 		{:else}
+			<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
 			{#if reading.new === 0}
 				<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
+			{:else}
+				<div class="actions" out:vanish>
+					<button onclick={commit} disabled={busy}>
+						{plural(reading.new, 'file.import_one', 'file.import_other')}
+					</button>
+				</div>
 			{/if}
-			<div class="actions" out:vanish>
-				<button onclick={commit} disabled={busy || reading.new === 0}>
-					{plural(reading.new, 'file.import_one', 'file.import_other')}
-				</button>
-			</div>
 		{/if}
 	{/if}
 </article>

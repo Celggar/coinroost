@@ -3,8 +3,8 @@
 	// buttons, which line up on the left; on a phone it drops in under the top bar (`offset`, its height), clear of the navigation bar at the bottom. Taps go
 	// through it. Screen readers hear it from two regions that stay on the page (a region that arrives already filled
 	// is often not announced): a polite one for what an action did, an assertive one for why it failed. It clears on
-	// the next action: a press anywhere, a key that is not moving the focus, or a page change; the action that made
-	// it is over by the time it shows.
+	// the next action: a press anywhere, a key that is not moving the focus, a field changed or a file dropped (no press
+	// in either), or a page change; the action that made it is over by the time it shows.
 	import { afterNavigate } from '$app/navigation';
 	import { lift, rise } from '#lib/motion.ts';
 	import { dismiss, notices } from './notices.svelte.ts';
@@ -29,7 +29,7 @@
 	afterNavigate(dismiss);
 </script>
 
-<svelte:document onpointerdown={next} onkeydown={next} />
+<svelte:document onpointerdown={next} onkeydown={next} onchange={next} ondrop={next} />
 
 <p class="visually-hidden" role="status">
 	{notices.current?.tone === 'ok' ? notices.current.text : ''}
