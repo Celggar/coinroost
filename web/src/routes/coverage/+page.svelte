@@ -145,7 +145,7 @@
 	.head {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
-		grid-template-areas: 'title action' 'hint hint';
+		grid-template-areas: 'title action' 'hint action';
 		align-items: center;
 		gap: var(--space-lg) var(--space-md);
 		margin: var(--space-sm) 0 var(--space-lg);
@@ -172,17 +172,14 @@
 			justify-self: start;
 		}
 	}
+	/* Beside the title the button is 14 px taller than it (44 against 30): it spans the title's and the explanation's
+	   rows from the title's top, so the title's row keeps the title's height and the title sits where it sits on the
+	   sibling tabs, without jumping when they switch. */
 	.refresh {
 		grid-area: action;
+		align-self: start;
 		display: inline-grid;
 		place-items: center;
-	}
-	/* Beside the title the button is 14 px taller than it (44 against 30): negative margins let the row take the
-	   title's height, so the title sits where it sits on the sibling tabs and does not jump when they switch. */
-	@media (min-width: 900px) {
-		.refresh {
-			margin-block: -7px;
-		}
 	}
 	.refresh > span {
 		grid-area: 1 / 1;
