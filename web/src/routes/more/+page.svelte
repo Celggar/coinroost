@@ -41,6 +41,10 @@
 </div>
 
 <style>
+	/* As wide as the cards on Security: a wide screen does not stretch the switch and the button across it. */
+	.stack {
+		max-width: 560px;
+	}
 	.rows {
 		padding: var(--space-xs) 0;
 		gap: 0;

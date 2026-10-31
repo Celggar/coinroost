@@ -29,13 +29,15 @@
 			<Tick value={net}><Money minor={net} currency={totals.currency} /></Tick>
 		</dd>
 	</div>
-	<!-- Like the others: its label, one figure (what left without its other side), then the rest in one short line. -->
+	<!-- Like the others: its label, one figure (what left without its other side) with its word right after it, then
+	     what arrived without one, in a line of its own. -->
 	<div class="span">
 		<dt>{t('tiles.unpaired')}</dt>
 		<dd class="value">
 			<Tick value={totals.unpaired_transfer_out}
 				>{money(totals.unpaired_transfer_out, totals.currency)}</Tick
 			>
+			<span class="unit">{t('tiles.unpaired_out')}</span>
 		</dd>
 		<dd class="detail">
 			<Tick value={totals.unpaired_transfer_in}
@@ -46,6 +48,11 @@
 </dl>
 
 <style>
+	.unit {
+		font-size: var(--text-md);
+		font-weight: 400;
+		color: var(--muted);
+	}
 	.detail {
 		color: var(--muted);
 		font-size: var(--text-sm);
