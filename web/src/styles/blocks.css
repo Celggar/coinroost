@@ -145,11 +145,19 @@ th.number {
 }
 
 /* Raised tiles take the cards' stronger edge where more contrast is asked for (after their own rule, which it must
-   win); inset tiles have no border and stay as they are. */
+   win); inset tiles keep their tint there. */
 @media (prefers-contrast: more), (forced-colors: active) {
 	.figures > div {
 		box-shadow: none;
 		border-color: var(--field-border);
+	}
+}
+
+/* Forced colors drop the tint, and an inset tile became loose words set in from the card's edge: a frame keeps it a
+   tile, as for the notices. */
+@media (forced-colors: active) {
+	.card .figures > div {
+		border: 1px solid CanvasText;
 	}
 }
 

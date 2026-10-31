@@ -12,7 +12,8 @@
 	let to = $state(today());
 	let summary = $state<Schemas['Summary'] | null>(null);
 	let error = $state('');
-	// An end before the start asks nothing: the last figures stay, dimmed, while the field says what is wrong.
+	// An end before the start asks nothing: the last figures stay as they are while the field says what is wrong.
+	// Dimmed for that while, their labels fell under 4.5:1 for as long as the dates stayed wrong (WCAG 1.4.3).
 	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load() {
@@ -48,7 +49,7 @@
 		{#if summary.totals.length === 0}
 			<p>{t('summary.nothing')}</p>
 		{:else}
-			<div class="totals" class:stale={!datesOk}>
+			<div class="totals">
 				{#each summary.totals as totals (totals.currency)}
 					<dl class="figures" aria-label={t('summary.totals_in', { currency: totals.currency })}>
 						<div>
@@ -90,9 +91,5 @@
 	.totals {
 		display: grid;
 		gap: var(--space-md);
-		transition: opacity var(--duration-short, 150ms);
-	}
-	.stale {
-		opacity: 0.5;
 	}
 </style>

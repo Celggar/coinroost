@@ -42,10 +42,10 @@
 	let shown = $state<HTMLElement>();
 	// Answers are shown one at a time, each with a fade through (FD9): two quick changes of period never cross.
 	let showing = Promise.resolve();
-	// An end before the start asks nothing: the last answer stays, dimmed, while the field says what is wrong.
-	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load(period: Period) {
+		// An end before the start asks nothing: the last answer stays as it is while the field says what is wrong.
+		// Dimmed for that while, its labels fell under 4.5:1 for as long as the dates stayed wrong (WCAG 1.4.3).
 		if (!period.from || !period.to || period.from > period.to) return;
 		// Only the answer to the latest request is shown, whatever order they come back in.
 		const ticket = ++latest;
@@ -62,7 +62,6 @@
 			api.GET('/api/v1/accounts')
 		] as const);
 		if (ticket !== latest) return;
-		busy = false;
 		const [summary, monthly, categories, payees, categoryList, payeeList, accountList] = answers;
 		if (
 			!summary.data ||
@@ -75,6 +74,7 @@
 		) {
 			const failed = answers.find((a) => !a.data);
 			error = problem(failed?.error, failed?.response?.status, t('dashboard.failed'));
+			busy = false;
 			return;
 		}
 		const next: Reports = {
@@ -91,8 +91,10 @@
 		showing = showing.then(() => {
 			// A newer answer is on its way: it is the one to show.
 			if (ticket !== latest) return;
+			// The figures stay dimmed until they fade out: lit up first, they flashed before the fade (P3 round 2).
 			return fadeThrough(reports ? shown : undefined, () => {
 				reports = next;
+				busy = false;
 			});
 		});
 	}
@@ -169,7 +171,7 @@
 	{/if}
 
 	{#if reports}
-		<div class="reports stack" class:stale={busy || !datesOk} bind:this={shown}>
+		<div class="reports stack" class:stale={busy} bind:this={shown}>
 			{#if currencies.length === 0}
 				<!-- The way on from an empty summary, as a card like the import page's zone, not a lone sentence over an
 				     empty page: a household with no account yet makes one first; one with accounts imports a statement. -->
@@ -336,10 +338,13 @@
 	.rankings > :global(.card) {
 		align-content: start;
 	}
-	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. */
+	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. The transition lives on the
+	   block, not on the dimmed state: there, taking the class away put the figures back to full in one frame. */
+	.reports {
+		transition: opacity 0.2s;
+	}
 	.stale {
 		opacity: 0.6;
-		transition: opacity 0.2s;
 	}
 	h2 {
 		margin: 0;
