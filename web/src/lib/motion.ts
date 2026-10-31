@@ -366,9 +366,19 @@ export function followContent(node: HTMLElement, held = false) {
 		}
 		node.style.height = `${height}px`;
 	};
+	// A resize is seen after the frame's layout, a step after scripts that read it there; a change to the content (a
+	// row in or out of the flow) is seen at once, so the rows hold their places from the very frame it happens (P3
+	// round 2: a frame read before the observer showed them at the new place).
 	const observer = new ResizeObserver(fit);
+	const changes = new MutationObserver(fit);
 	node.addEventListener('transitionend', end);
 	observer.observe(content);
+	changes.observe(content, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: ['class']
+	});
 	return {
 		update(next: boolean) {
 			hold = next;
@@ -376,6 +386,7 @@ export function followContent(node: HTMLElement, held = false) {
 		},
 		destroy: () => {
 			observer.disconnect();
+			changes.disconnect();
 			clearTimeout(settle);
 			node.removeEventListener('transitionend', end);
 		}

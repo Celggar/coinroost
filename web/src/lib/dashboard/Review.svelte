@@ -170,9 +170,18 @@
 		<ul class="rows">
 			{#each rows as row (row.key)}
 				<!-- A row that turns «al día» fades out and the quiet line pops in, in the same place. -->
-				<li class="in-place">
+				<!-- `data-flip`: when a row changes height the rows under it glide to their places with the card, not
+				     in one frame (P3 round 2: 24 px). The row that leaves fades out of the flow, so the new height
+				     counts from the start. -->
+				<li class="in-place" data-flip>
 					{#key row.open}
-						<div class="row" class:done={!row.open} in:pop={{ start: 0.96 }} out:vanish>
+						<div
+							class="row"
+							class:done={!row.open}
+							in:pop={{ start: 0.96 }}
+							out:vanish
+							onoutrostart={(event) => event.currentTarget.classList.add('leaving')}
+						>
 							<span class="badge {row.tone}"><Icon name={row.icon} size={20} /></span>
 							<span class="text">
 								{#if row.open}
@@ -217,22 +226,35 @@
 		padding: 0;
 		display: grid;
 	}
+	.rows > li {
+		position: relative;
+	}
 	.rows > li + li {
 		border-top: 1px solid var(--border);
-		transition: border-top-color var(--duration-short) var(--ease-standard);
 	}
+	/* Its padding in two variables: the phone's focus ring is drawn from the content, whatever the padding. */
 	.row {
+		--pad-top: var(--space-md);
+		--pad-bottom: var(--space-md);
 		display: grid;
 		grid-template-columns: 40px minmax(0, 1fr) auto;
 		align-items: center;
 		gap: var(--space-md);
-		padding: var(--space-md) 0;
+		padding: var(--pad-top) 0 var(--pad-bottom);
 	}
 	.rows > li:first-child .row {
-		padding-top: 0;
+		--pad-top: 0px;
 	}
 	.rows > li:last-child .row {
-		padding-bottom: 0;
+		--pad-bottom: 0px;
+	}
+	.row:global(.leaving) {
+		position: absolute;
+		inset: 0 0 auto;
+	}
+	/* The card's buttons share one height, as on the board: the primary's 48 px stood out of the column (P3 round 2). */
+	.row > .button {
+		min-height: 44px;
 	}
 	.badge {
 		display: grid;
@@ -315,15 +337,16 @@
 		.row > .button:active {
 			transform: none;
 		}
-		.row:has(> .button:focus-visible) {
-			outline: 3px solid var(--focus);
-			outline-offset: 2px;
-		}
-		/* The ring reaches 5 px past the row, over the lines above and under it: those lines step back while it shows,
-		   as a table view's do around its highlighted cell. */
-		.rows > li:has(.button:focus-visible),
-		.rows > li:has(.button:focus-visible) + li {
-			border-top-color: transparent;
+		/* The ring 8 px around the row's content on every side, so it is even in the first and last rows (no padding
+		   at their outer edge) and the badge has the chevron's air; it stays 8 px clear of the lines between rows. */
+		.row:has(> .button:focus-visible)::before {
+			content: '';
+			position: absolute;
+			inset: calc(var(--pad-top) - var(--space-sm)) calc(-1 * var(--space-sm))
+				calc(var(--pad-bottom) - var(--space-sm));
+			border: 3px solid var(--focus);
+			border-radius: var(--radius-button);
+			pointer-events: none;
 		}
 		.action {
 			position: absolute;
