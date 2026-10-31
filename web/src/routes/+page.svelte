@@ -8,7 +8,7 @@
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
-	import { pop } from '#lib/motion.ts';
+	import { pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 
 	const PAYEES = 10;
@@ -25,6 +25,7 @@
 		payees: Schemas['PayeeSpending'][];
 		categoryNames: Map<string, string>;
 		payeeNames: Map<string, string>;
+		hasAccounts: boolean;
 		period: Period;
 	};
 
@@ -50,18 +51,20 @@
 			api.GET('/api/v1/reports/categories', { params: { query } }),
 			api.GET('/api/v1/reports/payees', { params: { query: { ...query, limit: PAYEES } } }),
 			api.GET('/api/v1/categories'),
-			api.GET('/api/v1/payees')
+			api.GET('/api/v1/payees'),
+			api.GET('/api/v1/accounts')
 		] as const);
 		if (ticket !== latest) return;
 		busy = false;
-		const [summary, monthly, categories, payees, categoryList, payeeList] = answers;
+		const [summary, monthly, categories, payees, categoryList, payeeList, accountList] = answers;
 		if (
 			!summary.data ||
 			!monthly.data ||
 			!categories.data ||
 			!payees.data ||
 			!categoryList.data ||
-			!payeeList.data
+			!payeeList.data ||
+			!accountList.data
 		) {
 			const failed = answers.find((a) => !a.data);
 			error = problem(failed?.error, failed?.response?.status, t('dashboard.failed'));
@@ -74,6 +77,7 @@
 			payees: payees.data.items,
 			categoryNames: new Map(categoryList.data.items.map((c) => [c.id, c.name])),
 			payeeNames: new Map(payeeList.data.items.map((p) => [p.id, p.name])),
+			hasAccounts: accountList.data.items.length > 0,
 			period
 		};
 	}
@@ -123,7 +127,7 @@
 					{@const range = preset(option.which)}
 					{@const chosen = from === range.from && to === range.to}
 					<button class="secondary" aria-pressed={chosen} onclick={() => choose(option.which)}
-						>{#if chosen}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop
+						>{#if chosen}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop out:vanish
 								><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
 							>{/if}{t(option.label)}</button
 					>
@@ -143,7 +147,12 @@
 	{#if reports}
 		<div class="reports stack" class:stale={busy || !datesOk}>
 			{#if currencies.length === 0}
-				<p>{t('dashboard.nothing')}</p>
+				<!-- The way on from an empty period: importing, or before that, the account a file goes into. -->
+				<p>
+					{t('dashboard.nothing')}
+					{#if reports.hasAccounts}<a href="/import">{t('dashboard.to_import')}</a
+						>{:else}<a href="/accounts">{t('dashboard.to_accounts')}</a>{/if}
+				</p>
 			{/if}
 			{#each currencies as totals (totals.currency)}
 				{@const c = totals.currency}
@@ -199,9 +208,14 @@
 		align-items: start;
 		gap: var(--space-md) var(--space-lg);
 	}
-	/* Material 3 segmented buttons: joined segments, the chosen one filled. */
+	/* Material 3 segmented buttons: joined segments, the chosen one filled. Each segment has room for its label and
+	   the check, so the check coming or going never moves the dates beside them. */
 	.presets {
-		display: inline-flex;
+		display: inline-grid;
+		grid-template-columns: repeat(3, minmax(9.25rem, auto));
+	}
+	.presets button {
+		white-space: nowrap;
 	}
 	.presets button {
 		min-height: var(--field-height);
@@ -257,6 +271,13 @@
 		}
 		.presets button {
 			padding: 0 var(--space-sm);
+		}
+	}
+	/* The narrowest phones: smaller label and padding, so «✓ Este año» stays on one line. */
+	@media (max-width: 359px) {
+		.presets button {
+			padding: 0 var(--space-xs);
+			font-size: var(--text-sm);
 		}
 	}
 	/* Side by side the two cards share their height and their rows: each has a title and a hint line (pass 1). */

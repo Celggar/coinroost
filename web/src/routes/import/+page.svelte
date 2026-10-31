@@ -56,6 +56,10 @@
 	</p>
 {:else if loaded}
 	<div class="stack">
+		{#if accounts.length === 0}
+			<!-- Every file is read into one of the household's accounts: the first step comes first. -->
+			<p>{t('import.no_accounts')} <a href="/accounts">{t('import.create_account')}</a></p>
+		{/if}
 		<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
 			 whole zone is its label, with a button drawn in the page's style. Files can also be dropped on it. -->
 		<label
