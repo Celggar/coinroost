@@ -200,6 +200,12 @@ th.number {
 	color: var(--ok);
 }
 
+/* Something to check, not a failure: the warning chip's colours. */
+.notice.warn {
+	background: var(--warn-bg);
+	color: var(--warn);
+}
+
 .chip {
 	display: inline-block;
 	border-radius: 999px;
@@ -397,6 +403,10 @@ details[open]::details-content {
 	}
 	.rows-on-phone td:first-child::before {
 		content: none;
+	}
+	/* A cell with nothing to say (no payment yet) leaves no bare label in its card. */
+	.rows-on-phone td:empty {
+		display: none;
 	}
 	/* A row header (the chart's month) heads its card the same way. */
 	.rows-on-phone th[scope='row'] {

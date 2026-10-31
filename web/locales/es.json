@@ -316,6 +316,7 @@
 	"payroll.owed_one": "1 quincena pendiente",
 	"payroll.owed_other": "{count} quincenas pendientes",
 	"payroll.no_data": "Todavía sin datos de {fortnights}: la cuenta tiene datos hasta el {date}.",
+	"payroll.no_data_range": "Todavía sin datos de {count} quincenas ({first} a {last}): la cuenta tiene datos hasta el {date}.",
 	"payroll.no_deposits": "No se contó ningún depósito desde el {date}: revisa el texto de búsqueda, la cuenta y el monto mínimo.",
 	"payroll.next_due": "Próxima: {fortnight}, vence el {date}.",
 	"payroll.paid_one": "1 pago contado",

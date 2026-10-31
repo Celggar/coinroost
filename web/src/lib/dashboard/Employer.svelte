@@ -16,7 +16,8 @@
 <article class="employer" aria-labelledby="{id}-name">
 	<h3 id="{id}-name">{employer.name}</h3>
 	{#if employer.error}
-		<p class="alert">{t('payroll.no_deposits', { date: day(employer.start) })}</p>
+		<!-- A setting to check, not a failure of the page: the warning's amber, not the error's red. -->
+		<p class="notice warn">{t('payroll.no_deposits', { date: day(employer.start) })}</p>
 	{:else}
 		{#if employer.owed.length}
 			<p class="owed">
@@ -35,12 +36,19 @@
 			<p class="notice">{t('payroll.owes_nothing')}</p>
 		{/if}
 		{#if employer.unknown.length && employer.data_until}
+			<!-- The sentence says «no data» itself; a long run of fortnights is named by its ends. -->
 			<p class="hint">
-				<span class="chip none">{statusName('no_data')}</span>
-				{t('payroll.no_data', {
-					fortnights: fortnightList(employer.unknown),
-					date: day(employer.data_until)
-				})}
+				{employer.unknown.length > 2
+					? t('payroll.no_data_range', {
+							count: employer.unknown.length,
+							first: fortnightName(employer.unknown[0]),
+							last: fortnightName(employer.unknown[employer.unknown.length - 1]),
+							date: day(employer.data_until)
+						})
+					: t('payroll.no_data', {
+							fortnights: fortnightList(employer.unknown),
+							date: day(employer.data_until)
+						})}
 			</p>
 		{/if}
 		<p class="hint">
@@ -59,7 +67,7 @@
 			<details>
 				<summary>{t('payroll.history')}</summary>
 				<div class="table-wrap" use:scrollable={t('payroll.history')}>
-					<table>
+					<table class="rows-on-phone">
 						<thead>
 							<tr>
 								<th scope="col">{t('payroll.fortnight')}</th>
@@ -71,18 +79,21 @@
 						<tbody>
 							{#each employer.history.toReversed() as line (line.fortnight.first_day)}
 								<tr>
-									<td>{fortnightName(line.fortnight)}</td>
-									<td
+									<th scope="row">{fortnightName(line.fortnight)}</th>
+									<td data-label={t('column.status')}
 										><span class="chip {statusTone(line.status)}">{statusName(line.status)}</span
 										></td
 									>
-									<td>{daysText(line)}</td>
-									<td>
+									<td data-label={t('payroll.days')}>{daysText(line)}</td>
+									<td data-label={t('payroll.payment')}>
+										<!-- One block, so on a phone card both lines sit beside the label. -->
 										{#if line.payment}
-											{day(line.payment.date)} · {money(line.payment.amount_minor, c)}
-											<div class="hint">
-												{line.payment.description}{#if line.label}
-													· {t('payroll.named', { fortnight: fortnightName(line.label) })}{/if}
+											<div>
+												{day(line.payment.date)} · {money(line.payment.amount_minor, c)}
+												<div class="hint">
+													{line.payment.description}{#if line.label}
+														· {t('payroll.named', { fortnight: fortnightName(line.label) })}{/if}
+												</div>
 											</div>
 										{/if}
 									</td>
@@ -124,9 +135,13 @@
 	.label {
 		color: var(--muted);
 	}
+	/* The owed fortnights, one per line under their total, without the browser's bullets (no other list has them). */
 	.fortnights {
+		list-style: none;
 		margin: 0;
-		padding-left: var(--space-xl);
+		padding: 0;
+		display: grid;
+		gap: var(--space-2xs);
 	}
 	summary {
 		cursor: pointer;
