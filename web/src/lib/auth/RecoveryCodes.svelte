@@ -62,10 +62,13 @@
 <style>
 	.codes {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 8px 16px;
+		/* Two columns as wide as a code, with the free width shared evenly before, between and after them: in a wide
+		   card the codes no longer crowd the left side. */
+		grid-template-columns: repeat(2, max-content);
+		justify-content: space-evenly;
+		gap: 8px 0;
 		margin: 0;
-		padding: 14px 16px;
+		padding: 14px 0;
 		list-style: none;
 		border: 1px solid var(--field-border);
 		border-radius: 12px;

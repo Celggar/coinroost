@@ -113,7 +113,9 @@
 		justify-content: space-between;
 		gap: 8px;
 		min-height: 48px;
-		padding: 4px 4px 4px 12px;
+		/* The key always wraps to two lines in the sign-in card: 12 px on the right too keeps «Copy» as far from the
+		   box's edge as from its top and bottom (13 px with the border). */
+		padding: 4px 12px;
 		border: 1px solid var(--field-border);
 		border-radius: 10px;
 		background: var(--surface);

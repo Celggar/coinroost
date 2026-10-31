@@ -67,7 +67,9 @@
 		align-items: center;
 		gap: var(--space-md);
 		min-height: 56px;
-		padding: 0 var(--space-xl);
+		/* The icons' strokes start and the chevrons' end on the language card's text edges (16 px in): the icon's
+		   stroke starts 4 px into its box and the chevron's ends 8 px before its own. */
+		padding: 0 var(--space-sm) 0 var(--space-md);
 		color: var(--text);
 		text-decoration: none;
 	}
