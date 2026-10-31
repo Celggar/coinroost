@@ -8,7 +8,7 @@
 
 {#if count > 0}
 	<span class="badge {tone}" aria-hidden="true" in:pop={{ start: 0.6 }} out:vanish>
-		{#key count}<span in:pop={{ start: 0.8 }}>{count > 99 ? '99+' : count}</span>{/key}
+		{#key count}<span in:pop={{ start: 0.8 }} out:vanish>{count > 99 ? '99+' : count}</span>{/key}
 	</span>
 {/if}
 
@@ -25,8 +25,10 @@
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
 	}
+	/* The old number fades out in the same cell the new one pops into. */
 	.badge > span {
 		display: inline-block;
+		grid-area: 1 / 1;
 	}
 	.bad {
 		background: var(--danger);

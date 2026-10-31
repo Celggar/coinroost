@@ -100,4 +100,12 @@
 			margin-bottom: var(--space-lg);
 		}
 	}
+	/* The narrowest phones: a smaller label and padding keep each tab on one line. */
+	@media (max-width: 359px) {
+		a {
+			padding: 0 var(--space-sm);
+			font-size: var(--text-sm);
+			white-space: nowrap;
+		}
+	}
 </style>

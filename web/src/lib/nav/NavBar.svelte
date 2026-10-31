@@ -95,6 +95,12 @@
 			calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
 		border-top: 1px solid var(--card-edge);
 	}
+	/* The narrowest phones: no side padding, so each of the five destinations keeps 64 px (N3). */
+	@media (max-width: 359px) {
+		.bar {
+			padding-inline: 0;
+		}
+	}
 	ul {
 		list-style: none;
 		margin: 0 auto;

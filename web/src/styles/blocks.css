@@ -370,7 +370,7 @@ details[open]::details-content {
 	}
 }
 
-/* A date range: «from» and «to» side by side at every width, the same wherever a page asks for a period. */
+/* A date range: «from» and «to» side by side, the same wherever a page asks for a period. */
 .date-range {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 200px));
@@ -385,6 +385,13 @@ details[open]::details-content {
 @media (max-width: 560px) {
 	.date-range {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+/* Inside a card on the narrowest phones two dates would cut their year: one under the other instead (WCAG 1.4.10). */
+@media (max-width: 359px) {
+	.card .date-range {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
