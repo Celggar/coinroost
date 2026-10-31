@@ -142,7 +142,7 @@
 <h1>{t('accounts.title')}</h1>
 
 {#if loadError}
-	<p class="alert" role="alert" out:placeholder>
+	<p class="alert" role="alert" in:arrive out:placeholder>
 		{loadError}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button

@@ -83,7 +83,7 @@
 </div>
 
 {#if error}
-	<p class="alert" role="alert" out:placeholder>{error}</p>
+	<p class="alert" role="alert" in:arrive out:placeholder>{error}</p>
 {:else if coverage}
 	<!-- One block for either shape, so the content fades in as one when it loads. -->
 	<div in:arrive>

@@ -4,6 +4,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
+	import { lift, rise, vanish } from '#lib/motion.ts';
 
 	// Reloads whenever `version` changes: pairing and splitting move money between the columns.
 	let { version }: { version: number } = $props();
@@ -44,46 +45,49 @@
 	<h2 id="summary-title">{t('summary.title')}</h2>
 	<p class="hint">{t('summary.hint')}</p>
 	<DateRange bind:from bind:to />
-	{#if error}<p class="alert" role="alert">{error}</p>{/if}
+	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
+	<!-- One block for either shape: the figures rise in when they load and fade out when a load fails. -->
 	{#if summary}
-		{#if summary.totals.length === 0}
-			<p>{t('summary.nothing')}</p>
-		{:else}
-			<div class="totals">
-				{#each summary.totals as totals (totals.currency)}
-					<dl class="figures" aria-label={t('summary.totals_in', { currency: totals.currency })}>
-						<div>
-							<dt>{t('summary.spending')}</dt>
-							<dd class="value">
-								<Tick value={totals.spending}>{money(totals.spending, totals.currency)}</Tick>
-							</dd>
-						</div>
-						<div>
-							<dt>{t('summary.income')}</dt>
-							<dd class="value">
-								<Tick value={totals.income}>{money(totals.income, totals.currency)}</Tick>
-							</dd>
-						</div>
-						<div>
-							<dt>{t('summary.unpaired_out')}</dt>
-							<dd class="value">
-								<Tick value={totals.unpaired_transfer_out}
-									>{money(totals.unpaired_transfer_out, totals.currency)}</Tick
-								>
-							</dd>
-						</div>
-						<div>
-							<dt>{t('summary.unpaired_in')}</dt>
-							<dd class="value">
-								<Tick value={totals.unpaired_transfer_in}
-									>{money(totals.unpaired_transfer_in, totals.currency)}</Tick
-								>
-							</dd>
-						</div>
-					</dl>
-				{/each}
-			</div>
-		{/if}
+		<div in:rise out:vanish>
+			{#if summary.totals.length === 0}
+				<p>{t('summary.nothing')}</p>
+			{:else}
+				<div class="totals">
+					{#each summary.totals as totals (totals.currency)}
+						<dl class="figures" aria-label={t('summary.totals_in', { currency: totals.currency })}>
+							<div>
+								<dt>{t('summary.spending')}</dt>
+								<dd class="value">
+									<Tick value={totals.spending}>{money(totals.spending, totals.currency)}</Tick>
+								</dd>
+							</div>
+							<div>
+								<dt>{t('summary.income')}</dt>
+								<dd class="value">
+									<Tick value={totals.income}>{money(totals.income, totals.currency)}</Tick>
+								</dd>
+							</div>
+							<div>
+								<dt>{t('summary.unpaired_out')}</dt>
+								<dd class="value">
+									<Tick value={totals.unpaired_transfer_out}
+										>{money(totals.unpaired_transfer_out, totals.currency)}</Tick
+									>
+								</dd>
+							</div>
+							<div>
+								<dt>{t('summary.unpaired_in')}</dt>
+								<dd class="value">
+									<Tick value={totals.unpaired_transfer_in}
+										>{money(totals.unpaired_transfer_in, totals.currency)}</Tick
+									>
+								</dd>
+							</div>
+						</dl>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	{/if}
 </section>
 

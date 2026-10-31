@@ -9,7 +9,7 @@
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import RecoveryCodes from '#lib/auth/RecoveryCodes.svelte';
 	import { plural, tag, t } from '#lib/i18n.svelte.ts';
-	import { pop, rise, swapOut, vanish } from '#lib/motion.ts';
+	import { arrive, placeholder, pop, rise, swapOut, vanish } from '#lib/motion.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { check, focusFirst } from '#lib/ui/form.ts';
 
@@ -119,7 +119,7 @@
 	<h2 id="codes-title">{t('security.codes_title')}</h2>
 	<p class="hint">{t('security.codes_about')}</p>
 	{#if loadError}
-		<p class="alert" role="alert">
+		<p class="alert" role="alert" in:arrive out:placeholder>
 			{loadError}
 			<button
 				class="secondary"
@@ -128,7 +128,7 @@
 			>
 		</p>
 	{:else if status}
-		<p class="count" data-testid="recovery-status" in:rise>
+		<p class="count" data-testid="recovery-status" in:arrive>
 			{#if status.created_at}
 				{plural(status.remaining, 'security.codes_left_one', 'security.codes_left_other', {
 					size: status.size,

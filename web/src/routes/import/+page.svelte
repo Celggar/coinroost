@@ -53,7 +53,7 @@
 <h1>{t('import.title')}</h1>
 
 {#if error}
-	<p class="alert" role="alert" out:placeholder>
+	<p class="alert" role="alert" in:arrive out:placeholder>
 		{error}
 		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
 			>{t('app.try_again')}</button

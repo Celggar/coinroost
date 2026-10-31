@@ -160,7 +160,7 @@
 	{/if}
 
 	{#if error}
-		<p class="alert" role="alert" out:placeholder>
+		<p class="alert" role="alert" in:arrive out:placeholder>
 			{error}
 			<button
 				class="secondary"
