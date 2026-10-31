@@ -6,6 +6,7 @@
 	import Tick from '#lib/ui/Tick.svelte';
 	import RuleForm from '#lib/rules/RuleForm.svelte';
 	import { actions, conditions, names as nameMaps } from '#lib/rules/describe.ts';
+	import { LIST } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
@@ -103,8 +104,8 @@
 								<h2>{rule.name}</h2>
 								{#if !rule.enabled}<span class="chip none">{t('rules.off')}</span>{/if}
 							</div>
-							<p><strong>{t('rules.when')}</strong> {conditions(rule, names).join(' · ')}</p>
-							<p><strong>{t('rules.sets')}</strong> {actions(rule, names).join(' · ')}</p>
+							<p><strong>{t('rules.when')}</strong> {conditions(rule, names).join(LIST)}</p>
+							<p><strong>{t('rules.sets')}</strong> {actions(rule, names).join(LIST)}</p>
 							<div class="buttons">
 								<!-- The first rule cannot go up and the last cannot go down: those buttons are not shown. -->
 								{#if index > 0}
@@ -179,7 +180,8 @@
 		min-width: 32px;
 		height: 32px;
 		border-radius: 999px;
-		background: var(--bg);
+		/* The accent tint of the rail's current page: the page's own background was a hole in the card (pass 3). */
+		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
 		font-weight: 700;
 	}
 	.buttons {

@@ -3,7 +3,7 @@
 	// the history folded.
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import type { Schemas } from '#lib/api/client.ts';
-	import { day, money } from '#lib/format.ts';
+	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { daysText, fortnightList, fortnightName, statusName, statusTone } from './payroll.ts';
 
@@ -53,7 +53,7 @@
 					})
 			]
 				.filter(Boolean)
-				.join(' · ')}
+				.join(LIST)}
 		</p>
 		{#if employer.history.length}
 			<details>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { day, money } from '#lib/format.ts';
+	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
@@ -97,7 +97,7 @@
 							<span class="description">{change.description}</span>
 							<Money minor={change.amount_minor} currency={change.currency} />
 						</div>
-						<div class="hint">{what(change).join(' · ')}</div>
+						<div class="hint">{what(change).join(LIST)}</div>
 					</li>
 				{/each}
 			</ul>

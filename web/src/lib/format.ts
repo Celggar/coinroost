@@ -73,6 +73,10 @@ export function monthShort(yearMonth: string): string {
 		.replace('.', '');
 }
 
+/** The « · » between the parts of a line. The dot holds to the part after it, so a line that wraps starts with it
+ * instead of ending on it (pass 3). */
+export const LIST = ' ·\u00a0';
+
 /** Items joined the way the language joins them: "a, b and c", "a, b y c". */
 export function list(items: string[]): string {
 	return new Intl.ListFormat(tag(), { type: 'conjunction' }).format(items);
