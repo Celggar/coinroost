@@ -69,6 +69,19 @@ h3 {
 	text-wrap: balance;
 }
 
+/* Running text, hints and errors avoid one word alone on their last line. */
+p,
+li,
+dd,
+td,
+th,
+a,
+button,
+.hint,
+.field-error {
+	text-wrap: pretty;
+}
+
 a {
 	color: var(--link);
 }

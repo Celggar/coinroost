@@ -160,7 +160,7 @@
 						{#each accounts as account (account.id)}
 							<tr in:rise>
 								<td data-label={t('accounts.name')}>{account.name}</td>
-								<td data-label={t('accounts.kind')}>{kindName(account.kind)}</td>
+								<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 								<td data-label={t('accounts.currency')}>{account.currency}</td>
 								<td data-label={t('accounts.bank_file')}>{profileName(account.profile)}</td>
 								<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
@@ -272,5 +272,9 @@
 <style>
 	code {
 		font-size: var(--text-sm);
+	}
+	/* A kind is a short name («Tarjeta de crédito»): it holds on one line instead of leaving a word alone. */
+	.kind {
+		white-space: nowrap;
 	}
 </style>
