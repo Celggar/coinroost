@@ -307,7 +307,8 @@ details[open]::details-content {
 	.rows-on-phone,
 	.rows-on-phone tbody,
 	.rows-on-phone tr,
-	.rows-on-phone td {
+	.rows-on-phone td,
+	.rows-on-phone th[scope='row'] {
 		display: block;
 	}
 	.rows-on-phone thead {
@@ -359,6 +360,14 @@ details[open]::details-content {
 	.rows-on-phone td:first-child::before {
 		content: none;
 	}
+	/* A row header (the chart's month) heads its card the same way. */
+	.rows-on-phone th[scope='row'] {
+		padding: 0 0 var(--space-sm);
+		border: 0;
+		text-align: left;
+		font-size: var(--text-md);
+		font-weight: 600;
+	}
 }
 
 /* A date range: «from» and «to» side by side at every width, the same wherever a page asks for a period. */
@@ -376,5 +385,29 @@ details[open]::details-content {
 @media (max-width: 560px) {
 	.date-range {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+/* One transaction on one line: its date, its description taking the room, its amount at the end. On a phone the
+   description gets a line of its own under the date and the amount instead of being squeezed between them (pass 1). */
+.txn-line {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: baseline;
+	gap: var(--space-xs) var(--space-md);
+}
+
+.txn-line > .description {
+	overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+	.txn-line {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.txn-line > .description {
+		grid-column: 1 / -1;
+		grid-row: 2;
 	}
 }

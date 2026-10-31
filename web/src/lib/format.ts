@@ -10,10 +10,15 @@ export function money(minor: number, currency: string): string {
 		currencyDisplay: 'narrowSymbol'
 	});
 	const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
-	return format.format(minor / 10 ** digits);
+	return minus(format.format(minor / 10 ** digits));
 }
 
-/** A movement of money with its sign always written: +$1,462.16, -$45.50 (zero has none). */
+/** The minus sign (U+2212), as wide as the plus, instead of the hyphen Intl writes for some languages. */
+function minus(text: string): string {
+	return text.replace('-', '\u2212');
+}
+
+/** A movement of money with its sign always written: +$1,462.16, −$45.50 (zero has none). */
 export function signed(minor: number, currency: string): string {
 	const format = new Intl.NumberFormat(tag(), {
 		style: 'currency',
@@ -22,7 +27,7 @@ export function signed(minor: number, currency: string): string {
 		signDisplay: 'exceptZero'
 	});
 	const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
-	return format.format(minor / 10 ** digits);
+	return minus(format.format(minor / 10 ** digits));
 }
 
 function utc(iso: string): Date {
@@ -73,9 +78,10 @@ export function list(items: string[]): string {
 	return new Intl.ListFormat(tag(), { type: 'conjunction' }).format(items);
 }
 
-/** A date range, both ends included. */
+/** A date range, both ends included. Each date holds together (no-break spaces); a line may break only at the dash. */
 export function span(from: string, to: string): string {
-	return from === to ? day(from) : `${day(from)} – ${day(to)}`;
+	const whole = (iso: string) => day(iso).replaceAll(' ', '\u00a0');
+	return from === to ? whole(from) : `${whole(from)} – ${whole(to)}`;
 }
 
 /** Today in the browser's time zone, as YYYY-MM-DD. */

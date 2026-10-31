@@ -86,7 +86,9 @@
 							<td data-label={t('column.status')}>
 								<span class="chip {tones[item.delay]}">{delayName(item.delay)}</span>
 							</td>
-							<td data-label={t('coverage.latest')}>{item.latest ? day(item.latest) : '—'}</td>
+							<td data-label={t('coverage.latest')} class="date"
+								>{item.latest ? day(item.latest) : '—'}</td
+							>
 							<td data-label={t('coverage.days_since')} class="number">{item.days_since ?? '—'}</td>
 							<td data-label={t('coverage.imported')}>
 								{#each item.ranges as range (range.from)}
@@ -118,11 +120,16 @@
 {/if}
 
 <style>
+	/* The title's margins move to the row, so «Actualizar» is centred on the title's text, not on its margins. */
 	.title {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-md);
+		margin: var(--space-sm) 0 var(--space-lg);
+	}
+	.title h1 {
+		margin: 0;
 	}
 	/* A phone shows the title in its top bar: the button keeps its place at the end of the row, beside nothing. */
 	@media (max-width: 899px) {
@@ -130,6 +137,9 @@
 			justify-content: flex-end;
 			margin-bottom: var(--space-md);
 		}
+	}
+	.date {
+		white-space: nowrap;
 	}
 	td div + div {
 		margin-top: var(--space-xs);

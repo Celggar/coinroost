@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Money from '#lib/ui/Money.svelte';
 	// Income and spending per month as grouped columns, one currency per chart. The table below holds every value,
 	// for whoever cannot see or hover the chart.
 	import { scrollable } from '#lib/ui/scrollable.ts';
@@ -190,7 +191,7 @@
 	<details>
 		<summary>{t('chart.table')}</summary>
 		<div class="table-wrap" use:scrollable={title}>
-			<table>
+			<table class="rows-on-phone">
 				<caption class="visually-hidden">{title}</caption>
 				<thead>
 					<tr>
@@ -204,9 +205,11 @@
 					{#each points as p (p.month)}
 						<tr>
 							<th scope="row">{month(p.month)}</th>
-							<td class="number">{money(p.income, currency)}</td>
-							<td class="number">{money(p.spending, currency)}</td>
-							<td class="number">{money(p.income - p.spending, currency)}</td>
+							<td class="number" data-label={t('tiles.income')}>{money(p.income, currency)}</td>
+							<td class="number" data-label={t('tiles.spending')}>{money(p.spending, currency)}</td>
+							<td class="number" data-label={t('chart.net')}>
+								<Money minor={p.income - p.spending} {currency} />
+							</td>
 						</tr>
 					{/each}
 				</tbody>

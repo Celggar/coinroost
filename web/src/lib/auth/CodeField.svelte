@@ -2,19 +2,36 @@
 	// Six digit slots drawn over one real input, so pasting and the one-time-code autofill land in a single field;
 	// the slots are decoration and hidden from screen readers. The field keeps digits only, six at most (a pasted
 	// "123 456" becomes "123456"); the server takes spaces and dashes too. A digit pops in and fades out with its
-	// `{#key}` block, hence the global transitions; the ring moves from slot to slot by fading.
-	import { pop, shake as shakeRow, vanish } from '#lib/motion.ts';
+	// `{#key}` block, hence the global transitions; the ring moves from slot to slot by fading. The sign-in pages keep
+	// the hint above the slots (their approved design); a form in the app puts it under them and its error under that,
+	// like every other field (FD4, FD5).
+	import { fade, slide } from 'svelte/transition';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { DURATION, EASE, pop, shake as shakeRow, vanish } from '#lib/motion.ts';
 
 	let {
 		label,
 		hint,
-		value = $bindable('')
-	}: { label: string; hint: string; value?: string } = $props();
+		value = $bindable(''),
+		hintBelow = false,
+		error = ''
+	}: {
+		label: string;
+		hint: string;
+		value?: string;
+		hintBelow?: boolean;
+		error?: string;
+	} = $props();
 
 	const id = $props.id();
 	let focused = $state(false);
 	let row: HTMLElement | undefined = $state();
 
+	const described = $derived(error ? `${id}-hint ${id}-error` : `${id}-hint`);
+	const open = (node: Element) =>
+		prefersReducedMotion.current
+			? fade(node, { duration: DURATION.short })
+			: slide(node, { duration: DURATION.short, easing: EASE.enter });
 	const digits = $derived(Array.from({ length: 6 }, (_, i) => value[i] ?? ''));
 	const active = $derived(focused ? Math.min(value.length, 5) : -1);
 
@@ -39,7 +56,7 @@
 
 <div class="code">
 	<label for={id}>{label}</label>
-	<span class="hint" id="{id}-hint">{hint}</span>
+	{#if !hintBelow}<span class="hint" id="{id}-hint">{hint}</span>{/if}
 	<div class="row" bind:this={row}>
 		{#each digits as digit, i (i)}
 			{#if i === 3}<span class="dash" aria-hidden="true"></span>{/if}
@@ -56,7 +73,8 @@
 			type="text"
 			inputmode="numeric"
 			autocomplete="one-time-code"
-			aria-describedby="{id}-hint"
+			aria-describedby={described}
+			aria-invalid={error ? 'true' : undefined}
 			required
 			spellcheck="false"
 			{value}
@@ -65,12 +83,19 @@
 			onblur={() => (focused = false)}
 		/>
 	</div>
+	{#if hintBelow}<span class="hint" id="{id}-hint">{hint}</span>{/if}
+	{#if error}<p class="field-error" id="{id}-error" transition:open>{error}</p>{/if}
 </div>
 
 <style>
+	/* As wide as six slots need: in a wide card the slots stay together instead of spreading apart. */
 	.code {
 		display: grid;
 		gap: 6px;
+		max-width: 360px;
+	}
+	.field-error {
+		margin: 0;
 	}
 	.row {
 		position: relative;

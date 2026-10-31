@@ -69,6 +69,14 @@ export function single(form: HTMLFormElement, errors: Errors): string {
 }
 
 /** The errors without the one of the field being edited: a message goes as soon as its field changes. */
+/** The errors without the one under `name`: for a field the page fills by itself, which sends no event. */
+export function drop(errors: Errors, name: string): Errors {
+	if (!(name in errors)) return errors;
+	const rest = { ...errors };
+	delete rest[name];
+	return rest;
+}
+
 export function without(errors: Errors, event: Event): Errors {
 	const name = (event.target as Control | null)?.name;
 	if (!name || !(name in errors)) return errors;

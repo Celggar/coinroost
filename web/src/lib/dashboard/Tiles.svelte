@@ -3,6 +3,7 @@
 	import { money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Money from '#lib/ui/Money.svelte';
+	import Tick from '#lib/ui/Tick.svelte';
 
 	let { totals }: { totals: Schemas['Totals'] } = $props();
 
@@ -12,22 +13,34 @@
 <dl class="figures tiles">
 	<div>
 		<dt>{t('tiles.spending')}</dt>
-		<dd class="value">{money(totals.spending, totals.currency)}</dd>
+		<dd class="value">
+			<Tick value={totals.spending}>{money(totals.spending, totals.currency)}</Tick>
+		</dd>
 	</div>
 	<div>
 		<dt>{t('tiles.income')}</dt>
-		<dd class="value">{money(totals.income, totals.currency)}</dd>
+		<dd class="value">
+			<Tick value={totals.income}>{money(totals.income, totals.currency)}</Tick>
+		</dd>
 	</div>
 	<div class="span">
 		<dt>{t('tiles.net')}</dt>
-		<dd class="value"><Money minor={net} currency={totals.currency} /></dd>
+		<dd class="value">
+			<Tick value={net}><Money minor={net} currency={totals.currency} /></Tick>
+		</dd>
 	</div>
 	<!-- Like the others: its label, one figure (what left without its other side), then the rest in one short line. -->
 	<div class="span">
 		<dt>{t('tiles.unpaired')}</dt>
-		<dd class="value">{money(totals.unpaired_transfer_out, totals.currency)}</dd>
+		<dd class="value">
+			<Tick value={totals.unpaired_transfer_out}
+				>{money(totals.unpaired_transfer_out, totals.currency)}</Tick
+			>
+		</dd>
 		<dd class="detail">
-			{t('tiles.unpaired_in', { in: money(totals.unpaired_transfer_in, totals.currency) })}
+			<Tick value={totals.unpaired_transfer_in}
+				>{t('tiles.unpaired_in', { in: money(totals.unpaired_transfer_in, totals.currency) })}</Tick
+			>
 		</dd>
 	</div>
 </dl>

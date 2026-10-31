@@ -21,6 +21,12 @@
 	let recovering = $state(false);
 	let recoveryField: HTMLInputElement | undefined = $state();
 	let error = $state({ text: '', n: 0 });
+
+	/** An edit answers the message: the field is unmarked and the message leaves (it was about what is now changed). */
+	function edited(event: Event) {
+		(event.target as Element).removeAttribute('aria-invalid');
+		if (error.text) error = { text: '', n: error.n + 1 };
+	}
 	let busy = $state(false);
 	let passwordField: PasswordField | undefined = $state();
 	let codeField: CodeField | undefined = $state();
@@ -84,12 +90,7 @@
 		<h1>{t('login.title')}</h1>
 		<p class="lead">{t('login.subtitle')}</p>
 	</div>
-	<form
-		novalidate
-		oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
-		class="stack"
-		onsubmit={submit}
-	>
+	<form novalidate oninput={edited} class="stack" onsubmit={submit}>
 		<label>
 			{t('login.email')}
 			<input name="email" type="email" autocomplete="username" required bind:value={email} />

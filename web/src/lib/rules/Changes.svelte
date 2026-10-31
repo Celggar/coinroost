@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
@@ -26,6 +27,7 @@
 	}
 
 	async function check() {
+		if (busy) return;
 		busy = true;
 		const { data, error: failure, response } = await api.POST('/api/v1/rules/preview');
 		busy = false;
@@ -60,6 +62,9 @@
 		notify(plural(data.applied, 'changes.applied_one', 'changes.applied_other'));
 		onapplied();
 		await check();
+		// The apply button is gone with the changes: the focus goes to what the list says now.
+		await tick();
+		document.getElementById(preview?.changes.length ? 'changes-some' : 'changes-none')?.focus();
 	}
 </script>
 
@@ -67,26 +72,27 @@
 	<h2 id="changes-title">{t('changes.title')}</h2>
 	<p class="hint">{t('changes.hint')}</p>
 	<div class="actions">
+		<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
 		<button
 			class="secondary"
 			onclick={() => {
 				check();
 			}}
-			disabled={busy}>{t('changes.check')}</button
+			aria-disabled={busy}>{t('changes.check')}</button
 		>
 	</div>
 	{#if preview}
 		<!-- `global`: these also enter when the first check opens the block around them. -->
 		{#if preview.changes.length === 0}
-			<p in:rise|global out:vanish>{t('changes.nothing')}</p>
+			<p id="changes-none" tabindex="-1" in:rise|global out:vanish>{t('changes.nothing')}</p>
 		{:else}
-			<p in:rise|global out:vanish>
+			<p id="changes-some" tabindex="-1" in:rise|global out:vanish>
 				{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
 			</p>
 			<ul class="changes" in:rise|global out:vanish>
 				{#each preview.changes as change (change.transaction_id)}
 					<li out:vanish animate:glide>
-						<div class="what">
+						<div class="txn-line">
 							<span>{day(change.date)}</span>
 							<span class="description">{change.description}</span>
 							<Money minor={change.amount_minor} currency={change.currency} />
@@ -115,15 +121,5 @@
 	.changes li {
 		border-top: 1px solid var(--border);
 		padding-top: var(--space-sm);
-	}
-	.what {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs) var(--space-md);
-	}
-	.description {
-		flex: 1;
-		min-width: 0;
-		overflow-wrap: anywhere;
 	}
 </style>

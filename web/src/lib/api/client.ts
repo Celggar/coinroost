@@ -28,6 +28,9 @@ export function failure(error: unknown, status: number | undefined, what: string
 			? body.pointer.slice(2).replaceAll('/', '.')
 			: undefined;
 	const key = `problem.${String(body.code)}`;
+	// A text for the code on that field first, so a clash names what clashed (the name, the key).
+	const onField = field && `${key}.${field}`;
+	if (onField && has(onField)) return { message: t(onField), field };
 	if (has(key)) return { message: t(key), field };
 	if (status === undefined) return { message: t('error.no_answer', { what }) };
 	if (i18n.locale === 'en' && typeof body.detail === 'string') {

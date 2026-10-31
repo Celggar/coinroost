@@ -117,10 +117,11 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await card
 		.getByRole('button', { name: say('file.import_other', { count: transactions }) })
 		.click();
-	// The page's notice says what the import did, and the card keeps it as its own state.
-	const added = say('file.added', { added: transactions, duplicates: 0 });
+	// The page's notice says what the import did, once (FD8); the card keeps «imported» as its own state.
+	const added = say('file.added_other', { count: transactions });
 	await expect(page.getByRole('status').filter({ hasText: added })).toHaveText(added);
-	await expect(card.getByText(added)).toBeVisible();
+	await expect(card.getByText(added)).toHaveCount(0);
+	await expect(card.getByText(say('file.imported'))).toBeVisible();
 	await expect(count(card, say('file.new'))).toHaveText('0');
 
 	// The same file again: everything is already there, and the import button stays off.
@@ -225,7 +226,9 @@ test('pairs two legs and splits them', async ({ context }) => {
 	const waiting = page.getByRole('list', { name: say('waiting.title') });
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
 	// Dates as Panama reads them: day, short month, year.
-	await expect(waiting).toContainText('Checking (15 may 2026) → Savings (15 may 2026)');
+	await expect(waiting).toContainText(
+		`Checking (15 may 2026) ${say('transfer.to')} Savings (15 may 2026)`
+	);
 	await page.getByLabel(say('period.from'), { exact: true }).fill('2026-05-01');
 	await page.getByLabel(say('period.to'), { exact: true }).fill('2026-05-31');
 	const unpaired = page.getByRole('definition').nth(2);
@@ -250,7 +253,7 @@ test('pairs two legs and splits them', async ({ context }) => {
 	// By hand: the same leg twice is refused with the API's reason in the page's language (never its English
 	// detail), under «Otro lado», which is marked and takes the focus; a new choice clears it; the right two pair.
 	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
-	const outflow = '15 may 2026 · Checking · -$500.00 · TRANSF A CUENTA PROPIA';
+	const outflow = '15 may 2026 · Checking · −$500.00 · TRANSF A CUENTA PROPIA';
 	const other = form.getByLabel(say('unmatched.other_side'));
 	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
 	await other.selectOption({ label: outflow });
@@ -259,7 +262,7 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await expect(other).toBeFocused();
 	const reason = form.locator(`[id="${await other.getAttribute('aria-describedby')}"]`);
 	await expect(reason).toHaveText(say('problem.same_transaction'));
-	await other.selectOption({ label: '15 may 2026 · Savings · $500.00 · FROM CHECKING' });
+	await other.selectOption({ label: '15 may 2026 · Savings · +$500.00 · FROM CHECKING' });
 	await expect(other).not.toHaveAttribute('aria-invalid', 'true');
 	await expect(form).not.toContainText(say('problem.same_transaction'));
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();

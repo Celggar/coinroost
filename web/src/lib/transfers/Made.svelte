@@ -5,6 +5,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
+	import Arrow from '#lib/ui/Arrow.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -60,7 +61,10 @@
 							{#if out}<strong class="money">{money(-out.amount_minor, out.currency)}</strong>{/if}
 							{#if out && inn}
 								<span
-									>{accountName(out.account_id, names)} → {accountName(inn.account_id, names)}</span
+									>{accountName(out.account_id, names)}<Arrow />{accountName(
+										inn.account_id,
+										names
+									)}</span
 								>
 							{/if}
 						</div>

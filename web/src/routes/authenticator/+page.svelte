@@ -16,6 +16,12 @@
 	let enrollment = $state<Schemas['NewAuthenticator'] | null>(null);
 	let code = $state('');
 	let error = $state({ text: '', n: 0 });
+
+	/** An edit answers the message: the field is unmarked and the message leaves (it was about what is now changed). */
+	function edited(event: Event) {
+		(event.target as Element).removeAttribute('aria-invalid');
+		if (error.text) error = { text: '', n: error.n + 1 };
+	}
 	let busy = $state(false);
 	let codeField: CodeField | undefined = $state();
 
@@ -78,12 +84,7 @@
 </svelte:head>
 
 <AuthShell compact>
-	<form
-		novalidate
-		oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
-		class="stack"
-		onsubmit={finish}
-	>
+	<form novalidate oninput={edited} class="stack" onsubmit={finish}>
 		<div>
 			<h1>{t('authenticator.title')}</h1>
 			<p class="lead">{t('authenticator.lead')}</p>

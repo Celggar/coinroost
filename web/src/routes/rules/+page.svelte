@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import Changes from '#lib/rules/Changes.svelte';
+	import Tick from '#lib/ui/Tick.svelte';
 	import RuleForm from '#lib/rules/RuleForm.svelte';
 	import { actions, conditions, names as nameMaps } from '#lib/rules/describe.ts';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -42,6 +43,7 @@
 	}
 
 	async function move(rule: Schemas['Rule'], to: number) {
+		const way = to < rule.position ? 'up' : 'down';
 		busy = true;
 		const { error, response } = await api.PATCH('/api/v1/rules/{rule_id}', {
 			params: { path: { rule_id: rule.id } },
@@ -52,6 +54,13 @@
 			notify(problem(error, response.status, t('rules.move_failed')), 'bad');
 		}
 		await load();
+		// The buttons were disabled while it moved, which drops the focus: it follows the rule, to the same button,
+		// or to its other one when the rule reached the top or the bottom.
+		await tick();
+		(
+			document.querySelector<HTMLElement>(`[data-move="${rule.id}-${way}"]`) ??
+			document.querySelector<HTMLElement>(`[data-move^="${rule.id}-"]`)
+		)?.focus();
 	}
 
 	async function remove(rule: Schemas['Rule']) {
@@ -90,7 +99,9 @@
 					{#each rules as rule, index (rule.id)}
 						<li class="card rule" in:rise out:vanish animate:glide>
 							<div class="head">
-								<span class="position" aria-hidden="true">{rule.position}</span>
+								<span class="position" aria-hidden="true"
+									><Tick value={rule.position}>{rule.position}</Tick></span
+								>
 								<h2>{rule.name}</h2>
 								{#if !rule.enabled}<span class="chip none">{t('rules.off')}</span>{/if}
 							</div>
@@ -101,6 +112,7 @@
 								{#if index > 0}
 									<button
 										class="secondary"
+										data-move="{rule.id}-up"
 										onclick={() => move(rule, rule.position - 1)}
 										disabled={busy}
 										aria-label={t('rules.up_named', { name: rule.name })}
@@ -111,6 +123,7 @@
 								{#if index < rules.length - 1}
 									<button
 										class="secondary"
+										data-move="{rule.id}-down"
 										onclick={() => move(rule, rule.position + 1)}
 										disabled={busy}
 										aria-label={t('rules.down_named', { name: rule.name })}

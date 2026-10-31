@@ -10,7 +10,7 @@
 	import { plural, tag, t } from '#lib/i18n.svelte.ts';
 	import { pop, rise, swapOut, vanish } from '#lib/motion.ts';
 	import { session } from '#lib/session.svelte.ts';
-	import { check, focusFirst, single } from '#lib/ui/form.ts';
+	import { check, focusFirst } from '#lib/ui/form.ts';
 
 	const LOW = 3;
 
@@ -20,6 +20,8 @@
 	let fresh = $state<Schemas['RecoveryCodes'] | null>(null);
 	let code = $state('');
 	let error = $state({ text: '', n: 0 });
+	// What is wrong with the code itself goes under the slots (FD5); the alert keeps what is not about the field.
+	let codeError = $state('');
 	let busy = $state(false);
 	let codeField: CodeField | undefined = $state();
 	let regenerateButton: HTMLButtonElement | undefined = $state();
@@ -54,7 +56,6 @@
 
 	async function regenerate(event: SubmitEvent) {
 		event.preventDefault();
-		const form = event.currentTarget as HTMLFormElement;
 		if (busy) return;
 		if (refused(event)) return;
 		busy = true;
@@ -73,19 +74,18 @@
 			return;
 		}
 		code = '';
-		const text =
-			response.status === 422
-				? t('setup.wrong_code')
-				: response.status === 403
-					? t('security.locked')
-					: problem(failure, response.status, t('security.failed'));
-		error = { text, n: error.n + 1 };
 		codeField?.shake();
-		// A wrong code is about the field: it is marked, and the caret goes back to it for the next try (FD5).
+		// A wrong code is about the field: its error goes under it, and the caret goes back to it for the next try.
 		if (response.status === 422) {
-			form.querySelector('input')?.setAttribute('aria-invalid', 'true');
+			codeError = t('setup.wrong_code');
 			codeField?.focus();
+			return;
 		}
+		const text =
+			response.status === 403
+				? t('security.locked')
+				: problem(failure, response.status, t('security.failed'));
+		error = { text, n: error.n + 1 };
 	}
 
 	function done() {
@@ -99,9 +99,9 @@
 	function refused(event: SubmitEvent): boolean {
 		const form = event.currentTarget as HTMLFormElement;
 		const errors = check(form);
-		const why = single(form, errors);
+		const why = Object.values(errors)[0];
 		if (!why) return false;
-		error = { text: why, n: error.n + 1 };
+		codeError = why;
 		focusFirst(form, errors);
 		return true;
 	}
@@ -144,17 +144,14 @@
 						>{t('security.regenerate')}</button
 					>
 				{:else if mode === 'confirm'}
-					<form
-						novalidate
-						oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
-						class="stack"
-						onsubmit={regenerate}
-					>
+					<form novalidate oninput={() => (codeError = '')} class="stack" onsubmit={regenerate}>
 						<p class="hint">{t('security.regenerate_note')}</p>
 						<CodeField
 							bind:this={codeField}
 							label={t('login.code')}
 							hint={t('login.code_hint')}
+							hintBelow
+							error={codeError}
 							bind:value={code}
 						/>
 						<FormAlert {...error} />
@@ -234,10 +231,11 @@
 		flex-wrap: wrap;
 		gap: var(--space-sm);
 	}
+	/* A row with the primary in it: every button takes the primary's height (FD6), so the row shares its edges. */
 	.buttons button {
 		display: grid;
 		place-items: center;
-		min-height: 44px;
+		min-height: var(--primary-height);
 	}
 	.buttons button > :global(*) {
 		grid-area: 1 / 1;

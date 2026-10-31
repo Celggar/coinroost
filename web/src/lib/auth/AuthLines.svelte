@@ -41,8 +41,10 @@
 </svg>
 
 <style>
+	/* Fixed to the window, not to the page: a card taller than the window makes the page taller, and lines scaled to
+	   that height were cut to a loose stroke (pass 1). Behind a scrolling card they stay put, like a backdrop. */
 	.lines {
-		position: absolute;
+		position: fixed;
 		inset: 0;
 		width: 100%;
 		height: 100%;

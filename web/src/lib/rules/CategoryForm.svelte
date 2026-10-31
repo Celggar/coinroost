@@ -47,6 +47,7 @@
 		notify(t('categoryform.created', { name: data.name }));
 		name = '';
 		oncreated(data);
+		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
 	}
 </script>
 

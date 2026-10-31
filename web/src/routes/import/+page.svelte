@@ -72,13 +72,15 @@
 			}}
 		>
 			<span class="icon"><Icon name="import" size={28} /></span>
-			<span class="title">{t('import.drop_title')}</span>
-			<span class="hint">{t('import.choose_hint')}</span>
-			<span class="button pick">{t('import.choose')}</span>
+			<span class="title" id="drop-title">{t('import.drop_title')}</span>
+			<span class="hint" id="drop-hint">{t('import.choose_hint')}</span>
+			<span class="button pick" id="drop-pick">{t('import.choose')}</span>
 			<span class="hint here">{t('import.drop_here')}</span>
 			<input
 				class="visually-hidden"
 				type="file"
+				aria-labelledby="drop-pick"
+				aria-describedby="drop-hint"
 				multiple
 				accept=".csv,.xls,.xlsx,.pdf"
 				onchange={choose}
@@ -90,7 +92,11 @@
 				<FileCard
 					file={entry.file}
 					{accounts}
-					onremove={() => (files = files.filter((f) => f.id !== entry.id))}
+					onremove={() => {
+						files = files.filter((f) => f.id !== entry.id);
+						// The card and its button are gone: the focus goes back to choosing files.
+						document.querySelector<HTMLInputElement>('.drop input')?.focus();
+					}}
 				/>
 			</div>
 		{/each}

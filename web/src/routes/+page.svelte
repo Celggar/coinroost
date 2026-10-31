@@ -8,6 +8,8 @@
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period, type Preset } from '#lib/dashboard/period.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
+	import { pop } from '#lib/motion.ts';
+	import DateRange from '#lib/ui/DateRange.svelte';
 
 	const PAYEES = 10;
 	const presets: { which: Preset; label: Key }[] = [
@@ -32,6 +34,8 @@
 	let busy = $state(false);
 	let error = $state('');
 	let latest = 0;
+	// An end before the start asks nothing: the last answer stays, dimmed, while the field says what is wrong.
+	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load(period: Period) {
 		if (!period.from || !period.to || period.from > period.to) return;
@@ -108,23 +112,25 @@
 <div class="stack">
 	<Payroll />
 
-	<!-- The presets are one segmented control, as tall as the date fields beside them, so every control of the row
-		 shares its top and bottom edges (his #158); the two dates sit in a grid of their own. -->
-	<div class="period" role="group" aria-label={t('dashboard.period')}>
-		<div class="presets">
-			{#each presets as option (option.which)}
-				{@const range = preset(option.which)}
-				<button
-					class="secondary"
-					aria-pressed={from === range.from && to === range.to}
-					onclick={() => choose(option.which)}>{t(option.label)}</button
-				>
-			{/each}
+	<!-- Three labelled controls in one row (FD4, his #158): the presets are a segmented control as tall as the date
+		 fields, under a label of their own, so labels share their tops and controls theirs, even when «Hasta» shows
+		 an error under it. -->
+	<div class="period">
+		<div class="form-field" role="group" aria-labelledby="period-label">
+			<span class="label" id="period-label">{t('dashboard.period')}</span>
+			<div class="presets">
+				{#each presets as option (option.which)}
+					{@const range = preset(option.which)}
+					{@const chosen = from === range.from && to === range.to}
+					<button class="secondary" aria-pressed={chosen} onclick={() => choose(option.which)}
+						>{#if chosen}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop
+								><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+							>{/if}{t(option.label)}</button
+					>
+				{/each}
+			</div>
 		</div>
-		<div class="date-range">
-			<label>{t('period.from')} <input type="date" bind:value={from} /></label>
-			<label>{t('period.to')} <input type="date" bind:value={to} /></label>
-		</div>
+		<DateRange bind:from bind:to />
 	</div>
 
 	{#if error}
@@ -135,7 +141,7 @@
 	{/if}
 
 	{#if reports}
-		<div class="reports stack" class:stale={busy}>
+		<div class="reports stack" class:stale={busy || !datesOk}>
 			{#if currencies.length === 0}
 				<p>{t('dashboard.nothing')}</p>
 			{/if}
@@ -154,6 +160,7 @@
 					<div class="rankings">
 						<Ranking
 							title={t('ranking.categories')}
+							hint={t('ranking.categories_hint')}
 							currency={c}
 							items={ranked(
 								reports.categories
@@ -189,7 +196,7 @@
 	.period {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: end;
+		align-items: start;
 		gap: var(--space-md) var(--space-lg);
 	}
 	/* Material 3 segmented buttons: joined segments, the chosen one filled. */
@@ -211,17 +218,39 @@
 	.presets button:last-child {
 		border-radius: 0 var(--radius-field) var(--radius-field) 0;
 	}
+	.label {
+		font-weight: 600;
+		line-height: 1.25;
+	}
+	/* Material 3: the chosen segment is filled and carries a check; the outline stays the group's. */
+	.presets button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-xs);
+	}
 	.presets button[aria-pressed='true'] {
-		background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+		background: color-mix(in oklab, var(--accent) 22%, var(--surface));
 		color: var(--text);
-		box-shadow: inset 0 0 0 1px var(--text);
+	}
+	.check {
+		flex: none;
+		width: 18px;
+		height: 18px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	/* A phone: the presets in three equal segments across, the two dates side by side under them. */
 	@media (max-width: 560px) {
-		.presets,
-		.date-range {
-			display: grid;
+		.period > :global(*),
+		.presets {
 			width: 100%;
+		}
+		.presets {
+			display: grid;
 		}
 		.presets {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -230,11 +259,14 @@
 			padding: 0 var(--space-sm);
 		}
 	}
+	/* Side by side the two cards share their height and their rows: each has a title and a hint line (pass 1). */
 	.rankings {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 		gap: var(--space-md);
-		align-items: start;
+	}
+	.rankings > :global(.card) {
+		align-content: start;
 	}
 	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. */
 	.stale {

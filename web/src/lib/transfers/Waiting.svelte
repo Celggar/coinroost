@@ -4,6 +4,7 @@
 	import { day, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
+	import Arrow from '#lib/ui/Arrow.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -56,10 +57,8 @@
 									>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</strong
 								>
 								<span>
-									{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)}) → {accountName(
-										pair.inflow.account_id,
-										names
-									)} ({day(pair.inflow.date)})
+									{accountName(pair.outflow.account_id, names)} ({day(pair.outflow.date)})<Arrow
+									/>{accountName(pair.inflow.account_id, names)} ({day(pair.inflow.date)})
 								</span>
 							</div>
 							<div class="hint">

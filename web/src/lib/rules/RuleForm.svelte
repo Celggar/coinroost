@@ -92,6 +92,8 @@
 		name = text = min = max = category = payee = account = '';
 		direction = '';
 		oncreated(data);
+		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next.
+		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
 	}
 </script>
 

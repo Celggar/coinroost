@@ -4,9 +4,10 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { lift, pop, rise, vanish } from '#lib/motion.ts';
+	import { lift, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
+	import Tick from '#lib/ui/Tick.svelte';
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
@@ -29,6 +30,17 @@
 	const importable = $derived(accounts.filter((a) => a.profile));
 	const account = $derived(accounts.find((a) => a.id === accountId));
 	const reading = $derived(preview?.reading ?? null);
+	const layoutRows = $derived(
+		reading ? reading.rows_read - reading.new - reading.duplicates - reading.errors : 0
+	);
+
+	/** What an import did, in one sentence; the already-imported part only when there was some. */
+	function added(count: number, duplicates: number): string {
+		const first = plural(count, 'file.added_one', 'file.added_other');
+		return duplicates
+			? `${first} ${plural(duplicates, 'file.skipped_one', 'file.skipped_other')}`
+			: first;
+	}
 	const choices = $derived(
 		preview?.detection === 'ambiguous'
 			? importable.filter((a) => preview?.candidates.includes(a.id))
@@ -83,7 +95,7 @@
 			return;
 		}
 		report = data;
-		notify(t('file.added', { added: data.batch.added, duplicates: data.batch.duplicates }));
+		notify(added(data.batch.added, data.batch.duplicates));
 		refreshCounts();
 		// The import button is gone: the focus goes to what it did, not to the page's start.
 		await tick();
@@ -148,28 +160,33 @@
 			<div>
 				<dt>{t('file.rows_read')}</dt>
 				<dd>
-					{#key reading.rows_read}<span in:pop={{ start: 0.8 }}>{reading.rows_read}</span>{/key}
+					<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
 				</dd>
 			</div>
 			<div>
 				<dt>{t('file.new')}</dt>
 				<dd>
-					{#key reading.new}<span in:pop={{ start: 0.8 }}>{reading.new}</span>{/key}
+					<Tick value={reading.new}>{reading.new}</Tick>
 				</dd>
 			</div>
 			<div>
 				<dt>{t('file.already')}</dt>
 				<dd>
-					{#key reading.duplicates}<span in:pop={{ start: 0.8 }}>{reading.duplicates}</span>{/key}
+					<Tick value={reading.duplicates}>{reading.duplicates}</Tick>
 				</dd>
 			</div>
 			<div>
 				<dt>{t('file.unreadable_rows')}</dt>
 				<dd>
-					{#key reading.errors}<span in:pop={{ start: 0.8 }}>{reading.errors}</span>{/key}
+					<Tick value={reading.errors}>{reading.errors}</Tick>
 				</dd>
 			</div>
 		</dl>
+		<!-- The normalizer's layout rows (blank, header or footer lines, an opening balance) are read but are not
+			 transactions: said, so the four counts add up to the rows read. -->
+		{#if layoutRows > 0}
+			<p class="hint">{plural(layoutRows, 'file.layout_one', 'file.layout_other')}</p>
+		{/if}
 		{#if reading.first_date && reading.last_date}
 			<p class="hint">
 				{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
@@ -219,11 +236,11 @@
 			</details>
 		{/if}
 
-		<!-- What the file comes to is the card's own state; what the import did also goes to the page's notice. -->
+		<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
 		{#if report}
 			<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
 				<span class="check" aria-hidden="true"></span>
-				{t('file.added', { added: report.batch.added, duplicates: report.batch.duplicates })}
+				{t('file.imported')}
 			</p>
 		{:else}
 			{#if reading.new === 0}
@@ -239,10 +256,11 @@
 </article>
 
 <style>
+	/* The file's name and «Quitar» share their middle line; a long name wraps beside the button. */
 	.head {
 		display: flex;
 		justify-content: space-between;
-		align-items: start;
+		align-items: center;
 		gap: var(--space-md);
 	}
 	.head h2 {
@@ -268,9 +286,6 @@
 		font-size: var(--text-xl);
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
-	}
-	dd > span {
-		display: inline-block;
 	}
 	h3 {
 		margin: 0 0 var(--space-xs);

@@ -6,7 +6,7 @@
 	import { rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -115,6 +115,8 @@
 		namespaceEdited = false;
 		markers = '';
 		cardPrefixes = '';
+		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next.
+		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
 	}
 
 	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */
@@ -175,7 +177,11 @@
 			class="card"
 			novalidate
 			onsubmit={submit}
-			oninput={(event) => (errors = without(errors, event))}
+			oninput={(event) => {
+				errors = without(errors, event);
+				// The key follows the name until it is edited: a name that fills it also clears its error.
+				if (!namespaceEdited && suggested) errors = drop(errors, 'namespace');
+			}}
 		>
 			<h2>{t('accounts.new')}</h2>
 			<div class="fields">

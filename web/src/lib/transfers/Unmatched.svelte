@@ -58,9 +58,13 @@
 		return null;
 	}
 
+	// The button or the choices that made the pair go away with it: the focus waits on this card's title.
+	const land = () => document.getElementById('unmatched-title')?.focus();
+
 	async function suggested(a: string, b: string) {
 		const why = await pair(a, b);
 		if (why) notify(why.message, 'bad');
+		else land();
 	}
 
 	async function submit(event: SubmitEvent) {
@@ -73,7 +77,10 @@
 			return;
 		}
 		const why = await pair(first, second);
-		if (!why) return;
+		if (!why) {
+			land();
+			return;
+		}
 		if (!why.refused) {
 			error = why.message;
 			return;
@@ -86,7 +93,7 @@
 </script>
 
 <section class="card" aria-labelledby="unmatched-title">
-	<h2 id="unmatched-title">{t('unmatched.title')}</h2>
+	<h2 id="unmatched-title" tabindex="-1">{t('unmatched.title')}</h2>
 	<div class="in-place">
 		{#if preview.unmatched.length === 0}
 			<p in:rise out:vanish>{t('unmatched.nothing')}</p>
@@ -115,48 +122,56 @@
 		{/if}
 	</div>
 
-	<form
-		novalidate
-		onsubmit={submit}
-		onchange={(event) => {
-			errors = without(errors, event);
-			error = '';
-		}}
-		aria-label={t('unmatched.by_hand')}
-	>
-		<h3>{t('unmatched.by_hand')}</h3>
-		<p class="hint">{t('unmatched.by_hand_hint')}</p>
-		<div class="fields">
-			<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
-				{#snippet children(wiring)}
-					<select {...wiring} bind:value={first} required>
-						<option value="" disabled>{t('unmatched.choose')}</option>
-						{#each choices as leg (leg.transaction_id)}
-							<option value={leg.transaction_id}>{legText(leg, names)}</option>
-						{/each}
-					</select>
-				{/snippet}
-			</Field>
-			<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
-				{#snippet children(wiring)}
-					<select {...wiring} bind:value={second} required>
-						<option value="" disabled>{t('unmatched.choose')}</option>
-						{#each choices as leg (leg.transaction_id)}
-							<option value={leg.transaction_id}>{legText(leg, names)}</option>
-						{/each}
-					</select>
-				{/snippet}
-			</Field>
-		</div>
-		<FormError text={error} />
-		<div class="actions">
-			<button type="submit" disabled={busy || choices.length < 2}>{t('unmatched.pair_them')}</button
-			>
-		</div>
-	</form>
+	<!-- Pairing by hand needs two legs to choose from; with fewer it is not offered. -->
+	{#if choices.length >= 2}
+		<form
+			in:rise
+			out:vanish
+			novalidate
+			onsubmit={submit}
+			onchange={(event) => {
+				errors = without(errors, event);
+				error = '';
+			}}
+			aria-label={t('unmatched.by_hand')}
+		>
+			<h3>{t('unmatched.by_hand')}</h3>
+			<p class="hint">{t('unmatched.by_hand_hint')}</p>
+			<div class="fields pick">
+				<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
+					{#snippet children(wiring)}
+						<select {...wiring} bind:value={first} required>
+							<option value="" disabled>{t('unmatched.choose')}</option>
+							{#each choices as leg (leg.transaction_id)}
+								<option value={leg.transaction_id}>{legText(leg, names)}</option>
+							{/each}
+						</select>
+					{/snippet}
+				</Field>
+				<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
+					{#snippet children(wiring)}
+						<select {...wiring} bind:value={second} required>
+							<option value="" disabled>{t('unmatched.choose')}</option>
+							{#each choices as leg (leg.transaction_id)}
+								<option value={leg.transaction_id}>{legText(leg, names)}</option>
+							{/each}
+						</select>
+					{/snippet}
+				</Field>
+			</div>
+			<FormError text={error} />
+			<div class="actions">
+				<button type="submit" disabled={busy}>{t('unmatched.pair_them')}</button>
+			</div>
+		</form>
+	{/if}
 </section>
 
 <style>
+	/* One choice per line: a leg's text is long, and a half-width select cut it mid-word (pass 1). */
+	.pick {
+		grid-template-columns: minmax(0, 1fr);
+	}
 	.legs {
 		list-style: none;
 		margin: 0;

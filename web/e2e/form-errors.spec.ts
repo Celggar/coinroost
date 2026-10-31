@@ -63,7 +63,7 @@ test('a key already taken is marked on «Clave», not as a loose English line', 
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Otra');
 	await page.getByLabel(say('accounts.key')).fill('corriente');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
-	const key = await fieldSays(say('accounts.key'), say('problem.already_exists'));
+	const key = await fieldSays(say('accounts.key'), say('problem.already_exists.namespace'));
 	await expect(key).toBeFocused();
 	await expect(page.locator('main')).not.toContainText(ENGLISH);
 });

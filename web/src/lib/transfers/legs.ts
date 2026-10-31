@@ -1,6 +1,6 @@
 // How transfer legs read on screen.
 import type { Schemas } from '#lib/api/client.ts';
-import { day, money } from '#lib/format.ts';
+import { day, signed } from '#lib/format.ts';
 import { t } from '#lib/i18n.svelte.ts';
 
 export type AccountNames = Map<string, string>;
@@ -18,7 +18,7 @@ export function legText(leg: Schemas['TransferLeg'], names: AccountNames): strin
 	return [
 		day(leg.date),
 		accountName(leg.account_id, names),
-		money(leg.amount_minor, leg.currency),
+		signed(leg.amount_minor, leg.currency),
 		leg.description
 	].join(' · ');
 }

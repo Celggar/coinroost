@@ -32,7 +32,8 @@ export async function loadEmployers(page: Page, file: string) {
 	]);
 }
 
-/** An amount as the page writes it; `signed` writes the sign of a movement even when it is positive. */
+/** An amount as the page writes it, with a true minus sign; `signed` writes the sign of a movement even when it is
+ *  positive. */
 const money = (page: Page, minor: number, signed = false) =>
 	page.evaluate(
 		([m, sign]) =>
@@ -41,7 +42,9 @@ const money = (page: Page, minor: number, signed = false) =>
 				currency: 'USD',
 				currencyDisplay: 'narrowSymbol',
 				signDisplay: sign ? 'exceptZero' : 'auto'
-			}).format(m / 100),
+			})
+				.format(m / 100)
+				.replace('-', '\u2212'),
 		[minor, signed] as const
 	);
 
@@ -109,7 +112,7 @@ export async function checkDashboard(page: Page) {
 	).toHaveText([
 		await money(page, may.income),
 		await money(page, may.spending),
-		await money(page, may.income - may.spending)
+		await money(page, may.income - may.spending, true)
 	]);
 
 	const byId = (list: { items: { id: string; name: string }[] }) =>

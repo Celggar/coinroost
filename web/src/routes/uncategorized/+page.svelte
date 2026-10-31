@@ -4,21 +4,25 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { glide, pop, rise, vanish } from '#lib/motion.ts';
+	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
+	import Tick from '#lib/ui/Tick.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let transactions = $state<Schemas['Transaction'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
 	let loadError = $state('');
 	let loaded = $state(false);
+	// Nothing imported yet reads differently from everything sorted.
+	let empty = $state(false);
 	let busy = $state<string | null>(null);
 
 	async function load() {
 		loadError = '';
-		const [list, kinds] = await Promise.all([
+		const [list, kinds, any] = await Promise.all([
 			api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
-			api.GET('/api/v1/categories')
+			api.GET('/api/v1/categories'),
+			api.GET('/api/v1/transactions', { params: { query: { limit: 1 } } })
 		]);
 		if (!list.data || !kinds.data) {
 			const failed = list.data ? kinds : list;
@@ -27,6 +31,7 @@
 		}
 		transactions = list.data.items;
 		categories = kinds.data.items;
+		empty = any.data?.items.length === 0;
 		loaded = true;
 	}
 
@@ -77,17 +82,23 @@
 	<!-- The queue and its «all done» line take each other's place, the one fading over the other. -->
 	<div class="in-place">
 		{#if transactions.length === 0}
-			<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
+			{#if empty}
+				<p in:rise>
+					{t('uncategorized.none_yet')} <a href="/import">{t('uncategorized.import_first')}</a>
+				</p>
+			{:else}
+				<p id="all-done" tabindex="-1" in:rise>{t('uncategorized.all_done')}</p>
+			{/if}
 		{:else}
 			<div class="stack" out:vanish>
 				<p>
-					{#key transactions.length}<span class="count" in:pop={{ start: 0.9 }}
-							>{plural(
-								transactions.length,
-								'uncategorized.count_one',
-								'uncategorized.count_other'
-							)}</span
-						>{/key}
+					<Tick value={transactions.length}
+						>{plural(
+							transactions.length,
+							'uncategorized.count_one',
+							'uncategorized.count_other'
+						)}</Tick
+					>
 				</p>
 				{#if categories.length === 0}
 					<p class="hint">
@@ -99,7 +110,7 @@
 					{#each transactions as transaction (transaction.id)}
 						{@const leg = transaction.legs[0]}
 						<li class="card" out:vanish animate:glide>
-							<div class="what">
+							<div class="txn-line">
 								<span>{day(transaction.date)}</span>
 								<span class="description">{transaction.description}</span>
 								{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
@@ -135,18 +146,5 @@
 		padding: 0;
 		display: grid;
 		gap: var(--space-md);
-	}
-	.what {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-xs) var(--space-md);
-	}
-	.description {
-		flex: 1;
-		min-width: 0;
-		overflow-wrap: anywhere;
-	}
-	.count {
-		display: inline-block;
 	}
 </style>

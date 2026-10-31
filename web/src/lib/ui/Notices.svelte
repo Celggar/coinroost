@@ -73,6 +73,8 @@
 		color: var(--inverse-text);
 		box-shadow: var(--card-shadow);
 		overflow-wrap: anywhere;
+		/* No word left alone on the last line («…en la posición / 3.», pass 1). */
+		text-wrap: pretty;
 	}
 	.mark {
 		flex: none;

@@ -2,6 +2,8 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { money, today } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import DateRange from '#lib/ui/DateRange.svelte';
+	import Tick from '#lib/ui/Tick.svelte';
 
 	// Reloads whenever `version` changes: pairing and splitting move money between the columns.
 	let { version }: { version: number } = $props();
@@ -10,10 +12,12 @@
 	let to = $state(today());
 	let summary = $state<Schemas['Summary'] | null>(null);
 	let error = $state('');
+	// An end before the start asks nothing: the last figures stay, dimmed, while the field says what is wrong.
+	const datesOk = $derived(!!from && !!to && from <= to);
 
 	async function load() {
 		error = '';
-		if (!from || !to) return;
+		if (!datesOk) return;
 		const {
 			data,
 			error: failure,
@@ -38,33 +42,42 @@
 <section class="card" aria-labelledby="summary-title">
 	<h2 id="summary-title">{t('summary.title')}</h2>
 	<p class="hint">{t('summary.hint')}</p>
-	<div class="date-range">
-		<label>{t('period.from')} <input type="date" bind:value={from} /></label>
-		<label>{t('period.to')} <input type="date" bind:value={to} /></label>
-	</div>
+	<DateRange bind:from bind:to />
 	{#if error}<p class="alert" role="alert">{error}</p>{/if}
 	{#if summary}
 		{#if summary.totals.length === 0}
 			<p>{t('summary.nothing')}</p>
 		{:else}
-			<div class="totals">
+			<div class="totals" class:stale={!datesOk}>
 				{#each summary.totals as totals (totals.currency)}
 					<dl class="figures" aria-label={t('summary.totals_in', { currency: totals.currency })}>
 						<div>
 							<dt>{t('summary.spending')}</dt>
-							<dd class="value">{money(totals.spending, totals.currency)}</dd>
+							<dd class="value">
+								<Tick value={totals.spending}>{money(totals.spending, totals.currency)}</Tick>
+							</dd>
 						</div>
 						<div>
 							<dt>{t('summary.income')}</dt>
-							<dd class="value">{money(totals.income, totals.currency)}</dd>
+							<dd class="value">
+								<Tick value={totals.income}>{money(totals.income, totals.currency)}</Tick>
+							</dd>
 						</div>
 						<div>
 							<dt>{t('summary.unpaired_out')}</dt>
-							<dd class="value">{money(totals.unpaired_transfer_out, totals.currency)}</dd>
+							<dd class="value">
+								<Tick value={totals.unpaired_transfer_out}
+									>{money(totals.unpaired_transfer_out, totals.currency)}</Tick
+								>
+							</dd>
 						</div>
 						<div>
 							<dt>{t('summary.unpaired_in')}</dt>
-							<dd class="value">{money(totals.unpaired_transfer_in, totals.currency)}</dd>
+							<dd class="value">
+								<Tick value={totals.unpaired_transfer_in}
+									>{money(totals.unpaired_transfer_in, totals.currency)}</Tick
+								>
+							</dd>
 						</div>
 					</dl>
 				{/each}
@@ -77,5 +90,9 @@
 	.totals {
 		display: grid;
 		gap: var(--space-md);
+		transition: opacity var(--duration-short, 150ms);
+	}
+	.stale {
+		opacity: 0.5;
 	}
 </style>

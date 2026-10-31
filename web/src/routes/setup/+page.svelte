@@ -32,6 +32,12 @@
 	let first = $state(false);
 	let recovery = $state<{ codes: string[]; createdAt: string }>({ codes: [], createdAt: '' });
 	let error = $state({ text: '', n: 0 });
+
+	/** An edit answers the message: the field is unmarked and the message leaves (it was about what is now changed). */
+	function edited(event: Event) {
+		(event.target as Element).removeAttribute('aria-invalid');
+		if (error.text) error = { text: '', n: error.n + 1 };
+	}
 	let busy = $state(false);
 	let passwordField: PasswordField | undefined = $state();
 	let codeField: CodeField | undefined = $state();
@@ -132,6 +138,10 @@
 			go('invalid');
 		} else if (response.status === 409) {
 			await backWith('account', t('setup.taken'));
+			// The email is what clashed: it is marked and takes the focus, ready to change.
+			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
+			field?.setAttribute('aria-invalid', 'true');
+			field?.focus();
 		} else if (response.status === 422) {
 			fail(t('setup.wrong_code'));
 			codeField?.shake();
@@ -184,13 +194,10 @@
 					{:else if step === 'invalid'}
 						<h2 class="step-label">{t('setup.invalid_title')}</h2>
 						<p class="lead">{t('setup.invalid')}</p>
+						<!-- A used link often means the account exists already: the way to the login is right here. -->
+						<p><a href="/login">{t('setup.to_login')}</a></p>
 					{:else if step === 'account'}
-						<form
-							novalidate
-							oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
-							class="stack"
-							onsubmit={toCode}
-						>
+						<form novalidate oninput={edited} class="stack" onsubmit={toCode}>
 							<div>
 								<h2 class="step-label">{t('setup.step_account')}</h2>
 								{#if first}<p class="lead">{t('setup.first_lead')}</p>{/if}
@@ -221,12 +228,7 @@
 							</div>
 						</form>
 					{:else if step === 'code' && enrollment}
-						<form
-							novalidate
-							oninput={(event) => (event.target as Element).removeAttribute('aria-invalid')}
-							class="stack"
-							onsubmit={finish}
-						>
+						<form novalidate oninput={edited} class="stack" onsubmit={finish}>
 							<div>
 								<h2 class="step-label">{t('setup.step_code')}</h2>
 								<p class="lead">{onPhone ? t('setup.scan_phone') : t('setup.scan')}</p>
