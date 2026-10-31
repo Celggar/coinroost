@@ -1,11 +1,24 @@
 <script lang="ts">
 	// «Más» on a phone (P1): what is used rarely — Reglas, Seguridad, the language and logging out — one tap from
 	// the bar, never an overflow of hidden destinations.
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Icon from '#lib/nav/Icon.svelte';
 	import { logOut, session } from '#lib/session.svelte.ts';
+
+	// On a wide screen the rail holds all of this, so «Más» is no page there: a wide window, or a phone window made
+	// wide, goes on to the summary instead of showing a page the rail marks nowhere (N5).
+	onMount(() => {
+		const wide = matchMedia('(min-width: 900px)');
+		const away = () => {
+			if (wide.matches) goto('/', { replaceState: true });
+		};
+		away();
+		wide.addEventListener('change', away);
+		return () => wide.removeEventListener('change', away);
+	});
 
 	async function leave() {
 		await logOut();
