@@ -41,8 +41,11 @@
 				onchange={() => choose(language.code)}
 			/>
 			{#if wide}
-				{#if i18n.locale === language.code}<svg class="check" viewBox="0 0 24 24" aria-hidden="true" in:pop
-						><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+				{#if i18n.locale === language.code}<svg
+						class="check"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+						in:pop><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
 					>{/if}<span lang={language.code}>{language.name}</span>
 			{:else}
 				<span aria-hidden="true">{language.short}</span>

@@ -72,7 +72,8 @@ export function single(form: HTMLFormElement, errors: Errors): string {
 	const sentences = [...named].map(([message, fields]) =>
 		t('form.named', {
 			field: list.format(fields),
-			message: fields.length > 1 && message === t('form.required') ? t('form.required_many') : message
+			message:
+				fields.length > 1 && message === t('form.required') ? t('form.required_many') : message
 		})
 	);
 	return [...sentences, ...bare].join(' ');

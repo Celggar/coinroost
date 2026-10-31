@@ -6,7 +6,9 @@
  */
 export function focusOn(...selectors: string[]): boolean {
 	for (const selector of selectors) {
-		const target = [...document.querySelectorAll<HTMLElement>(selector)].find((e) => !e.closest('[inert]'));
+		const target = [...document.querySelectorAll<HTMLElement>(selector)].find(
+			(e) => !e.closest('[inert]')
+		);
 		if (target) {
 			target.focus();
 			return true;

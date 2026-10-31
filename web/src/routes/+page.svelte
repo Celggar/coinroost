@@ -150,8 +150,9 @@
 				<!-- The way on from an empty period: importing, or before that, the account a file goes into. -->
 				<p>
 					{t('dashboard.nothing')}
-					{#if reports.hasAccounts}<a href="/import">{t('dashboard.to_import')}</a
-						>{:else}<a href="/accounts">{t('dashboard.to_accounts')}</a>{/if}
+					{#if reports.hasAccounts}<a href="/import">{t('dashboard.to_import')}</a>{:else}<a
+							href="/accounts">{t('dashboard.to_accounts')}</a
+						>{/if}
 				</p>
 			{/if}
 			{#each currencies as totals (totals.currency)}
