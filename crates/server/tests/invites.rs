@@ -101,7 +101,9 @@ async fn a_link_makes_a_user_who_logs_in_again(db: PgPool) {
         "the secret changed between calls"
     );
 
-    let (status, session) = accept(&api, &token, EMAIL, &code(&enrollment, 0)).await;
+    // Replayed below as this exact string: a code made later may already be the next step's.
+    let used = code(&enrollment, 0);
+    let (status, session) = accept(&api, &token, EMAIL, &used).await;
     assert_eq!(status, StatusCode::CREATED, "{session}");
     let (status, me) = api
         .call("GET", "/api/v1/me", session["token"].as_str(), None)
@@ -110,12 +112,7 @@ async fn a_link_makes_a_user_who_logs_in_again(db: PgPool) {
 
     let login = |code: String| json!({"email": EMAIL, "password": PASSWORD, "code": code});
     let (status, _) = api
-        .call(
-            "POST",
-            "/api/v1/sessions",
-            None,
-            Some(login(code(&enrollment, 0))),
-        )
+        .call("POST", "/api/v1/sessions", None, Some(login(used)))
         .await;
     assert_eq!(
         status,

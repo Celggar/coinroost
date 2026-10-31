@@ -168,7 +168,7 @@ async fn regenerating_needs_a_fresh_code_and_retires_the_old_set(db: PgPool) {
     let api = Api::new(db);
     let user = api.household("Regenerate").await;
     // The code that just logged in cannot be replayed to make a set.
-    let replay = json!({"code": totp::current_code(&user.secret).unwrap()});
+    let replay = json!({"code": user.login_code});
     let (status, body) = api
         .call(
             "POST",

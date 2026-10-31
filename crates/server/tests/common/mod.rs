@@ -29,6 +29,8 @@ pub struct User {
     pub email: String,
     pub secret: Vec<u8>,
     pub token: String,
+    /// The code that logged in: a test replays this exact one, since a code made later may be the next step's.
+    pub login_code: String,
 }
 
 impl Api {
@@ -61,7 +63,7 @@ impl Api {
                 "/api/v1/sessions",
                 None,
                 Some(serde_json::json!({
-                    "email": email, "password": PASSWORD, "code": code
+                    "email": email, "password": PASSWORD, "code": &code
                 })),
             )
             .await;
@@ -70,6 +72,7 @@ impl Api {
             email,
             secret,
             token: body["token"].as_str().unwrap().to_owned(),
+            login_code: code,
         }
     }
 
