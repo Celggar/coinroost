@@ -45,7 +45,7 @@
 	"import.choose_hint": "Statements as the bank exports them (CSV, Excel or PDF), one or many at once. Nothing is imported until you confirm each file.",
 	"import.drop_title": "Your bank statements",
 	"import.drop_here": "or drop them here",
-	"file.found": "Found from the file.",
+	"file.found": "Recognized from the file's contents.",
 	"file.ambiguous": "The file fits several accounts: choose one.",
 	"file.not_found": "No account recognizes this file: choose one.",
 	"file.no_profile": "You have no accounts with a bank file yet: create one in Accounts.",

@@ -72,7 +72,7 @@
 	}
 </script>
 
-<div class="qr" in:pop|global={{ delay: 150, start: 0.85 }}>
+<div class="qr" data-whole in:pop|global={{ delay: 150, start: 0.85 }}>
 	<img src={qrPng || qr} alt={t('setup.qr_alt')} width={QR_SIZE} height={QR_SIZE} />
 </div>
 <div class="key">

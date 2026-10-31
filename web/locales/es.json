@@ -45,7 +45,7 @@
 	"import.choose_hint": "Estados de cuenta tal como los exporta el banco (CSV, Excel o PDF), uno o varios a la vez. No se importa nada hasta que confirmes cada archivo.",
 	"import.drop_title": "Tus estados de cuenta",
 	"import.drop_here": "o arrástralos aquí",
-	"file.found": "Se encontró por el archivo.",
+	"file.found": "Reconocida por el contenido del archivo.",
 	"file.ambiguous": "El archivo calza con varias cuentas: escoge una.",
 	"file.not_found": "Ninguna cuenta reconoce este archivo: escoge una.",
 	"file.no_profile": "Todavía no tienes cuentas con archivo del banco: crea una en Cuentas.",

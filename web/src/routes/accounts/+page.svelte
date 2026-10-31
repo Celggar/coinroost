@@ -80,6 +80,8 @@
 		const form = event.currentTarget as HTMLFormElement;
 		formError = '';
 		errors = check(form);
+		// A key that still follows the name is empty only because the name is: the name's error says it (pass 8).
+		if (!namespaceEdited && errors.name) errors = drop(errors, 'namespace');
 		if (Object.keys(errors).length) {
 			focusFirst(form, errors);
 			return;

@@ -46,6 +46,9 @@
 		await tick();
 		if (data) focusOn('#made-title');
 	}
+
+	const withDate = (leg: { account_id: string; date: string }) =>
+		`${accountName(leg.account_id, names)}\u00a0(${wholeDay(leg.date)})`;
 </script>
 
 <section class="card" aria-labelledby="waiting-title">
@@ -60,12 +63,11 @@
 					{#each preview.pairs as pair (pair.outflow.transaction_id)}
 						<li in:rise out:vanish animate:glide>
 							<div class="line">
-								<span>
-									{accountName(pair.outflow.account_id, names)} ({wholeDay(
-										pair.outflow.date
-									)})<Arrow />{accountName(pair.inflow.account_id, names)} ({wholeDay(
-										pair.inflow.date
-									)})
+								<!-- From on one line, to on the next behind its arrow; each date holds to its account's last word.
+								     Run together, a long name left the arrow ending a line and a date alone on the last (pass 8). -->
+								<span class="route">
+									<span>{withDate(pair.outflow)}</span>
+									<span class="to"><Arrow />{withDate(pair.inflow)}</span>
 								</span>
 								<span class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</span
 								>
@@ -116,5 +118,11 @@
 		align-items: baseline;
 		gap: var(--space-xs) var(--space-md);
 		overflow-wrap: anywhere;
+	}
+	.route > span {
+		display: block;
+	}
+	.to :global(.arrow) {
+		margin-inline: 0 var(--space-xs);
 	}
 </style>

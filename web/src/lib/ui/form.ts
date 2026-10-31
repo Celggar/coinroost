@@ -44,6 +44,78 @@ export function check(form: HTMLFormElement): Errors {
 	return errors;
 }
 
+/** Pinned to the window (a bar): it does not move with the page, so the page's edge never cuts it. */
+function pinned(element: Element): boolean {
+	for (let a: Element | null = element; a; a = a.parentElement) {
+		const position = getComputedStyle(a).position;
+		if (position === 'fixed' || position === 'sticky') return true;
+	}
+	return false;
+}
+
+/** Where the page's content is cut at the top: under a bar pinned there, else the window's edge. The scroll padding
+ * is breathing room, not a cover: on the sign-in pages nothing hides the 16 px above it. */
+function coverTop(): number {
+	for (let a = document.elementFromPoint(innerWidth / 2, 1); a; a = a.parentElement) {
+		const position = getComputedStyle(a).position;
+		if (position === 'fixed' || position === 'sticky')
+			return Math.max(0, a.getBoundingClientRect().bottom);
+	}
+	return 0;
+}
+
+/**
+ * The page position nearest `y` whose cut line at the top goes through no line of text and no picture: up to show
+ * what it would cut whole, else down past it, within `lo`–`hi`. A heading cut in half at the top looked broken
+ * (pass 8).
+ */
+function uncut(y: number, lo: number, hi: number): number {
+	const line = coverTop();
+	const boxes = [
+		...document.querySelectorAll<HTMLElement>('h1, h2, h3, p, label, legend, li, img, [data-whole]')
+	]
+		.map((e) => ({ e, r: e.getBoundingClientRect() }))
+		.filter(({ e, r }) => r.height > 2 && !pinned(e))
+		.map(({ r }) => ({ top: r.top + scrollY, bottom: r.bottom + scrollY }));
+	// The page cannot go above its start or past its end: a position out there is no answer.
+	const max = document.documentElement.scrollHeight - innerHeight;
+	const cut = (at: number) => boxes.filter((b) => b.top < at + line && at + line < b.bottom);
+	const start = Math.min(Math.max(y, 0), max);
+	for (const way of [-1, 1]) {
+		let at = start;
+		for (let crossing = cut(at); crossing.length; crossing = cut(at)) {
+			at =
+				way < 0
+					? Math.min(...crossing.map((b) => b.top)) - line
+					: Math.max(...crossing.map((b) => b.bottom)) - line;
+			if (at < 0 || at > max) break;
+		}
+		if (at >= Math.max(lo, 0) && at <= Math.min(hi, max) && !cut(at).length) return at;
+	}
+	return start;
+}
+
+const behavior = (): ScrollBehavior => (prefersReducedMotion.current ? 'auto' : 'smooth');
+
+/** The page's top and bottom edges for content, inside the bars' room (its scroll padding). */
+function edges() {
+	const page = getComputedStyle(document.documentElement);
+	return {
+		top: parseFloat(page.scrollPaddingTop) || 0,
+		bottom: innerHeight - (parseFloat(page.scrollPaddingBottom) || 0),
+		bar: parseFloat(page.getPropertyValue('--bar-height')) || 0
+	};
+}
+
+/** Where a field's context starts: its label when it has one, else the field. */
+function labelTop(control: HTMLElement): number {
+	const label = 'labels' in control ? (control as HTMLInputElement).labels?.[0] : undefined;
+	return Math.min(
+		control.getBoundingClientRect().top,
+		label?.getBoundingClientRect().top ?? Infinity
+	);
+}
+
 /**
  * Focuses a field and shows it in context: its form from the title, when the title down to the field fits on screen;
  * else the field with its label. Scrolled to by itself, a field landed on the screen's edge with its label and its
@@ -54,21 +126,44 @@ export function focusShown(
 	form: HTMLElement = control.closest('form') ?? control
 ) {
 	control.focus({ preventScroll: true });
-	const page = getComputedStyle(document.documentElement);
-	const top = parseFloat(page.scrollPaddingTop) || 0;
-	const bottom = innerHeight - (parseFloat(page.scrollPaddingBottom) || 0);
-	const bar = parseFloat(page.getPropertyValue('--bar-height')) || 0;
+	const { top, bottom, bar } = edges();
 	const field = control.getBoundingClientRect();
-	const labelled = ('labels' in control && (control as HTMLInputElement).labels?.[0]) || control;
-	const label = labelled.getBoundingClientRect();
 	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();
-	const behavior = prefersReducedMotion.current ? 'auto' : 'smooth';
-	if (field.bottom - form.getBoundingClientRect().top <= bottom - top) {
+	const start = form.getBoundingClientRect().top;
+	if (field.bottom - start <= bottom - top) {
 		// The title above the screen or under its bar, or the field below the screen.
-		if (title.top < bar || field.bottom > bottom) form.scrollIntoView({ block: 'start', behavior });
-	} else if (Math.min(label.top, field.top) < top || field.bottom > bottom) {
-		control.scrollIntoView({ block: 'center', behavior });
+		if (title.top < bar || field.bottom > bottom) {
+			const y = scrollY + start - top;
+			const lo = Math.max(0, scrollY + field.bottom - bottom);
+			const hi = scrollY + labelTop(control) - top;
+			scrollTo({ top: uncut(y, lo, hi), behavior: behavior() });
+		}
+	} else if (labelTop(control) < top || field.bottom > bottom) {
+		control.scrollIntoView({ block: 'center', behavior: behavior() });
 	}
+}
+
+/** Resolves once the page stops scrolling (a smooth scroll started just before is still on its way). */
+async function still() {
+	for (let last = NaN, frames = 0; frames < 60; frames++) {
+		await new Promise((done) => requestAnimationFrame(done));
+		if (scrollY === last) return;
+		last = scrollY;
+	}
+}
+
+/**
+ * Moves the page down just enough to show `end` (a form's send button under its message), without leaving the top edge
+ * through a line of text or a picture: what it would cut goes out whole. `keep`, the field with the focus, stays on
+ * screen with its label whatever is cut.
+ */
+export async function showBelow(end: HTMLElement, keep: HTMLElement) {
+	await still();
+	const { top, bottom } = edges();
+	const lo = scrollY + end.getBoundingClientRect().bottom - bottom;
+	if (lo <= scrollY) return;
+	const hi = Math.max(lo, scrollY + labelTop(keep) - top);
+	scrollTo({ top: uncut(lo, lo, hi), behavior: behavior() });
 }
 
 /** Moves the focus to the first field, in the form's order, that has an error. */

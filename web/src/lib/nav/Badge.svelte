@@ -54,6 +54,8 @@
 			border: 1px solid CanvasText;
 			background: Canvas;
 			color: CanvasText;
+			/* The amber badge's inner ring stayed and tinted it cream next to the plain one (pass 8). */
+			box-shadow: none;
 		}
 	}
 </style>
