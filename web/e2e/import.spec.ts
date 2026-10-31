@@ -347,6 +347,34 @@ test('a rule moved up keeps its focused button on screen', async ({ context }) =
 	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
 });
 
+test('a failed recovery status offers no codes to make', async ({ context }) => {
+	const page = await loggedIn(context);
+	// «Crear códigos» while the status is unknown would replace codes the person may already have.
+	await page.route('**/api/v1/me/recovery-codes', (route) =>
+		route.request().method() === 'GET'
+			? route.fulfill({
+					status: 503,
+					contentType: 'application/problem+json',
+					body: '{"status":503}'
+				})
+			: route.continue()
+	);
+	await page.goto('/security');
+	const codes = page.getByRole('region', { name: say('security.codes_title') });
+	await expect(codes.getByRole('alert')).toBeVisible();
+	await expect(
+		codes.getByRole('button', { name: say('security.confirm'), exact: true })
+	).toHaveCount(0);
+	await expect(
+		codes.getByRole('button', { name: say('security.regenerate'), exact: true })
+	).toHaveCount(0);
+	await page.unroute('**/api/v1/me/recovery-codes');
+	await codes.getByRole('button', { name: say('app.try_again') }).click();
+	await expect(
+		codes.getByRole('button', { name: say('security.confirm'), exact: true })
+	).toBeVisible();
+});
+
 test('switches to English and remembers it after a reload', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.goto('/accounts');

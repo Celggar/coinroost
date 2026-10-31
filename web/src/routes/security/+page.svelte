@@ -141,10 +141,13 @@
 		{#key mode}
 			<div class="mode" in:rise={{ delay: 100 }} out:swapOut>
 				{#if mode === 'view'}
-					<!-- With no codes yet there is nothing to replace: the button makes the first ones. -->
-					<button type="button" class="primary" onclick={ask} bind:this={regenerateButton}
-						>{status?.created_at ? t('security.regenerate') : t('security.confirm')}</button
-					>
+					<!-- With no codes yet there is nothing to replace: the button makes the first ones. Only once the status is
+					     known: before it, or when it failed, «Crear códigos» would replace codes the person may have. -->
+					{#if status}
+						<button type="button" class="primary" onclick={ask} bind:this={regenerateButton} in:rise
+							>{status.created_at ? t('security.regenerate') : t('security.confirm')}</button
+						>
+					{/if}
 				{:else if mode === 'confirm'}
 					<form novalidate oninput={() => (codeError = '')} class="stack" onsubmit={regenerate}>
 						{#if status?.created_at}<p class="hint">{t('security.regenerate_note')}</p>{/if}
@@ -225,6 +228,10 @@
 	.cell {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
+	}
+	/* Nothing to do yet (the status did not load): no empty row adding a gap under the alert. */
+	.cell:not(:has(.mode > *)) {
+		display: none;
 	}
 	.mode {
 		grid-area: 1 / 1;
