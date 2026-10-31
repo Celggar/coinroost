@@ -112,7 +112,7 @@
 					out:stepOut={{ direction: recovering ? 1 : -1 }}
 				>
 					{#if recovering}
-						<label>
+						<label class="recovery">
 							{t('login.recovery_code')}
 							<span class="hint">{t('login.recovery_hint')}</span>
 							<input
@@ -163,6 +163,13 @@
 		display: grid;
 		gap: 10px;
 		min-width: 0;
+	}
+	/* The recovery field takes the code field's place with its spacing: 6 px under the label, 8 px to the field. */
+	.recovery {
+		gap: 6px;
+	}
+	.recovery input {
+		margin-top: 2px;
 	}
 	.switch {
 		justify-self: start;

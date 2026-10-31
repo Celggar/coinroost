@@ -65,7 +65,8 @@ td {
 	vertical-align: top;
 }
 
-tr:last-child > td {
+tr:last-child > td,
+tbody tr:last-child > th {
 	border-bottom: 0;
 }
 
@@ -73,6 +74,11 @@ th {
 	background: var(--bg);
 	font-weight: 600;
 	white-space: nowrap;
+}
+
+/* A row's own header (the month in the summary's table) reads as a cell of its row: no column header's band. */
+tbody th {
+	background: none;
 }
 
 td.number,

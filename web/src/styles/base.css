@@ -239,6 +239,11 @@ select {
 	background-size: 5px 5px;
 	background-repeat: no-repeat;
 	cursor: pointer;
+	/* A long choice ends in an ellipsis before the chevron instead of being cut mid-word (pass 3, a bank file's
+	   name at 390 px); the open list shows it whole. */
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 @media (forced-colors: active) {
 	select {
