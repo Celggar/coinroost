@@ -90,14 +90,14 @@
 								>{item.latest ? day(item.latest) : '—'}</td
 							>
 							<td data-label={t('coverage.days_since')} class="number">{item.days_since ?? '—'}</td>
-							<td data-label={t('coverage.imported')}>
+							<td data-label={t('coverage.imported')} class="ranges">
 								{#each item.ranges as range (range.from)}
 									<div>{span(range.from, range.to)}</div>
 								{:else}
 									<span class="hint">{t('coverage.no_imports')}</span>
 								{/each}
 							</td>
-							<td data-label={t('coverage.gaps')}>
+							<td data-label={t('coverage.gaps')} class="ranges">
 								{#each item.gaps as gap (gap.from)}
 									<div>
 										<span class="chip {tones[gap.delay]}"
@@ -140,6 +140,12 @@
 	}
 	.date {
 		white-space: nowrap;
+	}
+	/* In the wide table a range stays on one line; the account's name, which wraps well, gives up the room. */
+	@media (min-width: 900px) {
+		.ranges div {
+			white-space: nowrap;
+		}
 	}
 	td div + div {
 		margin-top: var(--space-xs);

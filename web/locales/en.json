@@ -16,7 +16,7 @@
 	"nav.more": "More",
 	"nav.skip": "Skip to content",
 	"nav.badge_review": "{count} to review",
-	"nav.badge_accounts": "{count} behind",
+	"nav.badge_accounts": "{count} without recent data",
 	"more.title": "More",
 	"more.language": "Language",
 	"more.signed_in": "Signed in as {email}",
