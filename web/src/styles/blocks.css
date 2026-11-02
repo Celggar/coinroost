@@ -225,11 +225,15 @@ th.number {
 	color: var(--warn);
 }
 
+/* As tall as the line it sits in (`lh` in line-height is the parent's), so it fills that line from its top: 2 px
+   taller, it hung below its row and its words sat 1.5–2.8 px lower than the row's (pass 12). */
 .chip {
 	display: inline-block;
+	vertical-align: top;
 	border-radius: 999px;
 	padding: var(--space-2xs) var(--space-sm);
 	font-size: var(--text-xs);
+	line-height: calc(1lh - 2 * var(--space-2xs));
 	font-weight: 600;
 	white-space: nowrap;
 }
@@ -249,19 +253,24 @@ th.number {
 	color: var(--bad);
 }
 
+/* Its edge is drawn inside, taking no room: a border made it 2 px taller than its line. */
 .chip.none {
 	background: var(--bg);
 	color: var(--muted);
-	border: 1px solid var(--border);
+	outline: 1px solid var(--border);
+	outline-offset: -1px;
 }
 
 /* Forced colors drop the tints: a frame keeps a chip a chip, not a loose word set in from its column, and a notice or
    an error a box, not a paragraph set in from the card's edge (pass 7). */
 @media (forced-colors: active) {
-	.chip,
 	.alert,
 	.notice {
 		border: 1px solid CanvasText;
+	}
+	.chip {
+		outline: 1px solid CanvasText;
+		outline-offset: -1px;
 	}
 }
 

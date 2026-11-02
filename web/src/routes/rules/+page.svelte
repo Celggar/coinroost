@@ -107,6 +107,14 @@
 		await load();
 		if (fromQueue) {
 			await tick();
+			// What stood in for the page leaves the flow as it fades, and the bar settles its height: measured before
+			// that, the landing aimed 32 px off and left a label across the bar (pass 12).
+			await Promise.all(
+				document
+					.getAnimations()
+					.filter((a) => a.effect?.getTiming().iterations !== Infinity)
+					.map((a) => a.finished.catch(() => undefined))
+			);
 			const form = document.getElementById('new-category');
 			const name = form?.querySelector('input');
 			// The form from its title, its name field focused and its button in view.

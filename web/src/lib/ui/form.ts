@@ -54,14 +54,18 @@ function pinned(element: Element): boolean {
 }
 
 /** Where the page's content is cut at the top: under a bar pinned there, else the window's edge. The scroll padding
- * is breathing room, not a cover: on the sign-in pages nothing hides the 16 px above it. */
+ * is breathing room, not a cover: on the sign-in pages nothing hides the 16 px above it. While a page's view
+ * transition runs, the point hits the transition's layer, not the bar: the bar's known height stands in, or a landing
+ * measured against no bar left a label across it (pass 12). */
 function coverTop(): number {
 	for (let a = document.elementFromPoint(innerWidth / 2, 1); a; a = a.parentElement) {
 		const position = getComputedStyle(a).position;
 		if (position === 'fixed' || position === 'sticky')
 			return Math.max(0, a.getBoundingClientRect().bottom);
 	}
-	return 0;
+	return (
+		parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-height')) || 0
+	);
 }
 
 /**
