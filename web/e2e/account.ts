@@ -15,6 +15,12 @@ export async function openAccount(page: Page, language: 'es' | 'en' = 'es') {
 	if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
 }
 
+/** Picks a language in the account's panel. */
+export async function pickLanguage(page: Page, name: string, language: 'es' | 'en' = 'es') {
+	await openAccount(page, language);
+	await page.getByRole('radio', { name }).check();
+}
+
 /** Logs out through the account's panel. */
 export async function logOut(page: Page) {
 	await openAccount(page);

@@ -1,6 +1,6 @@
-// The app through the browser in Spanish, against a real server (see run.sh): log in, create an account, preview
-// and import a statement, import it again, sort, pair transfers, read the coverage and the dashboard, and switch
-// to English.
+// The app in Spanish against a real server (see run.sh): log in, make an account, import a statement twice, sort,
+// pair transfers, read the coverage and the dashboard (rules live in rules.spec); English last, as the account
+// keeps the pick.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
@@ -8,7 +8,7 @@ import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
-import { openAccount } from './account.ts';
+import { pickLanguage } from './account.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
@@ -501,30 +501,6 @@ test('a failed money summary on Transfers offers to try again', async ({ context
 	expect(await drops()).toEqual([]);
 });
 
-test('switches to English and remembers it after a reload', async ({ context }) => {
-	const page = await loggedIn(context);
-	await page.goto('/accounts');
-	await openAccount(page);
-	await page.getByRole('radio', { name: 'English' }).check();
-	const heading = page.getByRole('heading', { name: english('accounts.title'), exact: true });
-	await expect(heading).toBeVisible();
-	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-	await page.reload();
-	await expect(heading).toBeVisible();
-	await expect(page.getByRole('link', { name: english('nav.summary'), exact: true })).toBeVisible();
-	// Dates follow the language.
-	await page.getByRole('link', { name: english('nav.coverage'), exact: true }).click();
-	await expect(page.getByRole('row', { name: /Checking/ })).toContainText('May 31, 2026');
-
-	// The pick is saved on the account, which the next tests read in Spanish: back to it, saved.
-	const saved = page.waitForResponse(
-		(response) => response.url().endsWith('/api/v1/me') && response.request().method() === 'PATCH'
-	);
-	await openAccount(page, 'en');
-	await page.getByRole('radio', { name: 'Español' }).check();
-	expect((await saved).ok()).toBe(true);
-});
-
 test('every page fits a 390 px screen', async ({ browser }) => {
 	const phone = await browser.newContext({
 		viewport: { width: 390, height: 844 },
@@ -591,4 +567,19 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		await page.close();
 	}
 	await phone.close();
+});
+
+test('switches to English and remembers it after a reload', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.goto('/accounts');
+	await pickLanguage(page, 'English');
+	const heading = page.getByRole('heading', { name: english('accounts.title'), exact: true });
+	await expect(heading).toBeVisible();
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+	await page.reload();
+	await expect(heading).toBeVisible();
+	await expect(page.getByRole('link', { name: english('nav.summary'), exact: true })).toBeVisible();
+	// Dates follow the language.
+	await page.getByRole('link', { name: english('nav.coverage'), exact: true }).click();
+	await expect(page.getByRole('row', { name: /Checking/ })).toContainText('May 31, 2026');
 });
