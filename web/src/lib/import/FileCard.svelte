@@ -4,7 +4,7 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, lift, rise, vanish } from '#lib/motion.ts';
+	import { followContent, lift, rise, swapIn, swapOut, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -264,24 +264,27 @@
 					</details>
 				{/if}
 
-				<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
-				{#if report}
-					<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
-						<span class="check" aria-hidden="true"></span>
-						{t('file.imported')}
-					</p>
-				{:else}
-					<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
-					{#if reading.new === 0}
+				<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). The
+				     button and the line that replaces it share one cell: the button fades out, keeping the focus until the
+				     line takes it, then the line rises in its place. In a block inside another, the button left in one
+				     frame and the focus fell to the page (pass 19). Nothing new: the notice says so, and no button is
+				     shown that could not be pressed. -->
+				<div class="in-place">
+					{#if report}
+						<p class="result" tabindex="-1" bind:this={resultLine} in:swapIn>
+							<span class="check" aria-hidden="true"></span>
+							{t('file.imported')}
+						</p>
+					{:else if reading.new === 0}
 						<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
 					{:else}
-						<div class="actions" out:vanish>
+						<div class="actions" out:swapOut>
 							<button onclick={() => busy || commit()} aria-disabled={busy}>
 								{plural(reading.new, 'file.import_one', 'file.import_other')}
 							</button>
 						</div>
 					{/if}
-				{/if}
+				</div>
 			</div>
 		{/if}
 	</div>

@@ -121,6 +121,7 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	const why = (await reason.textContent())?.trim();
 	expect([say('problem.file_unreadable'), say('problem.file_missing_columns')]).toContain(why);
 
+	const drops = await watchDrops(page);
 	await card
 		.getByRole('button', { name: say('file.import_other', { count: transactions }) })
 		.click();
@@ -128,7 +129,8 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	const added = say('file.added_other', { count: transactions });
 	await expect(page.getByRole('status').filter({ hasText: added })).toHaveText(added);
 	await expect(card.getByText(added)).toHaveCount(0);
-	await expect(card.getByText(say('file.imported'))).toBeVisible();
+	await expect(card.getByText(say('file.imported'))).toBeFocused();
+	expect(await drops()).toEqual([]);
 	// The card is the record of that import: it says what it added, like the notice, not «0 new».
 	await expect(count(card, say('file.added'))).toHaveText(String(transactions));
 	await expect(count(card, say('file.already'))).toHaveText('0');
