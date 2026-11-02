@@ -139,3 +139,37 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await logInWithRecovery(page, renewed[0]);
 	await expect(page).toHaveURL(/\/authenticator$/);
 });
+
+test('the login swaps its second step by a fade through, the two never at once', async ({
+	page
+}) => {
+	await page.goto('/login');
+	const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
+	await expect(swap).toBeVisible();
+	// Once the login's entrance has played (the glows run for ever and do not count).
+	await page.waitForFunction(() =>
+		document
+			.getAnimations()
+			.every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)
+	);
+	// Every frame: how many of the second step's blocks show in its one cell. Crossing, the code's hint and the
+	// recovery code's were drawn over each other halfway (pass 19).
+	await page.evaluate(() => {
+		const w = window as unknown as { shown: number[] };
+		w.shown = [];
+		const cell = document.querySelector('.swap')!.parentElement!;
+		const step = () => {
+			w.shown.push(
+				[...cell.children].filter((e) => Number(getComputedStyle(e).opacity) > 0.02).length
+			);
+			if (w.shown.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await swap.click();
+	await page.waitForFunction(() => (window as unknown as { shown: number[] }).shown.length >= 60);
+	const shown = await page.evaluate(() => (window as unknown as { shown: number[] }).shown);
+	expect(shown.filter((count) => count > 1)).toEqual([]);
+	expect(shown.at(-1)).toBe(1);
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
+});

@@ -197,9 +197,15 @@ export function arrive(node: Element): TransitionConfig {
 	});
 }
 
-/** In and out of a step: slides in from the side it comes from (`direction` 1 forward, -1 back). */
+/**
+ * Into a step: once the step it replaces has faded out, it slides in from the side it comes from (`direction` 1
+ * forward, -1 back), as in Material 3's shared axis, the two never at once. Crossing, «Paso 1 de 3» was drawn over
+ * «Paso 2 de 3» halfway (pass 19). With reduced motion it only fades, after the same wait.
+ */
 export function stepIn(node: Element, { direction = 1 } = {}): TransitionConfig {
+	const leaving = [...(node.parentElement?.children ?? [])].some((e) => e !== node);
 	return fly(node, {
+		delay: leaving ? FADED : 0,
 		x: still() ? 0 : 32 * direction,
 		duration: DURATION.medium,
 		easing: EASE.enter
@@ -224,12 +230,12 @@ export function swapOut(node: Element): TransitionConfig {
 	return vanish(node);
 }
 
-/** Out of a step (a `{#key}` block), shut ([`shut`]). */
+/** Out of a step (a `{#key}` block), shut ([`shut`]): a quick fade, sliding to the side it leaves by. */
 export function stepOut(node: Element, { direction = 1 } = {}): TransitionConfig {
 	shut(node);
 	return fly(node, {
 		x: still() ? 0 : -32 * direction,
-		duration: DURATION.exit,
+		duration: DURATION.short,
 		easing: EASE.exit
 	});
 }
