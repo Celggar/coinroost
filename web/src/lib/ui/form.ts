@@ -76,7 +76,10 @@ function coverTop(): number {
 function uncut(y: number, lo: number, hi: number, loose = lo): number {
 	const line = coverTop();
 	const boxes = [
-		...document.querySelectorAll<HTMLElement>('h1, h2, h3, p, label, legend, li, img, [data-whole]')
+		// A tile's label and figure are lines too: a `dt` stood 3.3 px under the bar (pass 13).
+		...document.querySelectorAll<HTMLElement>(
+			'h1, h2, h3, p, label, legend, li, dt, dd, img, [data-whole]'
+		)
 	]
 		.map((e) => ({ e, r: e.getBoundingClientRect() }))
 		.filter(({ e, r }) => r.height > 2 && !pinned(e))
@@ -211,6 +214,41 @@ export async function keepWhole() {
 	const hi = focused ? scrollY + focused.top - top : Infinity;
 	const y = uncut(scrollY, lo, hi);
 	if (Math.abs(y - scrollY) >= 1) scrollTo({ top: y, behavior: behavior() });
+}
+
+/** Resolves once the page's content stands still: its entrances, exits and glides done and no scroll on its way. */
+async function settled() {
+	await new Promise((done) => requestAnimationFrame(done));
+	const running = document.querySelector('main')?.getAnimations({ subtree: true }) ?? [];
+	await Promise.all(
+		running
+			.filter((a) => a.effect?.getTiming().iterations !== Infinity)
+			.map((a) => a.finished.catch(() => undefined))
+	);
+	await new Promise((done) => requestAnimationFrame(done));
+	await still();
+}
+
+/**
+ * Once the page settles, moves it the least that shows `box`, down to `end`, inside the bars' room (as
+ * `scrollIntoView` with `nearest` would), smoothly and where no line of text is cut at the top; when it shows already,
+ * only as far as a cut line asks. The browser's own scroll to a focused element jumped in one frame and left a title
+ * across the top bar, and a list that left at the page's end pulled the page back under it (pass 13: a rule moved up,
+ * a pair confirmed).
+ */
+export async function showWhole(box: HTMLElement, end: HTMLElement = box) {
+	await settled();
+	if (!box.isConnected) return;
+	const { top, bottom, floor } = edges();
+	const r = { top: box.getBoundingClientRect().top, bottom: end.getBoundingClientRect().bottom };
+	// The positions that show it: from `lo` its bottom is above the bottom bar's room, up to `hi` its top is below
+	// the top bar's. Taller than the room: its top.
+	const lo = Math.min(scrollY + r.bottom - bottom, scrollY + r.top - top);
+	const hi = scrollY + r.top - top;
+	const y = Math.min(Math.max(scrollY, lo), hi);
+	const loose = Math.min(lo, Math.max(0, scrollY + r.bottom - floor));
+	const at = uncut(y, lo, hi, loose);
+	if (Math.abs(at - scrollY) >= 1) scrollTo({ top: at, behavior: behavior() });
 }
 
 /** Moves the focus to the first field, in the form's order, that has an error. */

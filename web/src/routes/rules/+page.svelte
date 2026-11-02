@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { prefersReducedMotion } from 'svelte/motion';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import Changes from '#lib/rules/Changes.svelte';
@@ -11,7 +10,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { focusShown, keepWhole } from '#lib/ui/form.ts';
+	import { focusShown, keepWhole, showWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { arrive, glide, placeholder, pop, rise, vanish } from '#lib/motion.ts';
 
@@ -61,16 +60,11 @@
 		// The buttons were disabled while it moved, which drops the focus: it follows the rule, to the same button,
 		// or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).
 		await tick();
-		if (!focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`)) return;
-		// The rule glides to its place after the focus went to it: once it lands, the page follows it, or near the
+		const moved = focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`);
+		// The rule glides to its place after the focus went to it: once it lands, the page shows it whole, or near the
 		// top of the screen the focus ended above it (pass 7).
-		const row = (document.activeElement as HTMLElement).closest('li');
-		await new Promise(requestAnimationFrame);
-		await Promise.all(row?.getAnimations().map((a) => a.finished.catch(() => undefined)) ?? []);
-		row?.scrollIntoView({
-			block: 'nearest',
-			behavior: prefersReducedMotion.current ? 'auto' : 'smooth'
-		});
+		const row = moved?.closest('li');
+		if (row) await showWhole(row);
 	}
 
 	async function remove(rule: Schemas['Rule']) {
@@ -138,7 +132,7 @@
 		>
 	</p>
 {:else if loaded}
-	<div class="stack" in:arrive>
+	<div class="stack rules-page" in:arrive>
 		<div class="in-place">
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:rise out:vanish>
@@ -203,6 +197,13 @@
 {/if}
 
 <style>
+	/* While this page shows, the browser does not anchor the scroll: a rule moved up kept its place on screen by the
+	   browser moving the page 218 px in one frame, its title left across the top bar; with only the list or the page's
+	   content left out, what followed it became the anchor and the page jumped 32 px when the list got shorter
+	   (pass 13). The rule glides and the page follows it. */
+	:global(html:has(.rules-page)) {
+		overflow-anchor: none;
+	}
 	.rules {
 		list-style: none;
 		margin: 0;

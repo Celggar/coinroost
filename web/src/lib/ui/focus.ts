@@ -3,20 +3,22 @@ import { tick } from 'svelte';
 // Where the focus goes after an action that removes what had it.
 
 /**
- * Focuses the first element, trying the selectors in order, that is staying on the page. Svelte makes an element
- * inert while it animates out, and focus() on it does nothing, so a match inside an inert subtree is skipped.
+ * Focuses the first element, trying the selectors in order, that is staying on the page, and returns it. Svelte makes
+ * an element inert while it animates out, and focus() on it does nothing, so a match inside an inert subtree is
+ * skipped. The page does not move: the caller shows what it needs with `showWhole` once it settles (the browser's own
+ * scroll jumped in one frame and left a title across the top bar, pass 13).
  */
-export function focusOn(...selectors: string[]): boolean {
+export function focusOn(...selectors: string[]): HTMLElement | null {
 	for (const selector of selectors) {
 		const target = [...document.querySelectorAll<HTMLElement>(selector)].find(
 			(e) => !e.closest('[inert]')
 		);
 		if (target) {
-			target.focus();
-			return true;
+			target.focus({ preventScroll: true });
+			return target;
 		}
 	}
-	return false;
+	return null;
 }
 
 /**

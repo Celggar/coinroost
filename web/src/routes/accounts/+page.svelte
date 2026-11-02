@@ -7,7 +7,7 @@
 	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, drop, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -118,8 +118,12 @@
 		namespaceEdited = false;
 		markers = '';
 		cardPrefixes = '';
-		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next.
-		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
+		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next,
+		// and the form shows from its title. Scrolled to by the browser, the page jumped in one frame (pass 13).
+		const field = form.elements.namedItem('name') as HTMLInputElement | null;
+		field?.focus({ preventScroll: true });
+		await tick();
+		if (field) focusShown(field, form);
 	}
 
 	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */

@@ -351,6 +351,53 @@ test('a rule moved up keeps its focused button on screen', async ({ context }) =
 	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
 });
 
+test('on a phone a rule moved up glides, then lands with no line across the bar', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	const made: string[] = [];
+	for (const name of ['Landing A', 'Landing B']) {
+		const response = await page.request.post('/api/v1/rules', {
+			data: {
+				name,
+				when: { description_contains: name.toUpperCase() },
+				then: { payee_from_text: true }
+			}
+		});
+		expect(response.ok()).toBe(true);
+		made.push((await response.json()).id);
+	}
+	await page.goto('/rules');
+	// The browser's scroll anchoring kept the moved rule still by moving the page in one frame, its title across the
+	// top bar, and the page then landed with a line flush under the bar (pass 13: 365 → 147, 300 → 17).
+	const up = page.locator(`[data-move="${made[1]}-up"]`);
+	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 210));
+	const start = await page.evaluate(() => scrollY);
+	await up.click();
+	// The rules have swapped once the one above, now last, has no «Bajar»: the page has not moved yet.
+	await expect(page.locator(`[data-move="${made[0]}-down"]`)).toHaveCount(0);
+	expect(await page.evaluate(() => scrollY)).toBe(start);
+	const row = page.locator('.rules > li', { has: page.locator(`[data-move^="${made[1]}-"]`) });
+	await row.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
+	let last = NaN;
+	await expect
+		.poll(async () => last === (last = await page.evaluate(() => scrollY)), { intervals: [500] })
+		.toBe(true);
+	const cut = await page.evaluate(() => {
+		const bar = document.querySelector('header.appbar')!.getBoundingClientRect().bottom;
+		return [...document.querySelectorAll('main h2, main p')]
+			.flatMap((e) => {
+				const range = document.createRange();
+				range.selectNodeContents(e);
+				return [...range.getClientRects()];
+			})
+			.filter((r) => r.height > 2 && r.top < bar + 8 && r.bottom > bar).length;
+	});
+	expect(cut).toBe(0);
+	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+});
+
 test('a failed recovery status offers no codes to make', async ({ context }) => {
 	const page = await loggedIn(context);
 	// «Crear códigos» while the status is unknown would replace codes the person may already have.

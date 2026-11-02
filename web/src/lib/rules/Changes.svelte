@@ -5,6 +5,7 @@
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
+	import { showWhole } from '#lib/ui/form.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
@@ -39,9 +40,12 @@
 			return;
 		}
 		preview = data;
-		// The answer may land below the window or under the bottom bar: the focus takes it there.
+		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
-		focusOn(data.changes.length ? '#changes-some' : '#changes-none');
+		const answer = focusOn(data.changes.length ? '#changes-some' : '#changes-none');
+		// The answer whole, down to the button that applies it: its first line alone left the changes below the screen.
+		const send = answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions');
+		if (answer) await showWhole(answer, send ?? answer);
 	}
 
 	async function apply() {

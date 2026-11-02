@@ -4,7 +4,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { pop } from '#lib/motion.ts';
 
@@ -13,7 +13,7 @@
 	let {
 		oncreated,
 		back = false
-	}: { oncreated: (category: Schemas['Category']) => void; back?: boolean } = $props();
+	}: { oncreated: (category: Schemas['Category']) => unknown; back?: boolean } = $props();
 	let made = $state(false);
 
 	let name = $state('');
@@ -54,8 +54,11 @@
 		notify(t('categoryform.created', { name: data.name }));
 		made = true;
 		name = '';
-		oncreated(data);
-		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
+		// Back to the form for the next one, with the page still until it has reloaded (as the rule form does).
+		const field = form.elements.namedItem('name') as HTMLInputElement | null;
+		field?.focus({ preventScroll: true });
+		await oncreated(data);
+		if (field) focusShown(field, form);
 	}
 </script>
 

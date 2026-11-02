@@ -7,6 +7,7 @@
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
+	import { showWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -44,7 +45,8 @@
 		// the page has reloaded and the lists have their new size.
 		await onchanged();
 		await tick();
-		if (data) focusOn('#made-title');
+		const title = data ? focusOn('#made-title') : null;
+		if (title) await showWhole(title);
 	}
 
 	const withDate = (leg: { account_id: string; date: string }) =>

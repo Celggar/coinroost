@@ -5,7 +5,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -17,7 +17,7 @@
 		categories: Schemas['Category'][];
 		payees: Schemas['Payee'][];
 		accounts: Schemas['Account'][];
-		oncreated: (rule: Schemas['Rule']) => void;
+		oncreated: (rule: Schemas['Rule']) => unknown;
 	} = $props();
 
 	let name = $state('');
@@ -96,9 +96,13 @@
 		notify(t('ruleform.added', { name: data.name, position: data.position }));
 		name = text = min = max = category = payee = account = '';
 		direction = '';
-		oncreated(data);
-		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next.
-		(form.elements.namedItem('name') as HTMLInputElement | null)?.focus();
+		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next,
+		// at once and with the page still; once the page has the new rule, the form shows from its title. Scrolled to
+		// by the browser, the page jumped 725 px in one frame (pass 13).
+		const field = form.elements.namedItem('name') as HTMLInputElement | null;
+		field?.focus({ preventScroll: true });
+		await oncreated(data);
+		if (field) focusShown(field, form);
 	}
 </script>
 
