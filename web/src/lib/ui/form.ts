@@ -2,7 +2,7 @@ import { prefersReducedMotion } from 'svelte/motion';
 // Form checks in the page's language (FD5). Forms set `novalidate`, so the browser never shows its own bubble (in the
 // browser's language, outside the page); these read the same constraints (`required`, `maxlength`, `type`,
 // `pattern`, `min`/`max`) and give each invalid field its message, keyed by the field's `name`.
-import { i18n, t } from '#lib/i18n.svelte.ts';
+import { has, i18n, t } from '#lib/i18n.svelte.ts';
 
 export type Errors = Record<string, string>;
 
@@ -21,6 +21,9 @@ function message(control: Control): string {
 	if (validity.rangeUnderflow) return t('form.min', { min: (control as HTMLInputElement).min });
 	if (validity.rangeOverflow) return t('form.max', { max: (control as HTMLInputElement).max });
 	if (validity.customError) return control.validationMessage;
+	// A field that mirrors an API rule names the API's own words for it (`data-format`), so both say the same.
+	const format = control.dataset.format;
+	if (validity.patternMismatch && format && has(format)) return t(format);
 	if (control.inputMode === 'decimal') return t('form.amount');
 	return t('form.format');
 }
@@ -240,13 +243,17 @@ export async function showWhole(box: HTMLElement, end: HTMLElement = box) {
 	await settled();
 	if (!box.isConnected) return;
 	const { top, bottom, floor } = edges();
-	const r = { top: box.getBoundingClientRect().top, bottom: end.getBoundingClientRect().bottom };
-	// The positions that show it: from `lo` its bottom is above the bottom bar's room, up to `hi` its top is below
-	// the top bar's. Taller than the room: its top.
-	const lo = Math.min(scrollY + r.bottom - bottom, scrollY + r.top - top);
-	const hi = scrollY + r.top - top;
+	const head = box.getBoundingClientRect();
+	const foot = end.getBoundingClientRect().bottom;
+	// Up to `hi` the box's top is below the top bar's room; from `lo` all of it, down to `end`, is above the bottom
+	// bar's, or as much as the page's end lets show. When no such place is free of cut lines, or it is taller than
+	// the room, it may go up as far as the box alone still shows (`loose`): with only its top allowed, or a place past
+	// the page's end, none was free (pass 14).
+	const max = document.documentElement.scrollHeight - innerHeight;
+	const hi = scrollY + head.top - top;
+	const lo = Math.min(scrollY + foot - bottom, hi, max);
 	const y = Math.min(Math.max(scrollY, lo), hi);
-	const loose = Math.min(lo, Math.max(0, scrollY + r.bottom - floor));
+	const loose = Math.min(lo, Math.max(0, scrollY + head.bottom - floor));
 	const at = uncut(y, lo, hi, loose);
 	if (Math.abs(at - scrollY) >= 1) scrollTo({ top: at, behavior: behavior() });
 }

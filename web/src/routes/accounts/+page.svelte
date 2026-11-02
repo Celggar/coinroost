@@ -228,7 +228,16 @@
 				</Field>
 				<Field label={t('accounts.currency')} name="currency" error={errors.currency}>
 					{#snippet children(wiring)}
-						<input {...wiring} required maxlength="3" bind:value={currency} />
+						<!-- The API's rules (validate.rs), checked before sending: one error per send took three sends for
+						     three (pass 14). -->
+						<input
+							{...wiring}
+							required
+							maxlength="3"
+							pattern={'[A-Za-z]{3}'}
+							data-format="problem.currency_unknown"
+							bind:value={currency}
+						/>
 					{/snippet}
 				</Field>
 				<Field
@@ -242,6 +251,8 @@
 							{...wiring}
 							required
 							maxlength="64"
+							pattern={'[a-z0-9][a-z0-9_\\-]{0,63}'}
+							data-format="problem.namespace_format"
 							value={namespaceEdited ? namespace : suggested}
 							oninput={(event) => {
 								namespace = event.currentTarget.value;

@@ -46,7 +46,8 @@
 		await onchanged();
 		await tick();
 		const title = data ? focusOn('#made-title') : null;
-		if (title) await showWhole(title);
+		// The list the pairs joined, or its start when it is taller than the screen.
+		if (title) await showWhole(title, title.closest('section') ?? title);
 	}
 
 	const withDate = (leg: { account_id: string; date: string }) =>

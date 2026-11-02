@@ -68,6 +68,18 @@ test('a key already taken is marked on «Clave», not as a loose English line', 
 	await expect(page.locator('main')).not.toContainText(ENGLISH);
 });
 
+test('every wrong field is marked at once, in the words the API would use', async () => {
+	// The API answers one field at a time: three wrong fields took three sends (pass 14). The form checks the API's
+	// currency and key rules before sending.
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('');
+	await page.getByLabel(say('accounts.currency'), { exact: true }).fill('us');
+	await page.getByLabel(say('accounts.key'), { exact: true }).fill('Bad Key!');
+	await page.getByRole('button', { name: say('accounts.create') }).click();
+	await fieldSays(say('accounts.name'), say('form.required'));
+	await fieldSays(say('accounts.currency'), say('problem.currency_unknown'));
+	await fieldSays(say('accounts.key'), say('problem.namespace_format'));
+});
+
 test('an amount that is not money is marked on its field before anything is sent', async () => {
 	await page.goto('/rules');
 	const form = page.getByRole('form', { name: say('ruleform.title') });

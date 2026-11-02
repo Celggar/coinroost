@@ -7,6 +7,7 @@
 	import { glide, rise, vanish } from '#lib/motion.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import Arrow from '#lib/ui/Arrow.svelte';
+	import { showWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 
@@ -47,7 +48,10 @@
 		// out of view (pass 3).
 		await onchanged();
 		await tick();
-		title?.focus();
+		// Without the browser's own scroll, which jumped and left a line of the list above cut at the window's top
+		// (pass 14): one smooth landing once the page settles, on the list itself, or its start when it is taller.
+		title?.focus({ preventScroll: true });
+		if (title) await showWhole(title, title.closest('section') ?? title);
 	}
 </script>
 
