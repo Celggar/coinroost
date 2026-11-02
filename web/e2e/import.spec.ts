@@ -276,21 +276,25 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await expect(page.getByText(say('made.none'))).toBeVisible();
 	await expect(waiting.getByRole('listitem')).toHaveCount(1);
 
-	// By hand: the same leg twice is refused with the API's reason in the page's language (never its English
-	// detail), under «Otro lado», which is marked and takes the focus; a new choice clears it; the right two pair.
+	// By hand: «Otro lado» never offers the leg chosen in «Un lado» (pass 19). An API refusal (two legs that do not
+	// cancel) shows in Spanish, never its English detail, under «Otro lado», marked and focused; sent again, they pair.
 	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
 	const outflow = '15 may 2026 · Checking · −$500.00 · TRANSF A CUENTA PROPIA';
 	const other = form.getByLabel(say('unmatched.other_side'));
 	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
-	await other.selectOption({ label: outflow });
+	await expect(other.getByRole('option', { name: outflow })).toBeDisabled();
+	await other.selectOption({ label: '15 may 2026 · Savings · +$500.00 · FROM CHECKING' });
+	const refusal = { status: 422, code: 'transfer_not_balanced', detail: 'they do not cancel' };
+	await page.route(
+		'**/api/v1/transfers',
+		(route) => route.fulfill({ status: 422, json: refusal }),
+		{ times: 1 }
+	);
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(other).toHaveAttribute('aria-invalid', 'true');
 	await expect(other).toBeFocused();
 	const reason = form.locator(`[id="${await other.getAttribute('aria-describedby')}"]`);
-	await expect(reason).toHaveText(say('problem.same_transaction'));
-	await other.selectOption({ label: '15 may 2026 · Savings · +$500.00 · FROM CHECKING' });
-	await expect(other).not.toHaveAttribute('aria-invalid', 'true');
-	await expect(form).not.toContainText(say('problem.same_transaction'));
+	await expect(reason).toHaveText(say('problem.transfer_not_balanced'));
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('unmatched.paired'));
 	await expect(made.getByRole('listitem')).toHaveCount(1);

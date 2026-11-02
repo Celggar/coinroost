@@ -165,6 +165,8 @@
 				onchange={(event) => {
 					errors = without(errors, event);
 					error = '';
+					// The leg chosen on one side is not offered on the other (pass 19): one chosen there before goes.
+					if (second === first) second = '';
 				}}
 				aria-label={t('unmatched.by_hand')}
 			>
@@ -186,7 +188,9 @@
 							<select {...wiring} bind:value={second} required>
 								<option value="" disabled>{t('unmatched.choose')}</option>
 								{#each choices as leg (leg.transaction_id)}
-									<option value={leg.transaction_id}>{legText(leg, names)}</option>
+									<option value={leg.transaction_id} disabled={leg.transaction_id === first}
+										>{legText(leg, names)}</option
+									>
 								{/each}
 							</select>
 						{/snippet}
