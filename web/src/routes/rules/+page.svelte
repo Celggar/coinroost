@@ -86,9 +86,9 @@
 		}
 	}
 
-	// A new rule opens its room in the list above the form while the page stands still (`grow`), so the form slides
-	// down and the rule's card can stand cut at the screen's top: once it lands, the page settles where nothing is cut
-	// (pass 9).
+	// A new rule opens its room in the list above the form (`grow`) and the page follows it, so the form holds its
+	// place on the screen while the rule's card may stand cut at the screen's top: once it lands, the page settles
+	// where nothing is cut (pass 9).
 	/** The new rule's place in the list, once the list has it (RuleForm shows it above the form). */
 	async function made(rule: Schemas['Rule']) {
 		await load();
