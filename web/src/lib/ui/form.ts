@@ -89,22 +89,28 @@ function uncut(
 	loose = lo,
 	max = document.documentElement.scrollHeight - innerHeight
 ): number {
+	const both = `${LINES}, ${CONTROLS}`;
+	// Within `lo` first, controls and then text alone, and only then down to `loose`: tried with the controls before
+	// the text alone, `loose` let a whole field at the top leave the send button below the screen (pass 14).
+	const strict: Ways = [
+		[-1, lo],
+		[1, lo]
+	];
+	const relaxed: Ways = [[-1, loose]];
 	return (
-		clean(`${LINES}, ${CONTROLS}`, y, lo, hi, loose, max) ??
-		clean(LINES, y, lo, hi, loose, max) ??
+		clean(both, strict, y, hi, max) ??
+		clean(LINES, strict, y, hi, max) ??
+		clean(both, relaxed, y, hi, max) ??
+		clean(LINES, relaxed, y, hi, max) ??
 		Math.min(Math.max(y, 0), max)
 	);
 }
 
-/** `uncut` for the boxes `selector` names; null when none of its places is free of them. */
-function clean(
-	selector: string,
-	y: number,
-	lo: number,
-	hi: number,
-	loose: number,
-	max: number
-): number | null {
+/** Directions to search, each with the least position it may end at: -1 up, 1 down. */
+type Ways = (readonly [-1 | 1, number])[];
+
+/** `uncut` for the boxes `selector` names, searching `ways`; null when none of its places is free of them. */
+function clean(selector: string, ways: Ways, y: number, hi: number, max: number): number | null {
 	const line = coverTop();
 	const boxes = [...document.querySelectorAll<HTMLElement>(selector)]
 		.map((e) => ({ e, r: e.getBoundingClientRect() }))
@@ -119,11 +125,7 @@ function clean(
 	const start = Math.min(Math.max(y, 0), max);
 	// The window first; then, when it holds no clean position, down to `loose`, which lets what must show sit in the
 	// breathing room above the bottom bar: at a page's end the only clean place was 16 px up (pass 12).
-	for (const [way, least] of [
-		[-1, lo],
-		[1, lo],
-		[-1, loose]
-	] as const) {
+	for (const [way, least] of ways) {
 		let at = start;
 		for (let crossing = cut(at); crossing.length; crossing = cut(at)) {
 			// Whole pixels, away from the box: the browser rounds where a scroll ends, and a label put exactly 8 px

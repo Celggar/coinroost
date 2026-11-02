@@ -183,6 +183,17 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	await expect(
 		page.getByText(say('changes.category', { from: '—', to: 'Groceries' }))
 	).toBeVisible();
+	// The answer lands whole, down to the button that applies it, above the page's bottom room: a whole field at the
+	// top once won over it, and the button stood half below the screen (pass 14).
+	const send = page.getByRole('button', { name: say('changes.apply_one') });
+	await expect
+		.poll(() =>
+			send.evaluate((e) => {
+				const room = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom);
+				return e.getBoundingClientRect().bottom <= innerHeight - room + 0.5;
+			})
+		)
+		.toBe(true);
 	// Revisar's count (read from the words its badge stands for) drops with the sorted transaction, without a page change.
 	const reviewCount = async () =>
 		Number((await page.locator('#rail-review').textContent())?.match(/\d+/)?.[0] ?? 0);
