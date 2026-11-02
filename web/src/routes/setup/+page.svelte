@@ -204,10 +204,15 @@
 							<span class="spinner" aria-hidden="true"></span>{t('setup.checking')}
 						</p>
 					{:else if step === 'invalid'}
-						<h2 class="step-label" tabindex="-1">{t('setup.invalid_title')}</h2>
-						<p class="lead">{t('setup.invalid')}</p>
-						<!-- A used link often means the account exists already: the way to the login is right here. -->
-						<p><a href="/login">{t('setup.to_login')}</a></p>
+						<!-- A used link often means the account exists already: the way to the login is right here, apart from
+						     the message as the next step is in the other steps (3 px under it, it read as one more line: pass 17). -->
+						<div class="stack">
+							<div>
+								<h2 class="step-label" tabindex="-1">{t('setup.invalid_title')}</h2>
+								<p class="lead">{t('setup.invalid')}</p>
+							</div>
+							<p><a href="/login">{t('setup.to_login')}</a></p>
+						</div>
 					{:else if step === 'account'}
 						<form novalidate oninput={edited} class="stack" onsubmit={toCode}>
 							<div>
