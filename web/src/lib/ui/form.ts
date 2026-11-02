@@ -181,11 +181,14 @@ async function still() {
  */
 export async function showBelow(end: HTMLElement, keep: HTMLElement) {
 	await still();
-	const { top, bottom } = edges();
+	const { top, bottom, floor } = edges();
 	const lo = scrollY + end.getBoundingClientRect().bottom - bottom;
 	if (lo <= scrollY) return;
 	const hi = Math.max(lo, scrollY + labelTop(keep) - top);
-	scrollTo({ top: uncut(lo, lo, hi), behavior: behavior() });
+	// At a page's end the only uncut place may leave `end` in the breathing room above the bottom bar (pass 12:
+	// after «Ver cambios» a label stood across the top bar's edge).
+	const loose = Math.max(0, scrollY + end.getBoundingClientRect().bottom - floor);
+	scrollTo({ top: uncut(lo, lo, hi, loose), behavior: behavior() });
 }
 
 /**

@@ -481,7 +481,7 @@
 	"problem.rule_empty_text": "The text to look for cannot be empty.",
 	"problem.rule_no_condition": "A rule needs at least one condition: text, money in or out, an account or an amount.",
 	"problem.rule_negative_amount": "Amounts in a rule are sizes: zero or more, without a sign.",
-	"problem.rule_min_above_max": "“Amount from” is above “Amount up to”.",
+	"problem.rule_min_above_max": "“Amount from” is above “Amount up to”.",
 	"problem.rule_nothing_to_set": "A rule needs a category or a payee to set.",
 	"problem.rule_payee_text_missing": "Reading the payee from the text needs the text the rule looks for.",
 	"row.unreadable_date": "Unreadable date: {value}",

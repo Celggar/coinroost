@@ -481,7 +481,7 @@
 	"problem.rule_empty_text": "El texto a buscar no puede quedar vacío.",
 	"problem.rule_no_condition": "Una regla necesita al menos una condición: texto, entra o sale, una cuenta o un monto.",
 	"problem.rule_negative_amount": "Los montos de una regla son tamaños: cero o más, sin signo.",
-	"problem.rule_min_above_max": "«Monto desde» es mayor que «Monto hasta».",
+	"problem.rule_min_above_max": "«Monto desde» es mayor que «Monto hasta».",
 	"problem.rule_nothing_to_set": "Una regla necesita una categoría o un beneficiario que poner.",
 	"problem.rule_payee_text_missing": "Leer el beneficiario del texto necesita el texto que busca la regla.",
 	"row.unreadable_date": "Fecha ilegible: {value}",
