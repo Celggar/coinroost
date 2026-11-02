@@ -209,23 +209,12 @@ async fn list_transactions(
     .bind(limit + 1)
     .fetch_all(&state.db)
     .await?;
-    let page = usize::try_from(limit).unwrap_or(usize::MAX);
-    let next_cursor = (items.len() > page).then(|| {
-        items.truncate(page);
-        items.last().map(|t| {
-            Cursor {
-                date: t.date,
-                created_at: t.created_at,
-                id: t.id,
-            }
-            .encode()
-        })
-    });
+    let next_cursor = page::cut(&mut items, limit);
     attach_legs(&state.db, session.household_id, &mut items).await?;
     Ok(Json(Transactions {
         items,
         total,
-        next_cursor: next_cursor.flatten(),
+        next_cursor,
     }))
 }
 

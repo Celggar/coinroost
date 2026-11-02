@@ -88,7 +88,7 @@ async fn a_cursor_the_api_did_not_give_is_refused(db: PgPool) {
     ] {
         let (status, body) = get(&api, &user, &format!("cursor={cursor}")).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{cursor}: {body}");
-        assert!(body.to_string().contains("cursor_invalid"), "{cursor}: {body}");
+        assert_eq!(body["code"], "cursor_invalid", "{cursor}: {body}");
     }
 }
 

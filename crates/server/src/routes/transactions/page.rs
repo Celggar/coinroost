@@ -9,6 +9,7 @@ use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
+use super::Transaction;
 use crate::error::ApiError;
 
 /// The rows that match a `Filter`: `$1` the household, `$2`–`$7` the filters, in [`bind_filter`]'s order.
@@ -54,9 +55,9 @@ impl Cursor {
     /// A cursor this API gave; anything else is refused, never read as the first page.
     pub fn decode(text: &str) -> Result<Cursor, ApiError> {
         let invalid = || {
-            ApiError::Invalid(
-                "cursor_invalid: the cursor was not given by this API; pass next_cursor as it came"
-                    .to_owned(),
+            ApiError::invalid(
+                "cursor_invalid",
+                "the cursor was not given by this API; pass next_cursor as it came",
             )
         };
         let plain = URL_SAFE_NO_PAD.decode(text).map_err(|_| invalid())?;
@@ -77,4 +78,22 @@ impl Cursor {
         let id = Uuid::parse_str(id).map_err(|_| invalid())?;
         Ok(Cursor { date, created_at, id })
     }
+}
+
+/// Takes the look-ahead row off a page fetched with one row more than `limit`: the cursor of the page's last row when
+/// more follow, `None` when the page is the end.
+pub fn cut(items: &mut Vec<Transaction>, limit: i64) -> Option<String> {
+    let page = usize::try_from(limit).unwrap_or(usize::MAX);
+    if items.len() <= page {
+        return None;
+    }
+    items.truncate(page);
+    items.last().map(|t| {
+        Cursor {
+            date: t.date,
+            created_at: t.created_at,
+            id: t.id,
+        }
+        .encode()
+    })
 }
