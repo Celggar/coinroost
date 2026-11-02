@@ -3,7 +3,9 @@
 	// scaled SVG with pathLength draws dashes wrong in Chromium); with reduced motion they only fade in. Their color
 	// comes from the shell's --line and --line-opacity.
 	//
-	// Wide screens get long waves across the page; phones get two short bands, top and bottom.
+	// Wide screens get long waves across the page; phones get two short bands, top and bottom. The top band stays
+	// above the brand row: lower, it crossed «Coinroost» and the headline at mid-height and read as a strike-through
+	// (pass 11).
 	const wide = [
 		'M-40 620 C 220 520, 380 700, 640 560 S 1040 380, 1320 470',
 		'M-40 660 C 240 560, 400 740, 660 600 S 1060 420, 1320 510',
@@ -12,8 +14,8 @@
 		'M-40 200 C 220 300, 440 100, 720 220 S 1120 340, 1320 240'
 	];
 	const narrow = [
-		'M-20 92 C 70 140, 150 40, 250 90 S 360 150, 410 110',
-		'M-20 122 C 80 170, 160 70, 260 120 S 370 180, 410 140',
+		'M-20 14 C 70 40, 150 -6, 250 12 S 360 42, 410 22',
+		'M-20 32 C 80 54, 160 12, 260 30 S 370 56, 410 40',
 		'M-20 760 C 60 700, 150 800, 240 740 S 350 680, 410 720',
 		'M-20 792 C 70 732, 160 832, 250 772 S 360 712, 410 752'
 	];

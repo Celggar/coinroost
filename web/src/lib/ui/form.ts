@@ -88,10 +88,12 @@ function uncut(y: number, lo: number, hi: number): number {
 	for (const way of [-1, 1]) {
 		let at = start;
 		for (let crossing = cut(at); crossing.length; crossing = cut(at)) {
+			// Whole pixels, away from the box: the browser rounds where a scroll ends, and a label put exactly 8 px
+			// clear landed 7.9 px under the bar (pass 11).
 			at =
 				way < 0
-					? Math.min(...crossing.map((b) => b.top)) - line - clear
-					: Math.max(...crossing.map((b) => b.bottom)) - line;
+					? Math.floor(Math.min(...crossing.map((b) => b.top)) - line - clear)
+					: Math.ceil(Math.max(...crossing.map((b) => b.bottom)) - line);
 			if (at < 0 || at > max) break;
 		}
 		if (at >= Math.max(lo, 0) && at <= Math.min(hi, max) && !cut(at).length) return at;

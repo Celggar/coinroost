@@ -7,6 +7,7 @@
 	import Tabs from '#lib/nav/Tabs.svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import Notices from '#lib/ui/Notices.svelte';
+	import { arrive, placeholder } from '#lib/motion.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
 	import type { LayoutProps } from './$types';
@@ -76,7 +77,9 @@
 
 {#if inApp}
 	<a class="skip" href="#main">{t('nav.skip')}</a>
-	<div class="shell">
+	<!-- The app fades in once the session is known, after «Cargando…» has faded out: it appeared in one frame (P2
+	     round 11). Between pages the view transition cross-fades instead; this block stays. -->
+	<div class="shell" in:arrive>
 		<div class="wide-only"><NavRail path={page.url.pathname} onleave={leave} /></div>
 		<div class="column">
 			<div class="narrow-only">
@@ -93,7 +96,7 @@
 {:else if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
-	<main><p class="hint loading">{t('app.loading')}</p></main>
+	<main><p class="hint loading" out:placeholder>{t('app.loading')}</p></main>
 {/if}
 
 <style>

@@ -166,5 +166,11 @@
 			background: Highlight;
 			color: HighlightText;
 		}
+		/* The focus ring beats that `outline: 0`, in a system color the halves' forced-color-adjust does not reach: the
+		   focused half showed no focus at all (P2 round 11, WCAG 2.4.7). */
+		.wide label:has(input:focus-visible) {
+			outline: 3px solid CanvasText;
+			outline-offset: 2px;
+		}
 	}
 </style>

@@ -322,11 +322,10 @@
 		padding-left: var(--space-xl);
 		color: var(--bad);
 	}
-	/* A link that is a tap target of its own: 44 px tall. */
+	/* A link that is a tap target of its own, 44 px tall, inside a line of text: the padding of an inline box widens
+	   what takes the tap but not the line, which grew to 44 px and left a blank line under the hint (pass 11). */
 	.target {
-		display: inline-flex;
-		align-items: center;
-		min-height: 44px;
+		padding-block: calc((44px - 1lh) / 2);
 	}
 	/* The file's import, done: a check and what it added. */
 	.result {

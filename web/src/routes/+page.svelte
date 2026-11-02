@@ -136,7 +136,8 @@
 		 an error under it. -->
 	<!-- The period only where there is money to pick from: with no account yet, the page is its way on (pass 7). -->
 	{#if reports?.hasAccounts}
-		<div class="period">
+		<!-- After a retry it waits for the alert to fade out, like the figures (pass 11). -->
+		<div class="period" in:arrive>
 			<div class="form-field" role="group" aria-labelledby="period-label">
 				<span class="label" id="period-label">{t('dashboard.period')}</span>
 				<div class="presets">
