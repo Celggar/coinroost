@@ -103,6 +103,14 @@ html {
 	outline-offset: 2px;
 }
 
+/* Every button is positioned (its state layer), so a later one paints over the one before it: the focused one comes
+   up, and a joined neighbour's fill no longer covers the right side of its ring (pass 15: the period's segment
+   before the chosen one). Under the bars (5) and the notices (10). */
+button:focus-visible,
+.button:focus-visible {
+	z-index: 1;
+}
+
 /* A heading or a line that takes the focus (after a retry, once what had it is gone, a check's answer) wears the
    ring around its words, as the phone's bar title does, not a square box across the page (pass 9, pass 11). */
 :where(h1, h2, h3, p)[tabindex='-1']:focus-visible {

@@ -80,6 +80,14 @@
 			height: 100lvh;
 		}
 	}
+	/* Decoration only: with the system's colors forced they kept the brand's green, outside the palette the person
+	   chose (pass 15), so they go. Two classes, to beat the phone's `display: block` above. */
+	@media (forced-colors: active) {
+		.lines.wide,
+		.lines.narrow {
+			display: none;
+		}
+	}
 	@keyframes fade-in {
 		from {
 			opacity: 0;

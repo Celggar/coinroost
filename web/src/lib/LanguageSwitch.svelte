@@ -149,9 +149,11 @@
 		opacity: 0;
 		cursor: pointer;
 	}
+	/* Above the half after it, whose fill covered the ring's right side when it was the chosen one (pass 15). */
 	label:has(input:focus-visible) {
 		outline: 3px solid var(--focus);
 		outline-offset: 2px;
+		z-index: 1;
 	}
 	/* Forced colors drop the chosen pill's background: an outline marks it instead. */
 	@media (forced-colors: active) {

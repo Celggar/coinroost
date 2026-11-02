@@ -6,7 +6,7 @@
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { arrive, followContent, glide, placeholder, rise, vanish } from '#lib/motion.ts';
 	import FileCard from '#lib/import/FileCard.svelte';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -15,6 +15,10 @@
 	let over = $state(false);
 	let files = $state<{ id: number; file: File }[]>([]);
 	let next = 0;
+	let page = $state<HTMLElement>();
+	// Held while a removed file's card leaves: the page glides up to the files' zone first and gives back the card's
+	// room after. Let go at once at the page's end, it was pulled back 218 px in one frame (502 from the middle card).
+	let holding = $state(false);
 
 	async function load() {
 		error = '';
@@ -61,67 +65,71 @@
 		>
 	</p>
 {:else if loaded}
-	<div class="stack" in:arrive>
-		{#if !accounts.some((a) => a.profile)}
-			<!-- Every file is read into one of the household's accounts with a bank file (cash has none, and an account
+	<div bind:this={page} use:followContent={holding}>
+		<div class="stack" in:arrive>
+			{#if !accounts.some((a) => a.profile)}
+				<!-- Every file is read into one of the household's accounts with a bank file (cash has none, and an account
 			     cannot change it later): the first step comes first, and choosing files is not offered until there is an
 			     account to read them into. -->
-			<EmptyState
-				icon="bank"
-				text={accounts.length ? t('import.no_bank_file') : t('dashboard.no_accounts')}
-				href="/accounts"
-				action={accounts.length ? t('file.open_accounts') : t('dashboard.to_accounts')}
-			/>
-		{:else}
-			<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
+				<EmptyState
+					icon="bank"
+					text={accounts.length ? t('import.no_bank_file') : t('dashboard.no_accounts')}
+					href="/accounts"
+					action={accounts.length ? t('file.open_accounts') : t('dashboard.to_accounts')}
+				/>
+			{:else}
+				<!-- The browser's own file control speaks its language and draws its own box: it stays, out of sight, and the
 			 whole zone is its label, with a button drawn in the page's style. Files can also be dropped on it. -->
-			<label
-				class="drop"
-				class:over
-				ondragover={(event) => {
-					event.preventDefault();
-					over = true;
-				}}
-				ondragleave={() => (over = false)}
-				ondrop={(event) => {
-					over = false;
-					drop(event);
-				}}
-			>
-				<span class="icon"><Icon name="import" size={28} /></span>
-				<span class="title" id="drop-title">{t('import.drop_title')}</span>
-				<span class="hint" id="drop-hint">{t('import.choose_hint')}</span>
-				<span class="button pick" id="drop-pick">{t('import.choose')}</span>
-				<span class="hint here">{t('import.drop_here')}</span>
-				<input
-					class="visually-hidden"
-					type="file"
-					aria-labelledby="drop-pick"
-					aria-describedby="drop-hint"
-					multiple
-					accept=".csv,.xls,.xlsx,.pdf"
-					onchange={choose}
-				/>
-			</label>
-		{/if}
-
-		{#each files as entry (entry.id)}
-			<div class="file" in:rise out:vanish animate:glide>
-				<FileCard
-					file={entry.file}
-					{accounts}
-					onremove={async () => {
-						files = files.filter((f) => f.id !== entry.id);
-						// The card and its button are gone: the focus goes back to choosing files, and the page glides
-						// to them once the card has left. Focused bare, the page jumped to its start in one frame
-						// (pass 15).
-						const input = focusOn('.drop input');
-						const zone = input?.closest('label');
-						if (zone) await showWhole(zone);
+				<label
+					class="drop"
+					class:over
+					ondragover={(event) => {
+						event.preventDefault();
+						over = true;
 					}}
-				/>
-			</div>
-		{/each}
+					ondragleave={() => (over = false)}
+					ondrop={(event) => {
+						over = false;
+						drop(event);
+					}}
+				>
+					<span class="icon"><Icon name="import" size={28} /></span>
+					<span class="title" id="drop-title">{t('import.drop_title')}</span>
+					<span class="hint" id="drop-hint">{t('import.choose_hint')}</span>
+					<span class="button pick" id="drop-pick">{t('import.choose')}</span>
+					<span class="hint here">{t('import.drop_here')}</span>
+					<input
+						class="visually-hidden"
+						type="file"
+						aria-labelledby="drop-pick"
+						aria-describedby="drop-hint"
+						multiple
+						accept=".csv,.xls,.xlsx,.pdf"
+						onchange={choose}
+					/>
+				</label>
+			{/if}
+
+			{#each files as entry (entry.id)}
+				<div class="file" in:rise out:vanish animate:glide>
+					<FileCard
+						file={entry.file}
+						{accounts}
+						onremove={async () => {
+							holding = true;
+							files = files.filter((f) => f.id !== entry.id);
+							// The card and its button are gone: the focus goes back to choosing files, and the page glides
+							// to them once the card has left. Focused bare, the page jumped to its start in one frame
+							// (pass 15).
+							const input = focusOn('.drop input');
+							const zone = input?.closest('label');
+							if (zone) await showWhole(zone, zone, page);
+							holding = false;
+						}}
+					/>
+				</div>
+			{/each}
+		</div>
 	</div>
 {:else}
 	<p class="hint loading" out:placeholder>{t('app.loading')}</p>

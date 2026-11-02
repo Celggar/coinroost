@@ -176,7 +176,9 @@ export async function fadeThrough(
 		await change();
 		return;
 	}
-	const out = element.animate([{ opacity: 0 }], {
+	// From the opacity on screen: a lone end keyframe starts from the style's value, so a dim still on its way (0.97)
+	// went to its end (0.6) in one frame before fading (pass 15).
+	const out = element.animate([{ opacity: getComputedStyle(element).opacity }, { opacity: 0 }], {
 		duration: 105,
 		easing: EASE_CSS.exit,
 		fill: 'forwards'

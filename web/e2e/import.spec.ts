@@ -385,8 +385,9 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 	// top bar, and the page then landed with a line flush under the bar (pass 13: 365 → 147, 300 → 17).
 	const up = page.locator(`[data-move="${made[1]}-up"]`);
 	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 210));
-	const start = await page.evaluate(() => scrollY);
-	await up.click();
+	const start = await still(page);
+	// Clicked where it stands, as a person would: once the page moved at the click (630 → 97), as a Playwright retry does.
+	await up.click({ force: true });
 	// The rules have swapped once the one above, now last, has no «Bajar»: the page has not moved yet.
 	await expect(page.locator(`[data-move="${made[0]}-down"]`)).toHaveCount(0);
 	expect(await page.evaluate(() => scrollY)).toBe(start);

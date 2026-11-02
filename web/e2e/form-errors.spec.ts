@@ -208,3 +208,41 @@ test('on a phone, a new account shows whole above its form', async () => {
 	expect(field).toBeLessThanOrEqual(end);
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
+
+test('a file removed at the page end leaves the page gliding, never pulled back as it shortens', async () => {
+	const fixture = fileURLToPath(
+		new URL('../../spec/fixtures/bac-account/input.csv', import.meta.url)
+	);
+	await page.setViewportSize({ width: 1280, height: 600 });
+	await page.goto('/import');
+	await page.locator('input[type=file]').setInputFiles([
+		{ name: 'corriente.csv', mimeType: 'text/csv', buffer: readFileSync(fixture) },
+		{ name: 'notas.txt', mimeType: 'text/plain', buffer: Buffer.from('just, some\nwords') }
+	]);
+	await expect(page.getByText(say('file.rows_read'))).toBeVisible();
+	await expect(page.getByText(say('file.not_found'))).toBeVisible();
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	// Every frame from the click on: the card left at the page's end, the page shrank and the browser pulled it back
+	// 218 px in that same frame, before it glided up to the files' zone (pass 15).
+	type Frames = { frames: [number, number][] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push([scrollY, document.documentElement.scrollHeight]);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await page.getByRole('button', { name: say('file.remove_named', { name: 'notas.txt' }) }).click();
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	const pulled = frames
+		.slice(1)
+		.filter(([y, height], i) => height < frames[i][1] && y !== frames[i][0]);
+	expect(frames[0][0] - frames[frames.length - 1][0]).toBeGreaterThan(40);
+	expect(pulled).toEqual([]);
+	await expect(page.locator('.drop input')).toBeFocused();
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
