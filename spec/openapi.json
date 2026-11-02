@@ -1695,7 +1695,7 @@
         "tags": [
           "transactions"
         ],
-        "summary": "The household's transactions, newest first.",
+        "summary": "The household's transactions, newest first, a page at a time.",
         "operationId": "list_transactions",
         "parameters": [
           {
@@ -1764,11 +1764,20 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `next_cursor` of the previous page, with the same filters: the transactions that follow it.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The transactions with their legs",
+            "description": "A page of transactions with their legs, how many match, and where the next page starts",
             "content": {
               "application/json": {
                 "schema": {
@@ -1788,7 +1797,7 @@
             }
           },
           "422": {
-            "description": "A filter is not valid",
+            "description": "A filter or the cursor is not valid",
             "content": {
               "application/json": {
                 "schema": {
@@ -4277,7 +4286,8 @@
       "Transactions": {
         "type": "object",
         "required": [
-          "items"
+          "items",
+          "total"
         ],
         "properties": {
           "items": {
@@ -4285,6 +4295,18 @@
             "items": {
               "$ref": "#/components/schemas/Transaction"
             }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many transactions match the filters, across every page."
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Present while more transactions follow this page: pass it as `cursor` to get them."
           }
         }
       },

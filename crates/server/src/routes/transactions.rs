@@ -17,7 +17,10 @@ use crate::error::{ApiError, ApiResult, Problem};
 use crate::validate;
 
 mod legs;
+#[macro_use]
+mod page;
 use legs::{attach_legs, check_legs};
+use page::Cursor;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -122,6 +125,10 @@ pub struct Transaction {
 #[derive(Serialize, ToSchema)]
 pub struct Transactions {
     items: Vec<Transaction>,
+    /// How many transactions match the filters, across every page.
+    total: i64,
+    /// Present while more transactions follow this page: pass it as `cursor` to get them.
+    next_cursor: Option<String>,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -143,14 +150,16 @@ pub struct Filter {
     q: Option<String>,
     /// At most this many, newest first (default 100, at most 1000).
     limit: Option<i64>,
+    /// The `next_cursor` of the previous page, with the same filters: the transactions that follow it.
+    cursor: Option<String>,
 }
 
-/// The household's transactions, newest first.
+/// The household's transactions, newest first, a page at a time.
 #[utoipa::path(get, path = "/api/v1/transactions", tag = "transactions", params(Filter),
     responses(
-        (status = OK, description = "The transactions with their legs", body = Transactions),
+        (status = OK, description = "A page of transactions with their legs, how many match, and where the next page starts", body = Transactions),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),
-        (status = UNPROCESSABLE_ENTITY, description = "A filter is not valid", body = Problem)))]
+        (status = UNPROCESSABLE_ENTITY, description = "A filter or the cursor is not valid", body = Problem)))]
 async fn list_transactions(
     State(state): State<AppState>,
     session: Session,
@@ -166,31 +175,54 @@ async fn list_transactions(
     if text.is_some_and(|q| q.is_empty() || q.chars().count() > 200) {
         return Err(ApiError::Invalid("q has 1 to 200 characters".to_owned()));
     }
-    let mut items: Vec<Transaction> = sqlx::query_as(
-        concat!(
-        "select ",
-        columns!("t."),
-        " from transactions t
-         where t.household_id = $1
-           and ($2::uuid is null or exists (select 1 from legs l where l.transaction_id = t.id and l.account_id = $2))
-           and ($3::date is null or t.date >= $3) and ($4::date is null or t.date <= $4)
-           and (not $6 or t.category_id is null)
-           and (not $7 or (select count(*) from legs l where l.transaction_id = t.id) = 2)
-           and ($8::text is null or strpos(lower(t.description), lower($8)) > 0)
-         order by t.date desc, t.created_at desc, t.id limit $5"
-    ))
-    .bind(session.household_id)
-    .bind(filter.account_id)
-    .bind(filter.from)
-    .bind(filter.to)
-    .bind(limit)
-    .bind(filter.uncategorized)
-    .bind(filter.transfers)
-    .bind(text)
+    let after = filter.cursor.as_deref().map(Cursor::decode).transpose()?;
+    let total: i64 = bind_filter!(
+        sqlx::query_scalar(concat!("select count(*)", matching!())),
+        session.household_id,
+        filter,
+        text
+    )
+    .fetch_one(&state.db)
+    .await?;
+    // One row past the page says whether another page follows.
+    let mut items: Vec<Transaction> = bind_filter!(
+        sqlx::query_as(concat!(
+            "select ",
+            columns!("t."),
+            matching!(),
+            "
+           and ($8::date is null or t.date < $8
+                or (t.date = $8 and (t.created_at < $9 or (t.created_at = $9 and t.id > $10))))
+         order by t.date desc, t.created_at desc, t.id limit $11"
+        )),
+        session.household_id,
+        filter,
+        text
+    )
+    .bind(after.as_ref().map(|c| c.date))
+    .bind(after.as_ref().map(|c| c.created_at))
+    .bind(after.as_ref().map(|c| c.id))
+    .bind(limit + 1)
     .fetch_all(&state.db)
     .await?;
+    let page = usize::try_from(limit).unwrap_or(usize::MAX);
+    let next_cursor = (items.len() > page).then(|| {
+        items.truncate(page);
+        items.last().map(|t| {
+            Cursor {
+                date: t.date,
+                created_at: t.created_at,
+                id: t.id,
+            }
+            .encode()
+        })
+    });
     attach_legs(&state.db, session.household_id, &mut items).await?;
-    Ok(Json(Transactions { items }))
+    Ok(Json(Transactions {
+        items,
+        total,
+        next_cursor: next_cursor.flatten(),
+    }))
 }
 
 /// Records a transaction: one leg, or a transfer of two legs on different accounts that sum to zero.

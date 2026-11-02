@@ -516,7 +516,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The household's transactions, newest first. */
+        /** The household's transactions, newest first, a page at a time. */
         get: operations["list_transactions"];
         put?: never;
         /** Records a transaction: one leg, or a transfer of two legs on different accounts that sum to zero. */
@@ -1365,6 +1365,13 @@ export interface components {
         };
         Transactions: {
             items: components["schemas"]["Transaction"][];
+            /**
+             * Format: int64
+             * @description How many transactions match the filters, across every page.
+             */
+            total: number;
+            /** @description Present while more transactions follow this page: pass it as `cursor` to get them. */
+            next_cursor?: string | null;
         };
         /** @description One leg that may be half of a transfer, with its transaction. */
         TransferLeg: {
@@ -2796,6 +2803,8 @@ export interface operations {
                 q?: string;
                 /** @description At most this many, newest first (default 100, at most 1000). */
                 limit?: number;
+                /** @description The `next_cursor` of the previous page, with the same filters: the transactions that follow it. */
+                cursor?: string;
             };
             header?: never;
             path?: never;
@@ -2803,7 +2812,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The transactions with their legs */
+            /** @description A page of transactions with their legs, how many match, and where the next page starts */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2821,7 +2830,7 @@ export interface operations {
                     "application/json": components["schemas"]["Problem"];
                 };
             };
-            /** @description A filter is not valid */
+            /** @description A filter or the cursor is not valid */
             422: {
                 headers: {
                     [name: string]: unknown;

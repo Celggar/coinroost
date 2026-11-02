@@ -32,8 +32,10 @@ pub struct TransactionFilter {
     uncategorized: Option<bool>,
     /// Only transfers between the household's own accounts.
     transfers: Option<bool>,
-    /// At most this many, newest first (default 50, at most 200).
+    /// At most this many, newest first (default 25, at most 200).
     limit: Option<i64>,
+    /// The `next_cursor` of the previous answer, with the same filters: the transactions after it.
+    cursor: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -44,8 +46,10 @@ pub struct Search {
     from: Option<String>,
     /// Last date included, YYYY-MM-DD.
     to: Option<String>,
-    /// At most this many, newest first (default 50, at most 200).
+    /// At most this many, newest first (default 25, at most 200).
     limit: Option<i64>,
+    /// The `next_cursor` of the previous answer, with the same filters: the transactions after it.
+    cursor: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -79,7 +83,7 @@ fn name_of(names: &HashMap<String, String>, id: &Value, none: &str) -> Value {
     )
 }
 
-/// Transactions as short rows with names instead of ids.
+/// Transactions as short rows with names instead of ids, with how many match and where the next page starts.
 async fn rows(client: &Client<'_>, list: &Value) -> Result<Value, Failure> {
     let (accounts, categories, payees) = (
         client.names(Named::Account).await?,
@@ -108,7 +112,7 @@ async fn rows(client: &Client<'_>, list: &Value) -> Result<Value, Failure> {
                     "payee": name_of(&payees, &t["payee_id"], ""), "legs": legs })
         })
         .collect();
-    Ok(json!({ "transactions": rows }))
+    Ok(json!({ "transactions": rows, "total": list["total"], "next_cursor": list["next_cursor"] }))
 }
 
 fn limit(given: Option<i64>, default: i64, most: i64) -> String {
@@ -211,7 +215,8 @@ impl Tools {
 
     #[tool(
         description = "List transactions, newest first, with names for accounts, categories and payees. A \
-                       transfer has two legs; spending is a negative amount.",
+                       transfer has two legs; spending is a negative amount. `total` counts every match; while \
+                       `next_cursor` is not null more follow: pass it as `cursor` for the next page.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     async fn list_transactions(
@@ -234,7 +239,8 @@ impl Tools {
                         ("account_id", account),
                         ("uncategorized", args.uncategorized.map(|b| b.to_string())),
                         ("transfers", args.transfers.map(|b| b.to_string())),
-                        ("limit", Some(limit(args.limit, 50, 200))),
+                        ("limit", Some(limit(args.limit, 25, 200))),
+                        ("cursor", args.cursor),
                     ],
                 );
                 rows(&client, &client.get(&uri).await?).await
@@ -245,7 +251,8 @@ impl Tools {
 
     #[tool(
         description = "Find transactions whose description contains a text, upper or lower case alike; \
-                       use it to find what to categorize or delete.",
+                       use it to find what to categorize or delete. `total` counts every match; while \
+                       `next_cursor` is not null more follow: pass it as `cursor` for the next page.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     async fn search_transactions(
@@ -262,7 +269,8 @@ impl Tools {
                         ("q", Some(args.text)),
                         ("from", args.from),
                         ("to", args.to),
-                        ("limit", Some(limit(args.limit, 50, 200))),
+                        ("limit", Some(limit(args.limit, 25, 200))),
+                        ("cursor", args.cursor),
                     ],
                 );
                 rows(&client, &client.get(&uri).await?).await
