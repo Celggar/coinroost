@@ -505,6 +505,7 @@ test('a failed money summary on Transfers offers to try again', async ({ context
 	const card = page.getByRole('region', { name: say('summary.title') });
 	await expect(card.getByRole('alert')).toBeVisible();
 	await page.unroute(summary);
+	const drops = await watchDrops(page);
 	await card.getByRole('button', { name: say('app.try_again') }).click();
 	await expect(card.getByRole('alert')).toHaveCount(0);
 	await expect(
@@ -513,6 +514,8 @@ test('a failed money summary on Transfers offers to try again', async ({ context
 			.or(card.getByText(say('summary.nothing')))
 			.first()
 	).toBeVisible();
+	await expect(page.locator('#summary-title')).toBeFocused();
+	expect(await drops()).toEqual([]);
 });
 
 test('switches to English and remembers it after a reload', async ({ context }) => {
