@@ -1,7 +1,7 @@
 <script lang="ts">
 	// The two pages under Revisar and under Cuentas (P1, N2), as tabs at the top of each: links, the current one
 	// marked, with an underline that slides in.
-	import { t } from '#lib/i18n.svelte.ts';
+	import { plural, t } from '#lib/i18n.svelte.ts';
 	import Badge from './Badge.svelte';
 	import { counts } from './counts.svelte.ts';
 	import { groups, type Tab } from './destinations.ts';
@@ -12,8 +12,8 @@
 	const count = (tab: Tab) => (tab.badge ? counts[tab.badge] : 0);
 	const said = (tab: Tab) =>
 		tab.badge === 'accounts'
-			? t('nav.badge_accounts', { count: count(tab) })
-			: t('nav.badge_review', { count: count(tab) });
+			? plural(count(tab), 'nav.badge_accounts_one', 'nav.badge_accounts_other')
+			: plural(count(tab), 'nav.badge_review_one', 'nav.badge_review_other');
 </script>
 
 {#if group}
