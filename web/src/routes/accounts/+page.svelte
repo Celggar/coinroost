@@ -122,10 +122,13 @@
 		markers = '';
 		cardPrefixes = '';
 		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next,
-		// and the form shows from its title. Scrolled to by the browser, the page jumped in one frame (pass 13).
+		// and the page shows the new account above it when both fit, as Reglas does: down to the form only, the new
+		// account stood above the screen on a phone (pass 15). Scrolled to by the browser, the page jumped (pass 13).
+		await tick();
+		const row = document.querySelector<HTMLElement>(`[data-account="${data.id}"]`) ?? undefined;
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		field?.focus({ preventScroll: true });
-		if (field) await landOn(field, form);
+		if (field) await landOn(field, form, row);
 	}
 
 	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */
@@ -170,7 +173,7 @@
 					</thead>
 					<tbody>
 						{#each accounts as account (account.id)}
-							<tr in:rise>
+							<tr data-account={account.id} in:rise>
 								<td data-label={t('accounts.name')}>{account.name}</td>
 								<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 								<td data-label={t('accounts.currency')}>{account.currency}</td>

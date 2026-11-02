@@ -4,7 +4,7 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { lift, rise, vanish } from '#lib/motion.ts';
+	import { followContent, lift, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -113,170 +113,185 @@
 	}
 </script>
 
-<article class="card" aria-label={file.name} aria-busy={busy}>
-	<header class="head">
-		<h2>{file.name}</h2>
-		<button
-			class="secondary"
-			onclick={onremove}
-			aria-label={t('file.remove_named', { name: file.name })}>{t('file.remove')}</button
-		>
-	</header>
+<!-- The card glides to its new height: when another account cannot read the file, its figures leave and the card
+     shrank in one frame, which pulled a page at its end back 98 px at once (pass 15). -->
+<article class="card follows" aria-label={file.name} aria-busy={busy} use:followContent>
+	<div class="stack">
+		<header class="head">
+			<h2>{file.name}</h2>
+			<button
+				class="secondary"
+				onclick={onremove}
+				aria-label={t('file.remove_named', { name: file.name })}>{t('file.remove')}</button
+			>
+		</header>
 
-	{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
+		{#if error}<p class="alert" role="alert" in:rise out:lift>{error}</p>{/if}
 
-	{#if answered}
-		<!-- No account reads the file, or none recognised it: the way on is an account that does, made on Cuentas. It
-		     stays under the error of an account that cannot read it, or only «Quitar» was left (pass 10). -->
-		{@const wayOn = !importable.length || preview?.detection === 'not_found'}
-		{#snippet open()}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/snippet}
-		{#snippet found()}
-			{note}
-			{#if wayOn}{@render open()}{/if}
-		{/snippet}
-		<Field
-			label={t('file.account')}
-			name="account"
-			hint={accountError ? (wayOn ? open : '') : note ? found : ''}
-			error={accountError}
-		>
-			{#snippet children(wiring)}
-				<select
-					{...wiring}
-					bind:value={accountId}
-					onchange={() => read(accountId || undefined)}
-					disabled={report !== null}
-				>
-					<option value="" disabled>{t('file.choose_account')}</option>
-					{#each choices as choice (choice.id)}
-						<option value={choice.id}>{choice.name}</option>
-					{/each}
-				</select>
+		{#if answered}
+			<!-- No account reads the file, or none recognised it: the way on is an account that does, made on Cuentas. It
+			     stays under the error of an account that cannot read it, or only «Quitar» was left (pass 10). -->
+			{@const wayOn = !importable.length || preview?.detection === 'not_found'}
+			{#snippet open()}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/snippet}
+			{#snippet found()}
+				{note}
+				{#if wayOn}{@render open()}{/if}
 			{/snippet}
-		</Field>
-	{:else if busy}
-		<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
-	{/if}
-
-	<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
-		 file, instead of leaving in one frame (FD9, pass 3). -->
-	{#if reading && account}
-		<div class="reading" in:rise out:vanish>
-			<dl class="counts">
-				<div>
-					<dt>{t('file.rows_read')}</dt>
-					<dd>
-						<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
-					</dd>
-				</div>
-				<div>
-					<dt>
-						<Tick value={Boolean(report)}>{report ? t('file.added') : t('file.new')}</Tick>
-					</dt>
-					<dd>
-						<Tick value={report ? report.batch.added : reading.new}
-							>{report ? report.batch.added : reading.new}</Tick
-						>
-					</dd>
-				</div>
-				<div>
-					<dt>{t('file.already')}</dt>
-					<dd>
-						<Tick value={report ? report.batch.duplicates : reading.duplicates}
-							>{report ? report.batch.duplicates : reading.duplicates}</Tick
-						>
-					</dd>
-				</div>
-				<div>
-					<dt>{t('file.unreadable_rows')}</dt>
-					<dd>
-						<Tick value={reading.errors}>{reading.errors}</Tick>
-					</dd>
-				</div>
-			</dl>
-			<!-- The normalizer's layout rows (blank, header or footer lines, an opening balance) are read but are not
-			 transactions: said, so the four counts add up to the rows read. -->
-			{#if layoutRows > 0}
-				<p class="hint">{plural(layoutRows, 'file.layout_one', 'file.layout_other')}</p>
-			{/if}
-			{#if reading.first_date && reading.last_date}
-				<p class="hint">
-					{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
-				</p>
-			{/if}
-
-			{#if reading.row_errors.length}
-				<section aria-label={t('file.bad_rows')}>
-					<h3>{t('file.bad_rows')}</h3>
-					<ul class="errors">
-						{#each reading.row_errors as failure (failure.row)}
-							<li>{t('file.bad_row', { row: failure.row, reason: rowReason(failure) })}</li>
+			<Field
+				label={t('file.account')}
+				name="account"
+				hint={accountError ? (wayOn ? open : '') : note ? found : ''}
+				error={accountError}
+			>
+				{#snippet children(wiring)}
+					<select
+						{...wiring}
+						bind:value={accountId}
+						onchange={() => read(accountId || undefined)}
+						disabled={report !== null}
+					>
+						<option value="" disabled>{t('file.choose_account')}</option>
+						{#each choices as choice (choice.id)}
+							<option value={choice.id}>{choice.name}</option>
 						{/each}
-					</ul>
-				</section>
-			{/if}
+					</select>
+				{/snippet}
+			</Field>
+		{:else if busy}
+			<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
+		{/if}
 
-			{#if reading.rows.length}
-				<details>
-					<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
-					<div class="table-wrap" use:scrollable={t('file.rows')}>
-						<table class="rows-on-phone">
-							<thead>
-								<tr>
-									<th>{t('column.date')}</th>
-									<th>{t('column.description')}</th>
-									<th class="number">{t('column.amount')}</th>
-									<th>{t('column.status')}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each reading.rows as row (row.external_id)}
-									<tr>
-										<td data-label={t('column.date')}>{day(row.date)}</td>
-										<td data-label={t('column.description')}>{row.description}</td>
-										<td data-label={t('column.amount')} class="number"
-											><Money minor={row.amount_minor} currency={account.currency} /></td
-										>
-										<td data-label={t('column.status')}
-											><Tick value={Boolean(report)}
-												>{row.duplicate
-													? t('file.row_already')
-													: report
-														? t('file.row_added')
-														: t('file.row_new')}</Tick
-											></td
-										>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
+		<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
+			 file, instead of leaving in one frame (FD9, pass 3). -->
+		{#if reading && account}
+			<div class="reading" in:rise out:vanish>
+				<dl class="counts">
+					<div>
+						<dt>{t('file.rows_read')}</dt>
+						<dd>
+							<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
+						</dd>
 					</div>
-				</details>
-			{/if}
-
-			<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
-			{#if report}
-				<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
-					<span class="check" aria-hidden="true"></span>
-					{t('file.imported')}
-				</p>
-			{:else}
-				<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
-				{#if reading.new === 0}
-					<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
-				{:else}
-					<div class="actions" out:vanish>
-						<button onclick={commit} disabled={busy}>
-							{plural(reading.new, 'file.import_one', 'file.import_other')}
-						</button>
+					<div>
+						<dt>
+							<Tick value={Boolean(report)}>{report ? t('file.added') : t('file.new')}</Tick>
+						</dt>
+						<dd>
+							<Tick value={report ? report.batch.added : reading.new}
+								>{report ? report.batch.added : reading.new}</Tick
+							>
+						</dd>
 					</div>
+					<div>
+						<dt>{t('file.already')}</dt>
+						<dd>
+							<Tick value={report ? report.batch.duplicates : reading.duplicates}
+								>{report ? report.batch.duplicates : reading.duplicates}</Tick
+							>
+						</dd>
+					</div>
+					<div>
+						<dt>{t('file.unreadable_rows')}</dt>
+						<dd>
+							<Tick value={reading.errors}>{reading.errors}</Tick>
+						</dd>
+					</div>
+				</dl>
+				<!-- The normalizer's layout rows (blank, header or footer lines, an opening balance) are read but are not
+				 transactions: said, so the four counts add up to the rows read. -->
+				{#if layoutRows > 0}
+					<p class="hint">{plural(layoutRows, 'file.layout_one', 'file.layout_other')}</p>
 				{/if}
-			{/if}
-		</div>
-	{/if}
+				{#if reading.first_date && reading.last_date}
+					<p class="hint">
+						{t('file.dates', { span: span(reading.first_date, reading.last_date) })}
+					</p>
+				{/if}
+
+				{#if reading.row_errors.length}
+					<section aria-label={t('file.bad_rows')}>
+						<h3>{t('file.bad_rows')}</h3>
+						<ul class="errors">
+							{#each reading.row_errors as failure (failure.row)}
+								<li>{t('file.bad_row', { row: failure.row, reason: rowReason(failure) })}</li>
+							{/each}
+						</ul>
+					</section>
+				{/if}
+
+				{#if reading.rows.length}
+					<details>
+						<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
+						<div class="table-wrap" use:scrollable={t('file.rows')}>
+							<table class="rows-on-phone">
+								<thead>
+									<tr>
+										<th>{t('column.date')}</th>
+										<th>{t('column.description')}</th>
+										<th class="number">{t('column.amount')}</th>
+										<th>{t('column.status')}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each reading.rows as row (row.external_id)}
+										<tr>
+											<td data-label={t('column.date')}>{day(row.date)}</td>
+											<td data-label={t('column.description')}>{row.description}</td>
+											<td data-label={t('column.amount')} class="number"
+												><Money minor={row.amount_minor} currency={account.currency} /></td
+											>
+											<td data-label={t('column.status')}
+												><Tick value={Boolean(report)}
+													>{row.duplicate
+														? t('file.row_already')
+														: report
+															? t('file.row_added')
+															: t('file.row_new')}</Tick
+												></td
+											>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</details>
+				{/if}
+
+				<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). -->
+				{#if report}
+					<p class="result" tabindex="-1" bind:this={resultLine} in:rise>
+						<span class="check" aria-hidden="true"></span>
+						{t('file.imported')}
+					</p>
+				{:else}
+					<!-- Nothing new: the notice says so, and no button is shown that could not be pressed. -->
+					{#if reading.new === 0}
+						<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
+					{:else}
+						<div class="actions" out:vanish>
+							<button onclick={commit} disabled={busy}>
+								{plural(reading.new, 'file.import_one', 'file.import_other')}
+							</button>
+						</div>
+					{/if}
+				{/if}
+			</div>
+		{/if}
+	</div>
 </article>
 
 <style>
+	/* Measured from, for the card's height (followContent); what leaves is clipped to the card while it glides. */
+	.follows {
+		position: relative;
+		overflow: clip;
+		align-content: start;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.follows {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
 	/* The file's name and «Quitar» share their middle line; a long name wraps beside the button. */
 	.head {
 		display: flex;

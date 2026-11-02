@@ -1,10 +1,12 @@
 // Form errors in Spanish, as a person meets them: nothing is left to the browser's own bubble (which speaks the
 // browser's language, outside the page), each error sits under its field in the page's language with the field
-// marked and focused, and no English detail from the API reaches the page. Its own user (see run.sh).
+// marked and focused, and no English detail from the API reaches the page; and where the page lands once a form is
+// sent. Its own user (see run.sh).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { say } from './messages.ts';
+import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 test.use({ locale: 'es-PA' });
@@ -115,4 +117,94 @@ test('rows that cannot be read say why in Spanish', async () => {
 	await expect(card.getByText(say('row.unreadable_date', { value: '2026/05/20' }))).toBeVisible();
 	await expect(card.getByText(say('row.unreadable_amount'))).toBeVisible();
 	await expect(page.locator('main')).not.toContainText(ENGLISH);
+});
+
+test('an account that cannot read the file shrinks its card without moving the page in one frame', async () => {
+	const response = await page.request.post('/api/v1/accounts', {
+		data: {
+			name: 'Tarjeta',
+			kind: 'credit_card',
+			currency: 'USD',
+			namespace: 'tarjeta',
+			profile: 'bac-card'
+		}
+	});
+	expect(response.status()).toBe(201);
+	const fixture = fileURLToPath(new URL('../../spec/fixtures/bac-card/input.csv', import.meta.url));
+	await page.goto('/import');
+	await page
+		.locator('input[type=file]')
+		.setInputFiles({ name: 'tarjeta.csv', mimeType: 'text/csv', buffer: readFileSync(fixture) });
+	const card = page.getByRole('article', { name: 'tarjeta.csv' });
+	await expect(card.getByText(say('file.rows_read'))).toBeVisible();
+	// A short window, and the card grown to its full height before the page goes to its end.
+	await page.setViewportSize({ width: 1280, height: 600 });
+	let height = 0;
+	await expect
+		.poll(async () => height === (height = await page.evaluate(() => document.body.scrollHeight)), {
+			intervals: [300]
+		})
+		.toBe(true);
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	// Every frame from the choice on, at the page's end: the figures left, the card shrank at once and the browser
+	// pulled the page back 98 px in that same frame (pass 15).
+	type Frames = { frames: number[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push(scrollY);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await card.getByLabel(say('file.account')).selectOption({ label: 'Corriente' });
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	await expect(card.getByText(say('file.rows_read'))).toHaveCount(0);
+	const travel = frames[0] - frames[frames.length - 1];
+	const steps = frames.slice(1).map((y, i) => Math.abs(y - frames[i]));
+	// The page did move, so the case is the one that jumped; it glides, no frame taking half the way.
+	expect(travel, `the page from ${frames[0]}`).toBeGreaterThan(40);
+	expect(Math.max(...steps), `${travel} px in all`).toBeLessThan(travel / 2);
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test('on a phone, a new account shows whole above its form', async () => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	for (const [name, kind] of [
+		['Ahorro', 'savings'],
+		['Efectivo', 'cash']
+	]) {
+		const response = await page.request.post('/api/v1/accounts', {
+			data: { name, kind, currency: 'USD', namespace: name.toLowerCase() }
+		});
+		expect(response.status()).toBe(201);
+	}
+	await page.goto('/accounts');
+	const name = page.getByLabel(say('accounts.name'), { exact: true });
+	await name.fill('Zeta');
+	await page.getByRole('button', { name: say('accounts.create') }).click();
+	await expect(name).toBeFocused();
+	const row = page.locator('tbody tr', { hasText: 'Zeta' });
+	await row.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
+	await still(page, 500);
+	// Shown from the form's title, the new account, last in the list, stood above the screen (pass 15): it shows
+	// whole under the top bar, and the field under it, above the bottom one.
+	const [bar, top, bottom, field, end] = await row.evaluate((e) => {
+		const rect = e.getBoundingClientRect();
+		const input = document.querySelector('input[name="name"]')!.getBoundingClientRect();
+		return [
+			document.querySelector('header.appbar')!.getBoundingClientRect().bottom,
+			rect.top,
+			rect.bottom,
+			input.bottom,
+			document.querySelector('nav.bar')!.getBoundingClientRect().top
+		];
+	});
+	expect(top).toBeGreaterThanOrEqual(bar);
+	expect(bottom).toBeLessThan(field);
+	expect(field).toBeLessThanOrEqual(end);
+	await page.setViewportSize({ width: 1280, height: 720 });
 });
