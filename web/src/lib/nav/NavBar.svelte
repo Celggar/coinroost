@@ -21,12 +21,12 @@
 	const title = $derived(page.error ? errorTitle(page.status) : titleOf(path));
 </script>
 
-<header class="appbar" bind:clientHeight={top}>
+<header class="appbar" bind:offsetHeight={top}>
 	{#if path === '/'}<Mark />{/if}
 	<span class="title">{t(title)}</span>
 </header>
 
-<nav class="bar" aria-label={t('nav.main')} bind:clientHeight={bottom}>
+<nav class="bar" aria-label={t('nav.main')} bind:offsetHeight={bottom}>
 	<NavCounts id="bar" />
 	<ul>
 		{#each narrow as destination (destination.href)}
