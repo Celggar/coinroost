@@ -7,7 +7,7 @@
 	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, drop, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
+	import { check, drop, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -112,7 +112,10 @@
 		}
 		notify(t('accounts.created', { name: data.name }));
 		accounts = [...accounts, data].sort((a, b) => a.name.localeCompare(b.name));
+		// The whole form back to how it opened: kept, the last account's kind passed to the next unnoticed (pass 14).
 		name = '';
+		kind = 'checking';
+		currency = 'USD';
 		profile = '';
 		namespace = '';
 		namespaceEdited = false;
@@ -122,8 +125,7 @@
 		// and the form shows from its title. Scrolled to by the browser, the page jumped in one frame (pass 13).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		field?.focus({ preventScroll: true });
-		await tick();
-		if (field) focusShown(field, form);
+		if (field) await landOn(field, form);
 	}
 
 	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */
@@ -229,11 +231,11 @@
 				<Field label={t('accounts.currency')} name="currency" error={errors.currency}>
 					{#snippet children(wiring)}
 						<!-- The API's rules (validate.rs), checked before sending: one error per send took three sends for
-						     three (pass 14). -->
+						     three (pass 14). No length cap: «dolares» was cut to «dol» without a word; the pattern says
+						     what is wrong instead. -->
 						<input
 							{...wiring}
 							required
-							maxlength="3"
 							pattern={'[A-Za-z]{3}'}
 							data-format="problem.currency_unknown"
 							bind:value={currency}

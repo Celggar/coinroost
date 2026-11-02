@@ -4,7 +4,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { pop } from '#lib/motion.ts';
 
@@ -58,7 +58,7 @@
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		field?.focus({ preventScroll: true });
 		await oncreated(data);
-		if (field) focusShown(field, form);
+		if (field) await landOn(field, form);
 	}
 </script>
 

@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/form.ts';
 	import Money from '#lib/ui/Money.svelte';
@@ -15,6 +15,9 @@
 
 	let preview = $state<Schemas['RulePreview'] | null>(null);
 	let busy = $state(false);
+	let card = $state<HTMLElement>();
+	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole).
+	let holding = $state(false);
 
 	/** Only what changes: the category, the payee, or both. */
 	function what(change: Schemas['RuleChange']): string[] {
@@ -39,13 +42,19 @@
 			notify(problem(failure, response?.status, t('changes.check_failed')), 'bad');
 			return;
 		}
+		holding = true;
 		preview = data;
 		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
 		const answer = focusOn(data.changes.length ? '#changes-some' : '#changes-none');
 		// The answer whole, down to the button that applies it: its first line alone left the changes below the screen.
-		const send = answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions');
-		if (answer) await showWhole(answer, send ?? answer);
+		// Only this answer's own button: the last answer's, still leaving, read as the end and let the answer go under the
+		// bottom bar (pass 14).
+		const send = data.changes.length
+			? answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions')
+			: null;
+		if (answer) await showWhole(answer, send ?? answer, card);
+		holding = false;
 	}
 
 	async function apply() {
@@ -72,56 +81,75 @@
 		// Rules that set a category empty the uncategorized queue: Revisar's count follows at once (N6).
 		refreshCounts();
 		onapplied();
+		// The apply button is gone with the changes: the check puts the focus on what the list says now.
 		await check();
-		// The apply button is gone with the changes: the focus goes to what the list says now.
-		await tick();
-		document.getElementById(preview?.changes.length ? 'changes-some' : 'changes-none')?.focus();
 	}
 </script>
 
-<section class="card" aria-labelledby="changes-title">
-	<h2 id="changes-title">{t('changes.title')}</h2>
-	<p class="hint">{t('changes.hint')}</p>
-	<div class="actions">
-		<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
-		<button
-			class="secondary"
-			onclick={() => {
-				check();
-			}}
-			aria-disabled={busy}>{t('changes.check')}</button
-		>
-	</div>
-	{#if preview}
-		<!-- `global`: these also enter when the first check opens the block around them. -->
-		{#if preview.changes.length === 0}
-			<p id="changes-none" tabindex="-1" in:rise|global out:vanish>{t('changes.nothing')}</p>
-		{:else}
-			<p id="changes-some" tabindex="-1" in:rise|global out:vanish>
-				{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
-			</p>
-			<ul class="changes" in:rise|global out:vanish>
-				{#each preview.changes as change (change.transaction_id)}
-					<li out:vanish animate:glide>
-						<div class="txn-line">
-							<span>{day(change.date)}</span>
-							<span class="description">{change.description}</span>
-							<Money minor={change.amount_minor} currency={change.currency} />
-						</div>
-						<div class="hint">{what(change).join(LIST)}</div>
-					</li>
-				{/each}
-			</ul>
-			<div class="actions" in:rise|global out:vanish>
-				<button onclick={apply} disabled={busy}>
-					{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
-				</button>
-			</div>
+<!-- The card shrinks with what it holds instead of at once: at the page's end, the applied changes leaving pulled the
+     page back 171 px in one frame (pass 14). -->
+<section
+	class="card follows"
+	aria-labelledby="changes-title"
+	bind:this={card}
+	use:followContent={holding}
+>
+	<div class="stack">
+		<h2 id="changes-title">{t('changes.title')}</h2>
+		<p class="hint">{t('changes.hint')}</p>
+		<div class="actions">
+			<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
+			<button
+				class="secondary"
+				onclick={() => {
+					check();
+				}}
+				aria-disabled={busy}>{t('changes.check')}</button
+			>
+		</div>
+		{#if preview}
+			<!-- `global`: these also enter when the first check opens the block around them. -->
+			{#if preview.changes.length === 0}
+				<p id="changes-none" tabindex="-1" in:rise|global out:vanish>{t('changes.nothing')}</p>
+			{:else}
+				<p id="changes-some" tabindex="-1" in:rise|global out:vanish>
+					{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
+				</p>
+				<ul class="changes" in:rise|global out:vanish>
+					{#each preview.changes as change (change.transaction_id)}
+						<li out:vanish animate:glide>
+							<div class="txn-line">
+								<span>{day(change.date)}</span>
+								<span class="description">{change.description}</span>
+								<Money minor={change.amount_minor} currency={change.currency} />
+							</div>
+							<div class="hint">{what(change).join(LIST)}</div>
+						</li>
+					{/each}
+				</ul>
+				<div class="actions" in:rise|global out:vanish>
+					<button onclick={apply} disabled={busy}>
+						{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
+					</button>
+				</div>
+			{/if}
 		{/if}
-	{/if}
+	</div>
 </section>
 
 <style>
+	/* Clipped at the padding's edge, the buttons' focus rings stay whole; the content does not stretch to a height the
+	   card holds. */
+	.follows {
+		position: relative;
+		overflow: clip;
+		align-content: start;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.follows {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
 	.changes {
 		list-style: none;
 		margin: 0;

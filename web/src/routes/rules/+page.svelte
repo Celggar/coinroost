@@ -10,7 +10,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { focusShown, keepWhole, showWhole } from '#lib/ui/form.ts';
+	import { focusShown, showWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { arrive, glide, placeholder, pop, rise, vanish } from '#lib/motion.ts';
 
@@ -83,14 +83,11 @@
 
 	// A new rule rises into the list above the form while the page stands still, so the form moves down and the
 	// rule's card can stand cut at the screen's top: once it lands, the page settles where nothing is cut (pass 9).
-	async function added() {
+	/** The new rule's place in the list, once the list has it (RuleForm shows it above the form). */
+	async function made(rule: Schemas['Rule']) {
 		await load();
 		await tick();
-		const list = document.querySelector('.rules');
-		await Promise.all(
-			list?.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {})) ?? []
-		);
-		await keepWhole();
+		return document.querySelector<HTMLElement>(`[data-rule="${rule.id}"]`);
 	}
 
 	// A link to the category form (from an uncategorized queue with no category to choose) lands in its name field:
@@ -137,7 +134,7 @@
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:rise out:vanish>
 					{#each rules as rule, index (rule.id)}
-						<li class="card rule" in:rise out:vanish animate:glide>
+						<li class="card rule" data-rule={rule.id} in:rise out:vanish animate:glide>
 							<div class="head">
 								<span class="position" aria-hidden="true"
 									><Tick value={rule.position}>{rule.position}</Tick></span
@@ -188,7 +185,7 @@
 			{/if}
 		</div>
 
-		<RuleForm {categories} {payees} {accounts} oncreated={added} />
+		<RuleForm {categories} {payees} {accounts} oncreated={made} />
 		<CategoryForm oncreated={load} back={fromQueue} />
 		<Changes {names} onapplied={load} />
 	</div>
@@ -204,12 +201,15 @@
 	:global(html:has(.rules-page)) {
 		overflow-anchor: none;
 	}
+	/* The cards' gap is the page's (.stack): a rule shown under the bar keeps the room the page's scroll padding
+	   gives it, and the one above ends at the bar's edge. With 12 px, 4 px of it stood under the bar, and the landing
+	   went up a whole card to show it (pass 14). */
 	.rules {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: var(--space-md);
+		gap: var(--space-lg);
 	}
 	.rule p {
 		margin: 0;

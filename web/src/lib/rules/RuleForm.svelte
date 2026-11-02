@@ -5,7 +5,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, focusShown, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -38,8 +38,13 @@
 		const found = check(form);
 		const low = toMinor(min);
 		const high = toMinor(max);
-		if (Number.isNaN(low)) found.min ??= t('form.amount');
-		if (Number.isNaN(high)) found.max ??= t('form.amount');
+		// A signed amount is money all the same: it gets the API's own words, not «write an amount» (pass 14).
+		const wrong = (text: string) =>
+			/^[-\u2212]\s*\d+(\.\d{1,2})?$/.test(text.trim())
+				? t('problem.rule_negative_amount')
+				: t('form.amount');
+		if (Number.isNaN(low)) found.min ??= wrong(min);
+		if (Number.isNaN(high)) found.max ??= wrong(max);
 		if (low !== null && high !== null && low > high) found.max ??= t('problem.rule_min_above_max');
 		// The server refuses a rule that sets nothing; saying it here puts the message on the first of the two fields.
 		if (!category && !payee) found.category ??= t('problem.rule_nothing_to_set');
@@ -101,8 +106,9 @@
 		// by the browser, the page jumped 725 px in one frame (pass 13).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		field?.focus({ preventScroll: true });
-		await oncreated(data);
-		if (field) focusShown(field, form);
+		// The page hands back the new rule's place in the list, to show it above the form.
+		const made = await oncreated(data);
+		if (field) await landOn(field, form, made instanceof HTMLElement ? made : undefined);
 	}
 </script>
 

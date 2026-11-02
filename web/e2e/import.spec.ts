@@ -398,6 +398,50 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
 });
 
+test('on a phone, changes applied at the page end leave the page still as it shortens', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	const categories: { id: string; kind: string }[] = (
+		await (await page.request.get('/api/v1/categories')).json()
+	).items;
+	const response = await page.request.post('/api/v1/rules', {
+		data: {
+			name: 'Landing C',
+			when: { description_contains: 'INTERESES' },
+			then: { category_id: categories.find((c) => c.kind !== 'transfer')!.id }
+		}
+	});
+	expect(response.ok()).toBe(true);
+	const id = (await response.json()).id;
+	await page.goto('/rules');
+	await page.getByRole('button', { name: say('changes.check') }).click();
+	const apply = page.getByRole('button', { name: say('changes.apply_one') });
+	await apply.scrollIntoViewIfNeeded();
+	// Every frame from the click on: the applied change left at the page's end, the page shrank, and the browser pulled
+	// it back 171 px in that same frame (pass 14).
+	type Frames = { frames: [number, number][] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push([scrollY, document.documentElement.scrollHeight]);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await apply.click();
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	const pulled = frames
+		.slice(1)
+		.filter(([y, height], i) => height < frames[i][1] && y !== frames[i][0]);
+	expect(pulled).toEqual([]);
+	await expect(page.getByText(say('changes.nothing'))).toBeInViewport();
+	expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+});
+
 test('a failed recovery status offers no codes to make', async ({ context }) => {
 	const page = await loggedIn(context);
 	// «Crear códigos» while the status is unknown would replace codes the person may already have.

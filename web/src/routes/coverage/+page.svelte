@@ -169,18 +169,15 @@
 		grid-area: hint;
 	}
 	/* A phone shows the title in its top bar: alone at the row's end the button read as a leftover, so it follows the
-	   explanation instead, where the eye arrives after reading it. */
+	   explanation instead, where the eye arrives after reading it. A column, not grid rows: with no account there is
+	   no button, and an empty row kept its 12 px gap, 28 px from the explanation to the card against 16 on the
+	   sibling tabs (pass 14). */
 	@media (max-width: 899px) {
 		.head {
-			grid-template-columns: minmax(0, 1fr);
-			grid-template-areas: 'hint' 'action';
-			row-gap: var(--space-md);
-		}
-		.head h1 {
-			grid-area: auto;
-		}
-		.refresh {
-			justify-self: start;
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: var(--space-md);
 		}
 	}
 	/* Beside the title the button is 14 px taller than it (44 against 30): it spans the title's and the explanation's

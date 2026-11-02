@@ -4,7 +4,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/form.ts';
@@ -54,50 +54,66 @@
 		`${accountName(leg.account_id, names)}\u00a0(${wholeDay(leg.date)})`;
 </script>
 
-<section class="card" aria-labelledby="waiting-title">
-	<h2 id="waiting-title">{t('waiting.title')}</h2>
-	<div class="in-place">
-		{#if preview.pairs.length === 0}
-			<p in:rise out:vanish>{t('waiting.nothing')}</p>
-		{:else}
-			<div class="stack" in:rise out:vanish>
-				<p class="hint">{t('waiting.hint')}</p>
-				<ul class="pairs" aria-label={t('waiting.title')}>
-					{#each preview.pairs as pair (pair.outflow.transaction_id)}
-						<li in:rise out:vanish animate:glide>
-							<div class="line">
-								<!-- From on one line, to on the next behind its arrow; each date holds to its account's last word.
+<!-- The card shrinks as the pairs leave instead of at once: at the page's end the page slid back with it, where it
+     had jumped 50 px in one frame (pass 14). -->
+<section class="card follows" aria-labelledby="waiting-title" use:followContent>
+	<div class="stack">
+		<h2 id="waiting-title">{t('waiting.title')}</h2>
+		<div class="in-place">
+			{#if preview.pairs.length === 0}
+				<p in:rise out:vanish>{t('waiting.nothing')}</p>
+			{:else}
+				<div class="stack" in:rise out:vanish>
+					<p class="hint">{t('waiting.hint')}</p>
+					<ul class="pairs" aria-label={t('waiting.title')}>
+						{#each preview.pairs as pair (pair.outflow.transaction_id)}
+							<li in:rise out:vanish animate:glide>
+								<div class="line">
+									<!-- From on one line, to on the next behind its arrow; each date holds to its account's last word.
 								     Run together, a long name left the arrow ending a line and a date alone on the last (pass 8). -->
-								<span class="route">
-									<span>{withDate(pair.outflow)}</span>
-									<span class="to"><Arrow />{withDate(pair.inflow)}</span>
-								</span>
-								<span class="money">{money(-pair.outflow.amount_minor, pair.outflow.currency)}</span
-								>
-							</div>
-							<div class="hint">
-								{t('waiting.found', {
-									description: pair.outflow.description,
-									why: passLabel(pair.pass)
-								})}
-							</div>
-							{#if pair.drops_manual}
-								<span class="chip warn">{t('waiting.drops_manual')}</span>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-				<div class="actions">
-					<button onclick={apply} disabled={busy}
-						>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
-					>
+									<span class="route">
+										<span>{withDate(pair.outflow)}</span>
+										<span class="to"><Arrow />{withDate(pair.inflow)}</span>
+									</span>
+									<span class="money"
+										>{money(-pair.outflow.amount_minor, pair.outflow.currency)}</span
+									>
+								</div>
+								<div class="hint">
+									{t('waiting.found', {
+										description: pair.outflow.description,
+										why: passLabel(pair.pass)
+									})}
+								</div>
+								{#if pair.drops_manual}
+									<span class="chip warn">{t('waiting.drops_manual')}</span>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+					<div class="actions">
+						<button onclick={apply} disabled={busy}
+							>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
+						>
+					</div>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </section>
 
 <style>
+	/* Clipped at the padding's edge, the button's focus ring stays whole. */
+	.follows {
+		position: relative;
+		overflow: clip;
+		align-content: start;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.follows {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
 	.pairs {
 		list-style: none;
 		margin: 0;

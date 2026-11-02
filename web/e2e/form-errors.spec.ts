@@ -88,6 +88,10 @@ test('an amount that is not money is marked on its field before anything is sent
 	await form.getByRole('button', { name: say('ruleform.add') }).click();
 	const min = await fieldSays(say('ruleform.min'), say('form.amount'));
 	await expect(min).toBeFocused();
+	// A signed amount is money: it is told what the API would say, that a rule's amounts carry no sign.
+	await min.fill('-5');
+	await form.getByRole('button', { name: say('ruleform.add') }).click();
+	await fieldSays(say('ruleform.min'), say('problem.rule_negative_amount'));
 });
 
 test('rows that cannot be read say why in Spanish', async () => {

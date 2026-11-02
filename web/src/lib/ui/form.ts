@@ -3,6 +3,7 @@ import { prefersReducedMotion } from 'svelte/motion';
 // browser's language, outside the page); these read the same constraints (`required`, `maxlength`, `type`,
 // `pattern`, `min`/`max`) and give each invalid field its message, keyed by the field's `name`.
 import { has, i18n, t } from '#lib/i18n.svelte.ts';
+import { spare } from '#lib/motion.ts';
 
 export type Errors = Record<string, string>;
 
@@ -71,24 +72,45 @@ function coverTop(): number {
 	);
 }
 
+// A tile's label and figure are lines too: a `dt` stood 3.3 px under the bar (pass 13).
+const LINES = 'h1, h2, h3, p, label, legend, li, dt, dd, img, [data-whole]';
+// A select's value stood across the bar after changes were applied (pass 14).
+const CONTROLS = 'select, input, button, textarea';
+
 /**
- * The page position nearest `y` whose cut line at the top goes through no line of text and no picture: up to show
- * what it would cut whole, else down past it, within `lo`–`hi`. A heading cut in half at the top looked broken
- * (pass 8).
+ * The page position nearest `y` whose cut line at the top goes through no line of text, no picture and no control:
+ * up to show what it would cut whole, else down past it, within `lo`–`hi`. When only text can stay whole, text; when
+ * nothing can, `y`. A heading cut in half at the top looked broken (pass 8).
  */
-function uncut(y: number, lo: number, hi: number, loose = lo): number {
+function uncut(
+	y: number,
+	lo: number,
+	hi: number,
+	loose = lo,
+	max = document.documentElement.scrollHeight - innerHeight
+): number {
+	return (
+		clean(`${LINES}, ${CONTROLS}`, y, lo, hi, loose, max) ??
+		clean(LINES, y, lo, hi, loose, max) ??
+		Math.min(Math.max(y, 0), max)
+	);
+}
+
+/** `uncut` for the boxes `selector` names; null when none of its places is free of them. */
+function clean(
+	selector: string,
+	y: number,
+	lo: number,
+	hi: number,
+	loose: number,
+	max: number
+): number | null {
 	const line = coverTop();
-	const boxes = [
-		// A tile's label and figure are lines too: a `dt` stood 3.3 px under the bar (pass 13).
-		...document.querySelectorAll<HTMLElement>(
-			'h1, h2, h3, p, label, legend, li, dt, dd, img, [data-whole]'
-		)
-	]
+	const boxes = [...document.querySelectorAll<HTMLElement>(selector)]
 		.map((e) => ({ e, r: e.getBoundingClientRect() }))
 		.filter(({ e, r }) => r.height > 2 && !pinned(e))
 		.map(({ r }) => ({ top: r.top + scrollY, bottom: r.bottom + scrollY }));
-	// The page cannot go above its start or past its end: a position out there is no answer.
-	const max = document.documentElement.scrollHeight - innerHeight;
+	// The page cannot go above its start or past its end (`max`): a position out there is no answer.
 	// A box that starts within 8 px under the cover reads as cut too: a label flush with the bar's edge looked cut
 	// (pass 9). Going up leaves it 8 px clear; going down hides it whole under the bar.
 	const clear = 8;
@@ -112,9 +134,16 @@ function uncut(y: number, lo: number, hi: number, loose = lo): number {
 					: Math.ceil(Math.max(...crossing.map((b) => b.bottom)) - line);
 			if (at < 0 || at > max) break;
 		}
-		if (at >= Math.max(least, 0) && at <= Math.min(hi, max) && !cut(at).length) return at;
+		// The bounds in whole pixels too, outward: hiding a card's last 0.4 px went past `hi` by that much, and the
+		// landing went up a whole card instead (pass 14).
+		if (
+			at >= Math.max(Math.floor(least), 0) &&
+			at <= Math.min(Math.ceil(hi), max) &&
+			!cut(at).length
+		)
+			return at;
 	}
-	return start;
+	return null;
 }
 
 const behavior = (): ScrollBehavior => (prefersReducedMotion.current ? 'auto' : 'smooth');
@@ -148,7 +177,7 @@ function labelTop(control: HTMLElement): number {
 export function focusShown(
 	control: HTMLElement,
 	form: HTMLElement = control.closest('form') ?? control
-) {
+): boolean {
 	control.focus({ preventScroll: true });
 	const { top, bottom, floor, bar } = edges();
 	const field = control.getBoundingClientRect();
@@ -169,10 +198,40 @@ export function focusShown(
 			const hi = scrollY + labelTop(control) - top;
 			const loose = Math.max(0, scrollY + end - floor);
 			scrollTo({ top: uncut(y, lo, hi, loose), behavior: behavior() });
+			return true;
 		}
 	} else if (labelTop(control) < top || field.bottom > bottom) {
 		control.scrollIntoView({ block: 'center', behavior: behavior() });
+		return true;
 	}
+	return false;
+}
+
+/**
+ * After a send that changed the page around its form: once the page settles, what the send `made` (a new rule in its
+ * place in the list) down to the form's button or, failing that, its field, when that fits the room; else the form shown from its title, or, when that
+ * much shows already, no line cut at the top. Measured while the new rule still rose, the landing left its card 2 px
+ * under the bar, and a second landing just before it went another way (pass 14).
+ */
+export async function landOn(
+	control: HTMLElement,
+	form: HTMLElement = control.closest('form') ?? control,
+	made?: HTMLElement
+) {
+	await settled();
+	const { top, bottom } = edges();
+	// Down to the form's send button when that fits too, as `focusShown` does: down to the field only, the button
+	// stood below the screen at 1280.
+	const from = made?.isConnected ? made.getBoundingClientRect().top : NaN;
+	const send = form.querySelector<HTMLElement>('button[type="submit"]');
+	const end = [send, control].find(
+		(e) => e && e.getBoundingClientRect().bottom - from <= bottom - top
+	);
+	if (made && end) {
+		await showWhole(made, end);
+		return;
+	}
+	if (!focusShown(control, form)) await keepWhole();
 }
 
 /** Resolves once the page stops scrolling (a smooth scroll started just before is still on its way). */
@@ -237,11 +296,16 @@ async function settled() {
  * `scrollIntoView` with `nearest` would), smoothly and where no line of text is cut at the top; when it shows already,
  * only as far as a cut line asks. The browser's own scroll to a focused element jumped in one frame and left a title
  * across the top bar, and a list that left at the page's end pulled the page back under it (pass 13: a rule moved up,
- * a pair confirmed).
+ * a pair confirmed). `held`, a box holding room it will give back (`followContent`): below the box (or around it) it
+ * ends the page that much higher, so the place is chosen inside that end; above it, the browser's scroll anchoring
+ * keeps the page still as it lets go. Either way, letting it go after moves nothing on screen. Let go first, at the page's end,
+ * the page slid back with it and then moved again past a cut line (pass 14: changes applied on a phone).
  */
-export async function showWhole(box: HTMLElement, end: HTMLElement = box) {
+export async function showWhole(box: HTMLElement, end: HTMLElement = box, held?: HTMLElement) {
 	await settled();
 	if (!box.isConnected) return;
+	// An end that left while the page settled holds nothing: its box reads as 0, above everything.
+	if (!end.isConnected) end = box;
 	const { top, bottom, floor } = edges();
 	const head = box.getBoundingClientRect();
 	const foot = end.getBoundingClientRect().bottom;
@@ -249,13 +313,19 @@ export async function showWhole(box: HTMLElement, end: HTMLElement = box) {
 	// bar's, or as much as the page's end lets show. When no such place is free of cut lines, or it is taller than
 	// the room, it may go up as far as the box alone still shows (`loose`): with only its top allowed, or a place past
 	// the page's end, none was free (pass 14).
-	const max = document.documentElement.scrollHeight - innerHeight;
+	const below =
+		held &&
+		(held.contains(box) || box.compareDocumentPosition(held) & Node.DOCUMENT_POSITION_FOLLOWING);
+	const max = document.documentElement.scrollHeight - innerHeight - (below ? spare(held) : 0);
 	const hi = scrollY + head.top - top;
 	const lo = Math.min(scrollY + foot - bottom, hi, max);
 	const y = Math.min(Math.max(scrollY, lo), hi);
 	const loose = Math.min(lo, Math.max(0, scrollY + head.bottom - floor));
-	const at = uncut(y, lo, hi, loose);
-	if (Math.abs(at - scrollY) >= 1) scrollTo({ top: at, behavior: behavior() });
+	const at = uncut(y, lo, hi, loose, max);
+	if (Math.abs(at - scrollY) >= 1) {
+		scrollTo({ top: at, behavior: behavior() });
+		if (held) await still();
+	}
 }
 
 /** Moves the focus to the first field, in the form's order, that has an error. */

@@ -218,19 +218,30 @@ function layoutTop(element: HTMLElement, root: HTMLElement) {
 }
 
 /**
- * Keeps the element's height following its first child's (plus its own padding), so the card grows or shrinks
+/** A box's padding and borders, top and bottom: what its height holds besides its content (border-box sizing). */
+function frame(node: HTMLElement): number {
+	const style = getComputedStyle(node);
+	const sides = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'] as const;
+	return sides.reduce((sum, side) => sum + parseFloat(style[side]), 0);
+}
+
+/**
+ * Keeps the element's height following its first child's (plus its own padding and borders), so the card grows or shrinks
  * instead of jumping; the height transition is in CSS, under a no-preference media rule. What sits below a change
  * and is marked `data-flip` slides to its new place with a transform that starts in the same frame as the height,
  * with the same length and curve, so its bottom edge tracks the box's and nothing is clipped (the FLIP technique).
- * The element has to be positioned, so the positions inside it are measured from it.
+ * The element has to be positioned, so the positions inside it are measured from it. While `held` it only grows: the
+ * room it would give back stays until it is let go, so the page can first move where it will stand (see `showWhole`).
  */
-export function followContent(node: HTMLElement) {
+export function followContent(node: HTMLElement, held = false) {
 	const content = node.firstElementChild;
 	if (!(content instanceof HTMLElement)) return;
+	let hold = held;
 	let last = new Map<HTMLElement, number>();
-	const observer = new ResizeObserver(() => {
-		const style = getComputedStyle(node);
-		const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+	const fit = () => {
+		const padding = frame(node);
+		const height = content.offsetHeight + padding;
+		if (hold && height < node.offsetHeight) return;
 		const glide = !still() && node.style.height !== '';
 		const now = new Map<HTMLElement, number>();
 		for (const element of node.querySelectorAll<HTMLElement>('[data-flip]')) {
@@ -247,8 +258,22 @@ export function followContent(node: HTMLElement) {
 			animation.ready.then(() => (element.style.transform = ''));
 		}
 		last = now;
-		node.style.height = `${content.offsetHeight + padding}px`;
-	});
+		node.style.height = `${height}px`;
+	};
+	const observer = new ResizeObserver(fit);
 	observer.observe(content);
-	return { destroy: () => observer.disconnect() };
+	return {
+		update(next: boolean) {
+			hold = next;
+			if (!hold) fit();
+		},
+		destroy: () => observer.disconnect()
+	};
+}
+
+/** The room a box that follows its content would give back once let go (`followContent`, held). */
+export function spare(node: HTMLElement): number {
+	const content = node.firstElementChild;
+	if (!(content instanceof HTMLElement)) return 0;
+	return Math.max(0, node.offsetHeight - content.offsetHeight - frame(node));
 }
