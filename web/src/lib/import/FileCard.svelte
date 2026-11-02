@@ -240,13 +240,20 @@
 											<td data-label={t('column.amount')} class="number"
 												><Money minor={row.amount_minor} currency={account.currency} /></td
 											>
+											<!-- The cell keeps the width of its longest word: «Nueva» becoming «Agregada» re-laid the table
+											     and the amounts moved 19 px in place (pass 16). -->
 											<td data-label={t('column.status')}
-												><Tick value={Boolean(report)}
-													>{row.duplicate
-														? t('file.row_already')
-														: report
-															? t('file.row_added')
-															: t('file.row_new')}</Tick
+												><span class="status"
+													>{#each ['file.row_already', 'file.row_added', 'file.row_new'] as const as key (key)}<span
+															class="sizer"
+															aria-hidden="true">{t(key)}</span
+														>{/each}<Tick value={Boolean(report)}
+														>{row.duplicate
+															? t('file.row_already')
+															: report
+																? t('file.row_added')
+																: t('file.row_new')}</Tick
+													></span
 												></td
 											>
 										</tr>
@@ -341,6 +348,16 @@
 	   what takes the tap but not the line, which grew to 44 px and left a blank line under the hint (pass 11). */
 	.target {
 		padding-block: calc((44px - 1lh) / 2);
+	}
+	/* A row's status and every word it can take, in one grid cell: the cell is as wide as the longest. */
+	.status {
+		display: inline-grid;
+	}
+	.status > :global(*) {
+		grid-area: 1 / 1;
+	}
+	.sizer {
+		visibility: hidden;
 	}
 	/* The file's import, done: a check and what it added. */
 	/* As tall as the button it replaces: 28 px shorter, it shrank a page scrolled to its end, the browser pulled the page

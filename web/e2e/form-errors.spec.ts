@@ -400,3 +400,27 @@ test('a sorted card fades before the next moves up, and its count never shows tw
 	}
 	await page.emulateMedia({ reducedMotion: null });
 });
+
+// Last: it imports into «Corriente», which the tests above read without imports.
+test('importing keeps the rows table still while each status changes', async () => {
+	const fixture = fileURLToPath(
+		new URL('../../spec/fixtures/bac-account/input.csv', import.meta.url)
+	);
+	await page.goto('/import');
+	await page
+		.locator('input[type=file]')
+		.setInputFiles({ name: 'mayo.csv', mimeType: 'text/csv', buffer: readFileSync(fixture) });
+	const card = page.getByRole('article', { name: 'mayo.csv' });
+	await card.locator('summary').click();
+	const amounts = card.locator('tbody td.number');
+	await expect(amounts.first()).toBeVisible();
+	const edges = () =>
+		amounts.evaluateAll((cells) => cells.map((c) => c.getBoundingClientRect().right));
+	const before = await edges();
+	await card.getByRole('button', { name: /^Importar/ }).click();
+	await expect(card.getByText(say('file.imported'))).toBeVisible();
+	// «Nueva» became «Agregada» and the table re-laid itself: the amounts moved 19 px in place (pass 16).
+	await expect.poll(edges).toEqual(before);
+	await page.waitForTimeout(600);
+	expect(await edges()).toEqual(before);
+});
