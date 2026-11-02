@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { english, say } from './messages.ts';
+import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const fixture = (name: string) =>
@@ -391,10 +392,7 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 	expect(await page.evaluate(() => scrollY)).toBe(start);
 	const row = page.locator('.rules > li', { has: page.locator(`[data-move^="${made[1]}-"]`) });
 	await row.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
-	let last = NaN;
-	await expect
-		.poll(async () => last === (last = await page.evaluate(() => scrollY)), { intervals: [500] })
-		.toBe(true);
+	await still(page, 500);
 	const cut = await page.evaluate(() => {
 		const bar = document.querySelector('header.appbar')!.getBoundingClientRect().bottom;
 		return [...document.querySelectorAll('main h2, main p')]
@@ -407,6 +405,39 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 	});
 	expect(cut).toBe(0);
 	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+});
+
+test('on a phone, deleting a rule leaves the page where it was', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	const made: string[] = [];
+	for (const name of ['Delete A', 'Delete B']) {
+		const response = await page.request.post('/api/v1/rules', {
+			data: {
+				name,
+				when: { description_contains: name.toUpperCase() },
+				then: { payee_from_text: true }
+			}
+		});
+		expect(response.ok()).toBe(true);
+		made.push((await response.json()).id);
+	}
+	// Each step read once the page stands still: the list loads and the confirm opens with their own motion.
+	await page.goto('/rules');
+	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Delete B' }) });
+	await expect(ask).toBeVisible();
+	await still(page);
+	await ask.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 400));
+	await ask.click();
+	const yes = page.getByRole('button', { name: say('rules.delete_it') });
+	const start = await still(page);
+	await yes.click();
+	await expect(page.getByRole('heading', { name: 'Delete B' })).toHaveCount(0);
+	// The focus goes to the page's title, which a phone shows in its top bar: focused bare, the page jumped to its
+	// start in one frame (pass 15).
+	await expect(page.locator('main h1')).toBeFocused();
+	expect(await still(page)).toBe(start);
+	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
 });
 
 test('on a phone, changes applied at the page end leave the page still as it shortens', async ({

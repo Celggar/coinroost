@@ -115,7 +115,7 @@
 				<p id="changes-some" tabindex="-1" in:rise|global out:vanish>
 					{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
 				</p>
-				<ul class="changes" in:rise|global out:vanish>
+				<ul class="changes txn-rows" in:rise|global out:vanish>
 					{#each preview.changes as change (change.transaction_id)}
 						<li out:vanish animate:glide>
 							<div class="txn-line">

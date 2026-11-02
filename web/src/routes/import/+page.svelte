@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { retry } from '#lib/ui/focus.ts';
+	import { focusOn, retry } from '#lib/ui/focus.ts';
+	import { showWhole } from '#lib/ui/form.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import Icon from '#lib/nav/Icon.svelte';
 	import { onMount } from 'svelte';
@@ -109,10 +110,14 @@
 				<FileCard
 					file={entry.file}
 					{accounts}
-					onremove={() => {
+					onremove={async () => {
 						files = files.filter((f) => f.id !== entry.id);
-						// The card and its button are gone: the focus goes back to choosing files.
-						document.querySelector<HTMLInputElement>('.drop input')?.focus();
+						// The card and its button are gone: the focus goes back to choosing files, and the page glides
+						// to them once the card has left. Focused bare, the page jumped to its start in one frame
+						// (pass 15).
+						const input = focusOn('.drop input');
+						const zone = input?.closest('label');
+						if (zone) await showWhole(zone);
 					}}
 				/>
 			</div>

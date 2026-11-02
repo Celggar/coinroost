@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { retry } from '#lib/ui/focus.ts';
+	import { focusOn, retry } from '#lib/ui/focus.ts';
+	import { showWhole } from '#lib/ui/form.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { arrive, followContent, glide, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
@@ -40,6 +41,11 @@
 		loaded = true;
 	}
 
+	let queue = $state<HTMLElement>();
+	// Held while a sorted card leaves: the page glides once to the card that takes the focus, and the list gives back
+	// the card's room after. Let go at once at the page's end, the page jumped 190 px in one frame (pass 15).
+	let holding = $state(false);
+
 	async function choose(transaction: Schemas['Transaction'], categoryId: string) {
 		if (!categoryId) return;
 		busy = transaction.id;
@@ -62,11 +68,15 @@
 		// The focus moves on to the card that takes this one's place (or the one before it, at the end), so the
 		// next choice is one key away and the focus never falls to the page.
 		const at = transactions.findIndex((x) => x.id === transaction.id);
+		holding = true;
 		transactions = transactions.filter((x) => x.id !== transaction.id);
 		const next = transactions[Math.min(at, transactions.length - 1)];
 		await tick();
-		if (next) document.getElementById(`category-${next.id}`)?.focus();
-		else document.querySelector<HTMLElement>('#all-done a')?.focus();
+		// The page glides to it once the list has its new size: focused bare, the browser scrolls in one frame.
+		const target = next ? focusOn(`#category-${next.id}`) : focusOn('#all-done a');
+		const card = target?.closest('li');
+		if (target) await showWhole(card ?? target, card ?? target, queue);
+		holding = false;
 	}
 
 	onMount(load);
@@ -148,32 +158,34 @@
 						action={t('uncategorized.create_categories')}
 					/>
 				{/if}
-				<ul class="queue" aria-label={t('uncategorized.list')}>
-					{#each transactions as transaction (transaction.id)}
-						{@const leg = transaction.legs[0]}
-						<li class="card" out:vanish animate:glide>
-							<div class="txn-line">
-								<span>{day(transaction.date)}</span>
-								<span class="description">{transaction.description}</span>
-								{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
-							</div>
-							{#if categories.length > 0}<label>
-									{t('column.category')}
-									<select
-										id="category-{transaction.id}"
-										value=""
-										disabled={busy !== null}
-										onchange={(event) => choose(transaction, event.currentTarget.value)}
-									>
-										<option value="" disabled>{t('uncategorized.choose')}</option>
-										{#each categories as category (category.id)}
-											<option value={category.id}>{category.name}</option>
-										{/each}
-									</select>
-								</label>{/if}
-						</li>
-					{/each}
-				</ul>
+				<div class="follows" bind:this={queue} use:followContent={holding}>
+					<ul class="queue txn-rows" aria-label={t('uncategorized.list')}>
+						{#each transactions as transaction (transaction.id)}
+							{@const leg = transaction.legs[0]}
+							<li class="card" out:vanish animate:glide>
+								<div class="txn-line">
+									<span>{day(transaction.date)}</span>
+									<span class="description">{transaction.description}</span>
+									{#if leg}<Money minor={leg.amount_minor} currency={leg.currency} />{/if}
+								</div>
+								{#if categories.length > 0}<label>
+										{t('column.category')}
+										<select
+											id="category-{transaction.id}"
+											value=""
+											disabled={busy !== null}
+											onchange={(event) => choose(transaction, event.currentTarget.value)}
+										>
+											<option value="" disabled>{t('uncategorized.choose')}</option>
+											{#each categories as category (category.id)}
+												<option value={category.id}>{category.name}</option>
+											{/each}
+										</select>
+									</label>{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -182,6 +194,10 @@
 {/if}
 
 <style>
+	/* Measured from, for the list's height (followContent); no clip, so the cards' shadows show whole. */
+	.follows {
+		position: relative;
+	}
 	.queue {
 		list-style: none;
 		margin: 0;

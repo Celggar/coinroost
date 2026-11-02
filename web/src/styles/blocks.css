@@ -519,3 +519,34 @@ details[open]::details-content {
 		grid-row: 2;
 	}
 }
+
+/* A list of transactions lines its rows up: the list holds the three columns and each row's line takes them
+   (subgrid), so every description starts where the others do and every amount ends at one edge; a row's other parts
+   span it. On its own grid each row sized its date to itself: «2 may» and «15 may» started their descriptions 10 px
+   apart (pass 15). The rows' column gap is the line's. */
+@media (min-width: 561px) {
+	.txn-rows {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		column-gap: var(--space-md);
+	}
+
+	.txn-rows > li {
+		display: grid;
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+		column-gap: var(--space-md);
+		align-content: start;
+	}
+
+	.txn-rows > li > * {
+		grid-column: 1 / -1;
+	}
+
+	.txn-rows > li > .txn-line {
+		grid-template-columns: subgrid;
+	}
+
+	.txn-rows > li > .txn-line > .money {
+		justify-self: end;
+	}
+}

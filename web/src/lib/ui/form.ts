@@ -221,6 +221,9 @@ export async function landOn(
 	made?: HTMLElement
 ) {
 	await settled();
+	// The person moved on while the page settled (a field filled, the form sent again and its error focused): the
+	// focus and the page stay where that left them. A late landing took the focus back from «Clave» (pass 15 gates).
+	if (document.activeElement !== control) return;
 	const { top, bottom } = edges();
 	// Down to the form's send button when that fits too, as `focusShown` does: down to the field only, the button
 	// stood below the screen at 1280.

@@ -61,7 +61,7 @@
 		{#if transfers.length === 0}
 			<p in:rise out:vanish>{t('made.none')}</p>
 		{:else}
-			<ul class="made" aria-label={t('made.title')} in:rise out:vanish>
+			<ul class="made txn-rows" aria-label={t('made.title')} in:rise out:vanish>
 				{#each transfers as transfer (transfer.id)}
 					{@const { out, inn } = sides(transfer)}
 					<li in:rise out:vanish animate:glide>
@@ -105,7 +105,7 @@
 		border-top: 1px solid var(--border);
 		padding-top: var(--space-sm);
 		display: grid;
-		gap: var(--space-xs);
+		gap: var(--space-xs) var(--space-md);
 	}
 	.hint {
 		overflow-wrap: anywhere;

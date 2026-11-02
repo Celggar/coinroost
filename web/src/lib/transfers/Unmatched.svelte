@@ -9,7 +9,8 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
-	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, showWhole, without, type Errors } from '#lib/ui/form.ts';
+	import { focusOn } from '#lib/ui/focus.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -62,8 +63,12 @@
 		return null;
 	}
 
-	// The button or the choices that made the pair go away with it: the focus waits on this card's title.
-	const land = () => document.getElementById('unmatched-title')?.focus();
+	// The button or the choices that made the pair go away with it: the focus waits on this card's title, and the page
+	// glides to it once the lists have their new size (focused bare, the page jumped in one frame: pass 15).
+	const land = async () => {
+		const title = focusOn('#unmatched-title');
+		if (title) await showWhole(title);
+	};
 
 	async function suggested(a: string, b: string) {
 		const why = await pair(a, b);
@@ -102,7 +107,7 @@
 		{#if preview.unmatched.length === 0}
 			<p in:rise out:vanish>{t('unmatched.nothing')}</p>
 		{:else}
-			<ul class="legs" aria-label={t('unmatched.title')} in:rise out:vanish>
+			<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:rise out:vanish>
 				{#each preview.unmatched as item (item.leg.transaction_id)}
 					<li in:rise out:vanish animate:glide>
 						<div class="txn-line">
@@ -204,7 +209,7 @@
 		border-top: 1px solid var(--border);
 		padding-top: var(--space-sm);
 		display: grid;
-		gap: var(--space-sm);
+		gap: var(--space-sm) var(--space-md);
 		justify-items: start;
 	}
 	/* The buttons keep their own width; the line spans the row, so its amount ends at the edge like every list's. */

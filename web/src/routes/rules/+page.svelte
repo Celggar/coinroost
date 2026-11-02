@@ -77,8 +77,13 @@
 			notify(problem(error, response.status, t('rules.delete_failed')), 'bad');
 		}
 		await load();
-		// The rule and its buttons are gone: the focus goes to the page's title, not to the page's start.
-		if (response.ok) title?.focus();
+		// The rule and its buttons are gone: the focus goes to the page's title. Where the title shows (from 900 px) the
+		// page glides to it; on a phone the top bar holds the title and the page stays. Focused bare, the page jumped to
+		// its start in one frame (pass 15).
+		if (response.ok && title) {
+			title.focus({ preventScroll: true });
+			if (title.getBoundingClientRect().height > 1) await showWhole(title);
+		}
 	}
 
 	// A new rule rises into the list above the form while the page stands still, so the form moves down and the
