@@ -20,6 +20,8 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	await page.getByRole('button', { name: say('setup.continue') }).click();
 
 	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toBeVisible();
+	// Step 1 fades out before step 2 comes in (pass 19): its form, with its own alert region, leaves first.
+	await expect(page.getByRole('heading', { name: say('setup.step_account') })).toHaveCount(0);
 	const secret = (await page.getByTestId('setup-key').innerText()).replace(/\s/g, '');
 	const right = totp(secret);
 	const wrong = String((Number(right) + 500_000) % 1_000_000).padStart(6, '0');
