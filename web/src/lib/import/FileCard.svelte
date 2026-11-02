@@ -328,7 +328,10 @@
 		padding-block: calc((44px - 1lh) / 2);
 	}
 	/* The file's import, done: a check and what it added. */
+	/* As tall as the button it replaces: 28 px shorter, it shrank a page scrolled to its end, the browser pulled the page
+	   back and left the text above cut across the top bar (pass 13). */
 	.result {
+		min-height: var(--primary-height);
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);

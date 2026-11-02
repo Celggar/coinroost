@@ -83,4 +83,11 @@
 			grid-column: 1 / -1;
 		}
 	}
+	/* On the narrowest phones two figures side by side ran 2.8 px into their tiles' padding (pass 13, 320 px): one per
+	   row, as the date ranges do. */
+	@media (max-width: 359px) {
+		.tiles {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
 </style>

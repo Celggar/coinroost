@@ -454,6 +454,23 @@ details[open]::details-content {
 	}
 }
 
+/* A row's tile takes a frame where its tint is not enough, as the figure tiles do: with more contrast the fields'
+   line, and forced colors drop the tint. Inside a card the tiles had none and their text floated (pass 13). */
+@media (max-width: 560px) and (prefers-contrast: more) {
+	.rows-on-phone tr {
+		box-shadow: none;
+		border-color: var(--field-border);
+	}
+	.card .rows-on-phone tr {
+		border: 1px solid var(--field-border);
+	}
+}
+@media (max-width: 560px) and (forced-colors: active) {
+	.card .rows-on-phone tr {
+		border: 1px solid CanvasText;
+	}
+}
+
 /* A date range: «from» and «to» side by side, the same wherever a page asks for a period. */
 .date-range {
 	display: grid;
