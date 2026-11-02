@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { english, say } from './messages.ts';
+import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
@@ -318,18 +319,7 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 test('a rule moved up keeps its focused button on screen', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.setViewportSize({ width: 1280, height: 800 });
-	const made: string[] = [];
-	for (const name of ['Moved A', 'Moved B', 'Moved C', 'Moved D']) {
-		const response = await page.request.post('/api/v1/rules', {
-			data: {
-				name,
-				when: { description_contains: name.toUpperCase() },
-				then: { payee_from_text: true }
-			}
-		});
-		expect(response.ok()).toBe(true);
-		made.push((await response.json()).id);
-	}
+	const made = await makeRules(page, ['Moved A', 'Moved B', 'Moved C', 'Moved D']);
 	await page.goto('/rules');
 	// A rule near the top of the screen glides up after its button got the focus: the page has to follow it, or the
 	// focus ends above the screen (pass 7, y = -144).
@@ -368,18 +358,7 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 }) => {
 	const page = await loggedIn(context);
 	await page.setViewportSize({ width: 390, height: 844 });
-	const made: string[] = [];
-	for (const name of ['Landing A', 'Landing B']) {
-		const response = await page.request.post('/api/v1/rules', {
-			data: {
-				name,
-				when: { description_contains: name.toUpperCase() },
-				then: { payee_from_text: true }
-			}
-		});
-		expect(response.ok()).toBe(true);
-		made.push((await response.json()).id);
-	}
+	const made = await makeRules(page, ['Landing A', 'Landing B']);
 	await page.goto('/rules');
 	// The browser's scroll anchoring kept the moved rule still by moving the page in one frame, its title across the
 	// top bar, and the page then landed with a line flush under the bar (pass 13: 365 → 147, 300 → 17).
@@ -411,18 +390,7 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 test('on a phone, deleting a rule leaves the page where it was', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.setViewportSize({ width: 390, height: 844 });
-	const made: string[] = [];
-	for (const name of ['Delete A', 'Delete B']) {
-		const response = await page.request.post('/api/v1/rules', {
-			data: {
-				name,
-				when: { description_contains: name.toUpperCase() },
-				then: { payee_from_text: true }
-			}
-		});
-		expect(response.ok()).toBe(true);
-		made.push((await response.json()).id);
-	}
+	const made = await makeRules(page, ['Delete A', 'Delete B']);
 	// Each step read once the page stands still: the list loads and the confirm opens with their own motion.
 	await page.goto('/rules');
 	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Delete B' }) });

@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { say } from './messages.ts';
+import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
@@ -398,6 +399,63 @@ test('a split pair takes its place without the old line drawn over it', async ()
 		await expect(page.getByRole('button', { name: /^Separar/ })).toHaveCount(1);
 	}
 	await page.emulateMedia({ reducedMotion: null });
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test('a rule added above its form opens its room while the form stays still on the screen', async () => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await makeRules(page, ['Slide A', 'Slide B']);
+	await page.goto('/rules');
+	const form = page.getByRole('form', { name: say('ruleform.title') });
+	await form.getByLabel(say('ruleform.name')).fill('Slide C');
+	await form.getByLabel(say('ruleform.text')).fill('SLIDE C');
+	await form.getByLabel(say('ruleform.category')).selectOption({ index: 1 });
+	// The last rule and the form in view, the press already on the button.
+	await form.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 260));
+	const add = form.getByRole('button', { name: say('ruleform.add') });
+	await add.focus();
+	await still(page);
+	// Every frame: the form's place in the page (the page's own scroll left out), its place on the screen while the
+	// rule grows, and where the focus is. The form jumped 238 px in one frame as the new rule came in above it at its
+	// whole height; the focus dropped to the page while the button was disabled, then went to the name field before
+	// it showed (pass 17).
+	type Frames = { tops: number[]; growing: number[]; focus: string[] };
+	await form.evaluate((e) => {
+		const w = window as unknown as Frames;
+		w.tops = [];
+		w.growing = [];
+		w.focus = [];
+		const step = () => {
+			w.tops.push(e.getBoundingClientRect().top + scrollY);
+			if (document.querySelector('[data-growing]')) w.growing.push(e.getBoundingClientRect().top);
+			const active = document.activeElement;
+			const box = active?.getBoundingClientRect();
+			w.focus.push(
+				active === document.body
+					? 'page'
+					: box && (box.bottom <= 0 || box.top >= innerHeight)
+						? `${active!.tagName} off the screen`
+						: ''
+			);
+			if (w.tops.length < 90) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await add.click();
+	await page.waitForFunction(() => (window as unknown as Frames).tops.length >= 90);
+	const { tops, growing, focus } = await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		return { tops: w.tops, growing: w.growing, focus: w.focus };
+	});
+	const moved = tops[tops.length - 1] - tops[0];
+	const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));
+	expect(moved).toBeGreaterThan(100);
+	expect(Math.max(...steps), `${moved} px in all`).toBeLessThan(moved / 2);
+	// The room opens over several frames, and the page follows it: the form, in use, holds its place on the screen.
+	expect(growing.length).toBeGreaterThan(5);
+	expect(Math.max(...growing) - Math.min(...growing), growing.join(' ')).toBeLessThanOrEqual(2);
+	expect(focus.filter(Boolean)).toEqual([]);
+	await expect(form.getByLabel(say('ruleform.name'))).toBeFocused();
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 

@@ -12,7 +12,7 @@
 	import { focusOn, retry } from '#lib/ui/focus.ts';
 	import { focusShown, showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
-	import { arrive, glide, placeholder, pop, rise, swapIn, vanish } from '#lib/motion.ts';
+	import { arrive, glide, grow, placeholder, pop, swapIn, vanish } from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -86,8 +86,9 @@
 		}
 	}
 
-	// A new rule rises into the list above the form while the page stands still, so the form moves down and the
-	// rule's card can stand cut at the screen's top: once it lands, the page settles where nothing is cut (pass 9).
+	// A new rule opens its room in the list above the form while the page stands still (`grow`), so the form slides
+	// down and the rule's card can stand cut at the screen's top: once it lands, the page settles where nothing is cut
+	// (pass 9).
 	/** The new rule's place in the list, once the list has it (RuleForm shows it above the form). */
 	async function made(rule: Schemas['Rule']) {
 		await load();
@@ -139,7 +140,7 @@
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:swapIn out:vanish>
 					{#each rules as rule, index (rule.id)}
-						<li class="card rule" data-rule={rule.id} in:rise out:vanish animate:glide>
+						<li class="card rule" data-rule={rule.id} in:grow out:vanish animate:glide>
 							<div class="head">
 								<span class="position" aria-hidden="true"
 									><Tick value={rule.position}>{rule.position}</Tick></span
@@ -203,7 +204,16 @@
 	   browser moving the page 218 px in one frame, its title left across the top bar; with only the list or the page's
 	   content left out, what followed it became the anchor and the page jumped 32 px when the list got shorter
 	   (pass 13). The rule glides and the page follows it. */
-	:global(html:has(.rules-page)) {
+	:global(html:has(.rules-page):not(:has([data-growing]))) {
+		overflow-anchor: none;
+	}
+	/* While a new rule grows, the browser anchors the scroll on what follows the list's cell (the form being used: with
+	   only the list left out, the cell around it became the anchor; and not on the rail's column, as tall as the page
+	   and never moving, which the browser took as the anchor at 1280), so it
+	   stays still on screen as the rule opens its room above it: the focused button, pushed down, left the screen
+	   (pass 17). Kept by hand, every frame read before the page moved showed the form 58 px off its place. */
+	.rules-page > .in-place,
+	:global(html:has(.rules-page [data-growing]) .wide-only) {
 		overflow-anchor: none;
 	}
 	/* The cards' gap is the page's (.stack): a rule shown under the bar keeps the room the page's scroll padding
