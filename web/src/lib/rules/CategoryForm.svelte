@@ -25,6 +25,7 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		const form = event.currentTarget as HTMLFormElement;
 		error = '';
 		errors = check(form);
@@ -93,7 +94,9 @@
 	</div>
 	<FormError text={error} />
 	<div class="actions">
-		<button type="submit" disabled={busy}>{t('categoryform.create')}</button>
+		<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
+		     until the page landed (pass 17). -->
+		<button type="submit" aria-disabled={busy}>{t('categoryform.create')}</button>
 		{#if back && made}<a class="button secondary" href="/uncategorized" in:pop
 				>{t('categoryform.back')}</a
 			>{/if}

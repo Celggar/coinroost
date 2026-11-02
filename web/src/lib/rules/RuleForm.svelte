@@ -54,6 +54,7 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		const form = event.currentTarget as HTMLFormElement;
 		error = '';
 		errors = checkAll(form);
@@ -93,17 +94,14 @@
 				focusFirst(form, errors);
 			} else {
 				error = why.message;
-				// The button was disabled while it worked, which drops the focus: it goes back to the button.
-				await tick();
-				form.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
 			}
 			return;
 		}
 		notify(t('ruleform.added', { name: data.name, position: data.position }));
 		name = text = min = max = category = payee = account = '';
 		direction = '';
-		// The button was disabled while it worked, which drops the focus: once the page has the new rule and has
-		// settled, it goes back to the form, ready for the next (`landOn`). Scrolled to by the browser, the page jumped
+		// The focus stays where the send left it until the page has the new rule and has settled; then it goes back to
+		// the form, ready for the next (`landOn`). Scrolled to by the browser, the page jumped
 		// 725 px in one frame (pass 13).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		const left = document.activeElement;
@@ -202,6 +200,8 @@
 	</div>
 	<FormError text={error} />
 	<div class="actions">
-		<button type="submit" disabled={busy}>{t('ruleform.add')}</button>
+		<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
+		     until the page landed (pass 17). -->
+		<button type="submit" aria-disabled={busy}>{t('ruleform.add')}</button>
 	</div>
 </form>

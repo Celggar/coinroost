@@ -224,18 +224,19 @@ test('on a phone, a new account sorted far above its form shows alone, with the 
 	await create.scrollIntoViewIfNeeded();
 	await create.focus();
 	await still(page);
-	// Every frame from the press: the name field never holds the focus under the top bar. Given the focus at once,
-	// it sat there, scrolled past, while the page settled (pass 16).
+	// Every frame from the press: the name field never holds the focus under the top bar, and the focus never drops
+	// to the page. Given the focus at once, the field sat there, scrolled past, while the page settled (pass 16); the
+	// button disabled while it worked left the focus on the page until the landing (pass 17).
 	await page.evaluate(() => {
 		const bar = document.querySelector('header.appbar')!;
 		const field = document.querySelector('input[name="name"]')!;
-		const frames: boolean[] = [];
-		(window as unknown as { hidden: boolean[] }).hidden = frames;
+		const frames: string[] = [];
+		(window as unknown as { focus: string[] }).focus = frames;
 		const sample = () => {
+			const active = document.activeElement;
 			const under =
-				document.activeElement === field &&
-				field.getBoundingClientRect().top < bar.getBoundingClientRect().bottom;
-			frames.push(under);
+				active === field && field.getBoundingClientRect().top < bar.getBoundingClientRect().bottom;
+			frames.push(under ? 'field under the bar' : active === document.body ? 'page' : '');
 			if (frames.length < 150) requestAnimationFrame(sample);
 		};
 		requestAnimationFrame(sample);
@@ -257,10 +258,10 @@ test('on a phone, a new account sorted far above its form shows alone, with the 
 	expect(top).toBeGreaterThanOrEqual(bar);
 	expect(bottom).toBeLessThanOrEqual(end);
 	await expect
-		.poll(() => page.evaluate(() => (window as unknown as { hidden: boolean[] }).hidden.length))
+		.poll(() => page.evaluate(() => (window as unknown as { focus: string[] }).focus.length))
 		.toBe(150);
-	const hidden = await page.evaluate(() => (window as unknown as { hidden: boolean[] }).hidden);
-	expect(hidden.filter(Boolean)).toHaveLength(0);
+	const focus = await page.evaluate(() => (window as unknown as { focus: string[] }).focus);
+	expect(focus.filter(Boolean)).toEqual([]);
 	// One Tab and the form is ready for the next.
 	await page.keyboard.press('Tab');
 	await expect(page.getByLabel(say('accounts.name'), { exact: true })).toBeFocused();

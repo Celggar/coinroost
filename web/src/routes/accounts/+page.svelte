@@ -79,6 +79,7 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		const form = event.currentTarget as HTMLFormElement;
 		formError = '';
 		errors = check(form);
@@ -122,8 +123,8 @@
 		namespaceEdited = false;
 		markers = '';
 		cardPrefixes = '';
-		// The button was disabled while it worked, which drops the focus: once the page settles it goes back to the form,
-		// ready for the next, and the page shows the new account above it when both fit, as Reglas does: down to the form
+		// The focus stays where the send left it until the page settles; then it goes back to the form, ready for the
+		// next, and the page shows the new account above it when both fit, as Reglas does: down to the form
 		// only, the new account stood above the screen on a phone (pass 15). Scrolled to by the browser, the page jumped
 		// (pass 13). One sorted too far above to show with the form shows alone, with the focus (`landOn`).
 		await tick();
@@ -290,7 +291,9 @@
 			</div>
 			<FormError text={formError} />
 			<div class="actions">
-				<button type="submit" disabled={busy}>{t('accounts.create')}</button>
+				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
+				     until the page landed (pass 17). -->
+				<button type="submit" aria-disabled={busy}>{t('accounts.create')}</button>
 			</div>
 		</form>
 	</div>

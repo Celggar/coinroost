@@ -134,9 +134,10 @@ function labelTop(control: HTMLElement): number {
  */
 export function focusShown(
 	control: HTMLElement,
-	form: HTMLElement = control.closest('form') ?? control
+	form: HTMLElement = control.closest('form') ?? control,
+	take = true
 ): boolean {
-	control.focus({ preventScroll: true });
+	if (take) control.focus({ preventScroll: true });
 	const { top, bottom, floor, bar } = edges();
 	const field = control.getBoundingClientRect();
 	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();
@@ -196,11 +197,38 @@ export async function landOn(
 			(e) => e && e.getBoundingClientRect().bottom - from <= bottom - top
 		);
 		if (!end && !made.hasAttribute('tabindex')) made.tabIndex = -1;
-		(end ? control : made).focus({ preventScroll: true });
 		await showWhole(made, end ?? made);
+		await focusOnArrival(end ? control : made, left);
 		return;
 	}
-	if (!focusShown(control, form)) await keepWhole();
+	if (focusShown(control, form, false)) {
+		await focusOnArrival(control, left);
+	} else {
+		control.focus({ preventScroll: true });
+		await keepWhole();
+	}
+}
+
+/**
+ * Gives `target` the focus once some of it shows between the bars, or once the page has stopped: given as the page began to
+ * glide, the name field took it 113 px above the screen (pass 17). Until then the focus stays where the send left it
+ * (`left`), and a person who moves it meanwhile keeps their own.
+ */
+async function focusOnArrival(target: HTMLElement, left: Element | null) {
+	const start = scrollY;
+	let moved = false;
+	for (let frames = 0, last = scrollY; frames < 90; frames++) {
+		if (document.activeElement !== left) return;
+		const box = target.getBoundingClientRect();
+		// Not wholly hidden by the bars, as WCAG 2.4.11 asks of a focused element.
+		if (box.bottom > coverTop() && box.top < edges().floor) break;
+		// Stopped: a glide that ended, or none that began within a few frames.
+		if ((moved && scrollY === last) || (!moved && frames > 6)) break;
+		moved ||= scrollY !== start;
+		last = scrollY;
+		await new Promise((done) => requestAnimationFrame(done));
+	}
+	if (document.activeElement === left) target.focus({ preventScroll: true });
 }
 
 /** Resolves once the page stops scrolling (a smooth scroll started just before is still on its way). */
