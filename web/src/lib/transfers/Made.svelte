@@ -4,7 +4,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { glide, rise, swapIn, vanish } from '#lib/motion.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { showWhole } from '#lib/ui/form.ts';
@@ -59,9 +59,9 @@
 	<h2 id="made-title" tabindex="-1" bind:this={title}>{t('made.title')}</h2>
 	<div class="in-place">
 		{#if transfers.length === 0}
-			<p in:rise out:vanish>{t('made.none')}</p>
+			<p in:swapIn out:vanish>{t('made.none')}</p>
 		{:else}
-			<ul class="made txn-rows" aria-label={t('made.title')} in:rise out:vanish>
+			<ul class="made txn-rows" aria-label={t('made.title')} in:swapIn out:vanish>
 				{#each transfers as transfer (transfer.id)}
 					{@const { out, inn } = sides(transfer)}
 					<li in:rise out:vanish animate:glide>

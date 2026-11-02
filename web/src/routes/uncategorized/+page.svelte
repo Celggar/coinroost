@@ -7,7 +7,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { arrive, followContent, glide, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { arrive, followContent, glide, placeholder, swapIn, vanish } from '#lib/motion.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
@@ -104,7 +104,7 @@
 			{#if empty}
 				<!-- Nothing imported yet: the step that comes first, as Summary and Import show it. Without an account
 				     that reads a bank file, Import would only send people on to Accounts (pass 6). -->
-				<div in:rise|global>
+				<div in:swapIn|global>
 					{#if accounts.length === 0}
 						<EmptyState
 							icon="bank"
@@ -129,7 +129,7 @@
 					{/if}
 				</div>
 			{:else}
-				<div id="all-done" in:rise|global>
+				<div id="all-done" in:swapIn|global>
 					<EmptyState
 						icon="check"
 						text={t('uncategorized.all_done')}

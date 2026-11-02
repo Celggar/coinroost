@@ -4,7 +4,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, rise, swapIn, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/form.ts';
@@ -61,9 +61,9 @@
 		<h2 id="waiting-title">{t('waiting.title')}</h2>
 		<div class="in-place">
 			{#if preview.pairs.length === 0}
-				<p in:rise out:vanish>{t('waiting.nothing')}</p>
+				<p in:swapIn out:vanish>{t('waiting.nothing')}</p>
 			{:else}
-				<div class="stack" in:rise out:vanish>
+				<div class="stack" in:swapIn out:vanish>
 					<p class="hint">{t('waiting.hint')}</p>
 					<ul class="pairs" aria-label={t('waiting.title')}>
 						{#each preview.pairs as pair (pair.outflow.transaction_id)}

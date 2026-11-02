@@ -12,7 +12,7 @@
 	import { focusOn, retry } from '#lib/ui/focus.ts';
 	import { focusShown, showWhole } from '#lib/ui/form.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
-	import { arrive, glide, placeholder, pop, rise, vanish } from '#lib/motion.ts';
+	import { arrive, glide, placeholder, pop, rise, swapIn, vanish } from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -137,7 +137,7 @@
 	<div class="stack rules-page" in:arrive>
 		<div class="in-place">
 			{#if rules.length}
-				<ol class="rules" aria-label={t('rules.list')} in:rise out:vanish>
+				<ol class="rules" aria-label={t('rules.list')} in:swapIn out:vanish>
 					{#each rules as rule, index (rule.id)}
 						<li class="card rule" data-rule={rule.id} in:rise out:vanish animate:glide>
 							<div class="head">
@@ -186,7 +186,7 @@
 					{/each}
 				</ol>
 			{:else}
-				<p in:rise out:vanish>{t('rules.none_yet')}</p>
+				<p in:swapIn out:vanish>{t('rules.none_yet')}</p>
 			{/if}
 		</div>
 

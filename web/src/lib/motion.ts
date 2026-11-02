@@ -4,7 +4,7 @@
 // which CSS media rules do not reach, so each one reads the setting itself.
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
-import { flip } from 'svelte/animate';
+import { flip, type AnimationConfig } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
 
 /** Milliseconds, as in app.css. */
@@ -70,6 +70,21 @@ export function rise(node: Element, { delay = 0, y = 12 } = {}): TransitionConfi
 	});
 }
 
+/**
+ * In, to an `.in-place` cell another block is leaving: it rises once that one has faded (a fade through, the two never
+ * at once). Rising while the other faded, «Nada por confirmar» was drawn over the new pairs (pass 16). With reduced
+ * motion it only fades, after the same wait.
+ */
+export function swapIn(node: Element): TransitionConfig {
+	const leaving = [...(node.parentElement?.children ?? [])].some((e) => e !== node);
+	return fly(node, {
+		delay: leaving ? DURATION.short : 0,
+		y: still() ? 0 : 12,
+		duration: DURATION.medium,
+		easing: EASE.enter
+	});
+}
+
 /** Out: lifts away, faster than it came. */
 export function lift(node: Element, { y = -8 } = {}): TransitionConfig {
 	return fly(node, { y: still() ? 0 : y, duration: DURATION.exit, easing: EASE.exit });
@@ -88,12 +103,20 @@ export function pop(
 	});
 }
 
-/** A list item slides to its new place when others come or go; under reduced motion it lands there at once. */
-export function glide(node: Element, positions: { from: DOMRect; to: DOMRect }) {
-	return flip(node, positions, {
-		duration: still() ? 0 : DURATION.medium,
-		easing: EASE.standard
-	});
+/**
+ * A list item slides to its new place when others come or go; under reduced motion it lands there at once. One moved
+ * up by an item leaving above it waits in its place while that one fades: the leaving one is taken out of the flow
+ * (Svelte fixes it `absolute`), and the one moved up at once sat under it, both cards' text on top of each other (pass
+ * 16; sliding up at once, it passed under the fading card).
+ */
+export function glide(node: Element, positions: { from: DOMRect; to: DOMRect }): AnimationConfig {
+	const up = positions.from.top - positions.to.top;
+	const leaving = [...(node.parentElement?.children ?? [])].some(
+		(e) => e !== node && e instanceof HTMLElement && e.style.position === 'absolute'
+	);
+	const wait = up > 0 && leaving ? DURATION.short : 0;
+	if (still()) return { duration: wait, css: () => `transform: translateY(${up}px)` };
+	return flip(node, positions, { delay: wait, duration: DURATION.medium, easing: EASE.standard });
 }
 
 /** Out: a quick fade. */

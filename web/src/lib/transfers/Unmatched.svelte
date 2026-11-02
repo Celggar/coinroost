@@ -5,7 +5,7 @@
 	import { day } from '#lib/format.ts';
 	import { accountName, legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, rise, swapIn, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
@@ -108,9 +108,9 @@
 		<h2 id="unmatched-title" tabindex="-1">{t('unmatched.title')}</h2>
 		<div class="in-place">
 			{#if preview.unmatched.length === 0}
-				<p in:rise out:vanish>{t('unmatched.nothing')}</p>
+				<p in:swapIn out:vanish>{t('unmatched.nothing')}</p>
 			{:else}
-				<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:rise out:vanish>
+				<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:swapIn out:vanish>
 					{#each preview.unmatched as item (item.leg.transaction_id)}
 						<li in:rise out:vanish animate:glide>
 							<div class="txn-line">

@@ -303,3 +303,100 @@ test('a pair confirmed at the page end leaves the page gliding as the pairing fo
 	expect(Math.max(...steps), `${travel} px in all`).toBeLessThan(travel / 2);
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
+
+test('a split pair takes its place without the old line drawn over it', async () => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	type Frames = { frames: number[] };
+	for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+		await page.emulateMedia({ reducedMotion });
+		await page.goto('/transfers');
+		await page
+			.getByRole('button', { name: /^Separar/ })
+			.first()
+			.click();
+		// Every frame: how many of «Parejas por confirmar»'s blocks show in its one cell. «Nada por confirmar» was
+		// drawn over the new pair while it faded (pass 16).
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			w.frames = [];
+			const cell = document.querySelector('[aria-labelledby="waiting-title"] .in-place')!;
+			const step = () => {
+				w.frames.push(
+					[...cell.children].filter((e) => Number(getComputedStyle(e).opacity) > 0.02).length
+				);
+				if (w.frames.length < 90) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await page.getByRole('button', { name: say('made.split_it') }).click();
+		await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 90);
+		const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+		expect(
+			frames.filter((shown) => shown > 1),
+			reducedMotion
+		).toEqual([]);
+		await page.getByRole('button', { name: say('waiting.pair_one') }).click();
+		await expect(page.getByRole('button', { name: /^Separar/ })).toHaveCount(1);
+	}
+	await page.emulateMedia({ reducedMotion: null });
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test('a sorted card fades before the next moves up, and its count never shows twice', async () => {
+	const accounts: { id: string; name: string }[] = (
+		await (await page.request.get('/api/v1/accounts')).json()
+	).items;
+	const account = accounts.find((a) => a.name === 'Corriente')!.id;
+	for (const [day, text] of [
+		['2026-05-20', 'COFFEE SHOP'],
+		['2026-05-21', 'BOOK STORE'],
+		['2026-05-22', 'HARDWARE STORE'],
+		['2026-05-23', 'BAKERY']
+	]) {
+		const response = await page.request.post('/api/v1/transactions', {
+			data: { date: day, description: text, legs: [{ account_id: account, amount_minor: -1000 }] }
+		});
+		expect(response.status()).toBe(201);
+	}
+	type Frames = { frames: [number, number][] };
+	for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+		await page.emulateMedia({ reducedMotion });
+		await page.goto('/uncategorized');
+		const select = page.locator('.queue select').first();
+		await expect(select).toBeEnabled();
+		// Every frame: how many counts show, and how far the next card overlaps the leaving one while it shows. The
+		// count read double as the new one rose under the old; the next card sat under the fading one (pass 16).
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			w.frames = [];
+			const leaving = document.querySelector('.queue > li')!;
+			const next = leaving.nextElementSibling!;
+			const step = () => {
+				const counts = [...document.querySelectorAll('.tick > span')].filter(
+					(e) => Number(getComputedStyle(e).opacity) > 0.02
+				).length;
+				const a = leaving.getBoundingClientRect();
+				const b = next.getBoundingClientRect();
+				const shown = leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02;
+				w.frames.push([
+					counts,
+					shown ? Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) : 0
+				]);
+				if (w.frames.length < 90) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await select.selectOption({ index: 1 });
+		await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 90);
+		const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+		expect(
+			frames.filter(([counts]) => counts > 1),
+			reducedMotion
+		).toEqual([]);
+		expect(
+			frames.filter(([, overlap]) => overlap > 0),
+			reducedMotion
+		).toEqual([]);
+	}
+	await page.emulateMedia({ reducedMotion: null });
+});
