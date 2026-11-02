@@ -25,6 +25,9 @@
 	// It comes from the edge it sits on.
 	const enter = (node: Element) => rise(node, { y: phone() ? -12 : 12 });
 	const leave = (node: Element) => lift(node, { y: phone() ? -8 : 8 });
+	// The last two words hold together, so a wrapped notice never ends on one word: `text-wrap: pretty` left
+	// «PAGO TARJETA EJEMPLO: / Supermercado.» (pass 12), and `balance` picks the same break for those widths.
+	const held = (text: string) => text.replace(/ (\S+)$/, '\u00a0$1');
 
 	afterNavigate(dismiss);
 </script>
@@ -43,7 +46,7 @@
 		{#if notices.current}
 			<p class="note {notices.current.tone}" in:enter|global out:leave|global>
 				<span class="mark"></span>
-				<span class="text">{notices.current.text}</span>
+				<span class="text">{held(notices.current.text)}</span>
 			</p>
 		{/if}
 	{/key}

@@ -69,7 +69,7 @@ function coverTop(): number {
  * what it would cut whole, else down past it, within `lo`–`hi`. A heading cut in half at the top looked broken
  * (pass 8).
  */
-function uncut(y: number, lo: number, hi: number): number {
+function uncut(y: number, lo: number, hi: number, loose = lo): number {
 	const line = coverTop();
 	const boxes = [
 		...document.querySelectorAll<HTMLElement>('h1, h2, h3, p, label, legend, li, img, [data-whole]')
@@ -85,7 +85,13 @@ function uncut(y: number, lo: number, hi: number): number {
 	const cut = (at: number) =>
 		boxes.filter((b) => b.top < at + line + clear && at + line < b.bottom);
 	const start = Math.min(Math.max(y, 0), max);
-	for (const way of [-1, 1]) {
+	// The window first; then, when it holds no clean position, down to `loose`, which lets what must show sit in the
+	// breathing room above the bottom bar: at a page's end the only clean place was 16 px up (pass 12).
+	for (const [way, least] of [
+		[-1, lo],
+		[1, lo],
+		[-1, loose]
+	] as const) {
 		let at = start;
 		for (let crossing = cut(at); crossing.length; crossing = cut(at)) {
 			// Whole pixels, away from the box: the browser rounds where a scroll ends, and a label put exactly 8 px
@@ -96,7 +102,7 @@ function uncut(y: number, lo: number, hi: number): number {
 					: Math.ceil(Math.max(...crossing.map((b) => b.bottom)) - line);
 			if (at < 0 || at > max) break;
 		}
-		if (at >= Math.max(lo, 0) && at <= Math.min(hi, max) && !cut(at).length) return at;
+		if (at >= Math.max(least, 0) && at <= Math.min(hi, max) && !cut(at).length) return at;
 	}
 	return start;
 }
@@ -109,6 +115,8 @@ function edges() {
 	return {
 		top: parseFloat(page.scrollPaddingTop) || 0,
 		bottom: innerHeight - (parseFloat(page.scrollPaddingBottom) || 0),
+		// Where the bottom bar starts: below `bottom` lies breathing room, not a cover.
+		floor: innerHeight - (parseFloat(page.getPropertyValue('--nav-height')) || 0),
 		bar: parseFloat(page.getPropertyValue('--bar-height')) || 0
 	};
 }
@@ -132,7 +140,7 @@ export function focusShown(
 	form: HTMLElement = control.closest('form') ?? control
 ) {
 	control.focus({ preventScroll: true });
-	const { top, bottom, bar } = edges();
+	const { top, bottom, floor, bar } = edges();
 	const field = control.getBoundingClientRect();
 	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();
 	const start = form.getBoundingClientRect().top;
@@ -149,7 +157,8 @@ export function focusShown(
 			const y = scrollY + start - top;
 			const lo = Math.max(0, scrollY + end - bottom);
 			const hi = scrollY + labelTop(control) - top;
-			scrollTo({ top: uncut(y, lo, hi), behavior: behavior() });
+			const loose = Math.max(0, scrollY + end - floor);
+			scrollTo({ top: uncut(y, lo, hi, loose), behavior: behavior() });
 		}
 	} else if (labelTop(control) < top || field.bottom > bottom) {
 		control.scrollIntoView({ block: 'center', behavior: behavior() });
