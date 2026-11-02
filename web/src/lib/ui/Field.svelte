@@ -54,11 +54,17 @@
 		'aria-describedby': [shown && hintId, error && errorId].filter(Boolean).join(' ') || undefined,
 		'aria-invalid': error ? 'true' : undefined
 	});
-	// Under reduced motion the error fades in place instead of opening.
-	const open = (node: Element) =>
-		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.short, easing: EASE.enter });
+	// The error opens and fades in together, at Material's standard pace: slide's own opacity reaches 1 in a twentieth
+	// of the time, so the text showed whole in one frame with two thirds of its height (pass 12); the later `opacity`
+	// wins. Under reduced motion it only fades in place.
+	const open = (node: Element) => {
+		if (prefersReducedMotion.current) return fade(node, { duration: DURATION.short });
+		const opening = slide(node, { duration: DURATION.medium, easing: EASE.standard });
+		return {
+			...opening,
+			css: (t: number, u: number) => `${opening.css?.(t, u) ?? ''}; opacity: ${t}`
+		};
+	};
 </script>
 
 <div class="form-field">
