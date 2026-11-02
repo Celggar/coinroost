@@ -7,7 +7,7 @@
 	import { glide, rise, swapIn, vanish } from '#lib/motion.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import Arrow from '#lib/ui/Arrow.svelte';
-	import { showWhole } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, type AccountNames } from '#lib/transfers/legs.ts';
 

@@ -5,7 +5,8 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { landOn } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -101,14 +102,14 @@
 		notify(t('ruleform.added', { name: data.name, position: data.position }));
 		name = text = min = max = category = payee = account = '';
 		direction = '';
-		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next,
-		// at once and with the page still; once the page has the new rule, the form shows from its title. Scrolled to
-		// by the browser, the page jumped 725 px in one frame (pass 13).
+		// The button was disabled while it worked, which drops the focus: once the page has the new rule and has
+		// settled, it goes back to the form, ready for the next (`landOn`). Scrolled to by the browser, the page jumped
+		// 725 px in one frame (pass 13).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
-		field?.focus({ preventScroll: true });
+		const left = document.activeElement;
 		// The page hands back the new rule's place in the list, to show it above the form.
 		const made = await oncreated(data);
-		if (field) await landOn(field, form, made instanceof HTMLElement ? made : undefined);
+		if (field) await landOn(field, form, made instanceof HTMLElement ? made : undefined, left);
 	}
 </script>
 

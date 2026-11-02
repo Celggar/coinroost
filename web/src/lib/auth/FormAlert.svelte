@@ -5,7 +5,7 @@
 	// card's height follows the message (the shell's job) and what sits below it slides along; the message rises
 	// once that room is open, so the button never covers it and the card's edge never cuts it.
 	import { DURATION, lift, rise } from '#lib/motion.ts';
-	import { showBelow } from '#lib/ui/form.ts';
+	import { showBelow } from '#lib/ui/landing.ts';
 
 	let { text, n }: { text: string; n: number } = $props();
 

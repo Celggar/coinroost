@@ -10,7 +10,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { focusShown, showWhole } from '#lib/ui/form.ts';
+	import { focusShown, showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { arrive, glide, placeholder, pop, rise, swapIn, vanish } from '#lib/motion.ts';
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { showWhole } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import Icon from '#lib/nav/Icon.svelte';
 	import { onMount } from 'svelte';

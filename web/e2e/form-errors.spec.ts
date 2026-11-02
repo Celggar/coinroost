@@ -209,6 +209,64 @@ test('on a phone, a new account shows whole above its form', async () => {
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
+test('on a phone, a new account sorted far above its form shows alone, with the focus', async () => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	for (const name of ['Moneda', 'Viajes']) {
+		const response = await page.request.post('/api/v1/accounts', {
+			data: { name, kind: 'checking', currency: 'USD', namespace: name.toLowerCase() }
+		});
+		expect(response.status()).toBe(201);
+	}
+	await page.goto('/accounts');
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Aaa');
+	// Down to the button first, as a person does: the field they filled scrolls away, and the press takes its focus.
+	const create = page.getByRole('button', { name: say('accounts.create') });
+	await create.scrollIntoViewIfNeeded();
+	await create.focus();
+	await still(page);
+	// Every frame from the press: the name field never holds the focus under the top bar. Given the focus at once,
+	// it sat there, scrolled past, while the page settled (pass 16).
+	await page.evaluate(() => {
+		const bar = document.querySelector('header.appbar')!;
+		const field = document.querySelector('input[name="name"]')!;
+		const frames: boolean[] = [];
+		(window as unknown as { hidden: boolean[] }).hidden = frames;
+		const sample = () => {
+			const under =
+				document.activeElement === field &&
+				field.getBoundingClientRect().top < bar.getBoundingClientRect().bottom;
+			frames.push(under);
+			if (frames.length < 150) requestAnimationFrame(sample);
+		};
+		requestAnimationFrame(sample);
+	});
+	await create.click();
+	const row = page.locator('tbody tr', { hasText: 'Aaa' });
+	// Left on the form, the new account, first in the list, stood 1342 px above the screen (pass 16).
+	await expect(row).toBeFocused();
+	await still(page, 500);
+	const [bar, top, bottom, end] = await row.evaluate((e) => {
+		const rect = e.getBoundingClientRect();
+		return [
+			document.querySelector('header.appbar')!.getBoundingClientRect().bottom,
+			rect.top,
+			rect.bottom,
+			document.querySelector('nav.bar')!.getBoundingClientRect().top
+		];
+	});
+	expect(top).toBeGreaterThanOrEqual(bar);
+	expect(bottom).toBeLessThanOrEqual(end);
+	await expect
+		.poll(() => page.evaluate(() => (window as unknown as { hidden: boolean[] }).hidden.length))
+		.toBe(150);
+	const hidden = await page.evaluate(() => (window as unknown as { hidden: boolean[] }).hidden);
+	expect(hidden.filter(Boolean)).toHaveLength(0);
+	// One Tab and the form is ready for the next.
+	await page.keyboard.press('Tab');
+	await expect(page.getByLabel(say('accounts.name'), { exact: true })).toBeFocused();
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
 test('a file removed at the page end leaves the page gliding, never pulled back as it shortens', async () => {
 	const fixture = fileURLToPath(
 		new URL('../../spec/fixtures/bac-account/input.csv', import.meta.url)
@@ -339,6 +397,58 @@ test('a split pair takes its place without the old line drawn over it', async ()
 		await expect(page.getByRole('button', { name: /^Separar/ })).toHaveCount(1);
 	}
 	await page.emulateMedia({ reducedMotion: null });
+	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test('the transfers summary grows and shrinks with its figures, never in one frame', async () => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('/transfers');
+	// Loaded: its figures, or the line that says there are none.
+	const summary = page.locator('[aria-labelledby="summary-title"]');
+	await expect(
+		summary
+			.locator('dl.figures')
+			.or(summary.getByText(say('summary.nothing')))
+			.first()
+	).toBeVisible();
+	await still(page);
+	type Frames = { heights: number[] };
+	// The summary card's height every frame, while `act` runs and the page settles.
+	const heights = async (act: () => Promise<void>) => {
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			const card = document.querySelector('[aria-labelledby="summary-title"]')!;
+			w.heights = [];
+			const step = () => {
+				w.heights.push(card.getBoundingClientRect().height);
+				if (w.heights.length < 120) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await act();
+		await page.waitForFunction(() => (window as unknown as Frames).heights.length >= 120);
+		return page.evaluate(() => (window as unknown as Frames).heights);
+	};
+	const split = await heights(async () => {
+		await page
+			.getByRole('button', { name: /^Separar/ })
+			.first()
+			.click();
+		await page.getByRole('button', { name: say('made.split_it') }).click();
+	});
+	const paired = await heights(() =>
+		page.getByRole('button', { name: say('waiting.pair_one') }).click()
+	);
+	// Its figures came and went with the pair: they took 173 px in one frame, and every card under them jumped (pass 16).
+	for (const [what, frames] of [
+		['split', split],
+		['paired', paired]
+	] as const) {
+		const change = Math.abs(frames[frames.length - 1] - frames[0]);
+		const steps = frames.slice(1).map((h, i) => Math.abs(h - frames[i]));
+		expect(change, what).toBeGreaterThan(40);
+		expect(Math.max(...steps), `${what}: ${change} px in all`).toBeLessThan(change / 2);
+	}
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 

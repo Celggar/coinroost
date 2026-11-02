@@ -7,7 +7,8 @@
 	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, drop, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
+	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { landOn } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -121,13 +122,13 @@
 		namespaceEdited = false;
 		markers = '';
 		cardPrefixes = '';
-		// The button was disabled while it worked, which drops the focus: it goes back to the form, ready for the next,
-		// and the page shows the new account above it when both fit, as Reglas does: down to the form only, the new
-		// account stood above the screen on a phone (pass 15). Scrolled to by the browser, the page jumped (pass 13).
+		// The button was disabled while it worked, which drops the focus: once the page settles it goes back to the form,
+		// ready for the next, and the page shows the new account above it when both fit, as Reglas does: down to the form
+		// only, the new account stood above the screen on a phone (pass 15). Scrolled to by the browser, the page jumped
+		// (pass 13). One sorted too far above to show with the form shows alone, with the focus (`landOn`).
 		await tick();
 		const row = document.querySelector<HTMLElement>(`[data-account="${data.id}"]`) ?? undefined;
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
-		field?.focus({ preventScroll: true });
 		if (field) await landOn(field, form, row);
 	}
 

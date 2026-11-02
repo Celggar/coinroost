@@ -11,7 +11,8 @@
 	import { plural, tag, t } from '#lib/i18n.svelte.ts';
 	import { arrive, followContent, placeholder, pop, rise, swapOut, vanish } from '#lib/motion.ts';
 	import { session } from '#lib/session.svelte.ts';
-	import { check, focusFirst, showWhole } from '#lib/ui/form.ts';
+	import { check, focusFirst } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 
 	const LOW = 3;
 

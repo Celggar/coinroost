@@ -4,7 +4,8 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
-	import { check, focusFirst, landOn, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { landOn } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { pop } from '#lib/motion.ts';
 
@@ -54,11 +55,11 @@
 		notify(t('categoryform.created', { name: data.name }));
 		made = true;
 		name = '';
-		// Back to the form for the next one, with the page still until it has reloaded (as the rule form does).
+		// Back to the form for the next one once the page has reloaded and settled (as the rule form does).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
-		field?.focus({ preventScroll: true });
+		const left = document.activeElement;
 		await oncreated(data);
-		if (field) await landOn(field, form);
+		if (field) await landOn(field, form, undefined, left);
 	}
 </script>
 

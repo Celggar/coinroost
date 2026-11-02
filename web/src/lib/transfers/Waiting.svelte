@@ -7,7 +7,7 @@
 	import { followContent, glide, rise, swapIn, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { focusOn } from '#lib/ui/focus.ts';
-	import { showWhole } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { accountName, passLabel, type AccountNames } from '#lib/transfers/legs.ts';
 

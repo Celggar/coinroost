@@ -5,7 +5,7 @@
 	import { plural, t } from '#lib/i18n.svelte.ts';
 	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
-	import { showWhole } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';

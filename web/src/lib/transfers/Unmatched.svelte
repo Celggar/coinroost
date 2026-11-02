@@ -9,7 +9,8 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
-	import { check, focusFirst, showWhole, without, type Errors } from '#lib/ui/form.ts';
+	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
