@@ -4,6 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { say, type Key } from './messages.ts';
+import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const invite = process.env.E2E_RECOVERY_INVITE ?? '';
@@ -104,7 +105,33 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await expect(page.getByTestId('recovery-status')).toHaveText(
 		left('security.codes_left_other', 10)
 	);
-	await page.getByRole('button', { name: say('security.done'), exact: true }).click();
+	// «Listo, los guardé» at the end of a short phone screen: the codes left, the card shrank at once and the browser
+	// pulled the page back 165 px in that frame (pass 16 sweep). Every frame from the click on.
+	await page.setViewportSize({ width: 390, height: 600 });
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	type Frames = { frames: [number, number][] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push([scrollY, document.documentElement.scrollHeight]);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await page
+		.getByRole('button', { name: say('security.done'), exact: true })
+		.click({ force: true });
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	const pulled = frames
+		.slice(1)
+		.filter(([y, height], i) => height < frames[i][1] && y !== frames[i][0]);
+	expect(frames[0][0] - frames[frames.length - 1][0]).toBeGreaterThan(40);
+	expect(pulled).toEqual([]);
+	await expect(page.getByRole('button', { name: say('security.regenerate') })).toBeFocused();
+	await page.setViewportSize({ width: 1280, height: 720 });
 
 	await page.getByRole('button', { name: say('nav.log_out'), exact: true }).click();
 	await logInWithRecovery(page, codes[1]);

@@ -44,8 +44,8 @@
 	let field: HTMLInputElement | undefined = $state();
 
 	/** Puts the caret in the field, for a page that just swapped it in. */
-	export function focus() {
-		field?.focus();
+	export function focus(options?: FocusOptions) {
+		field?.focus(options);
 	}
 
 	/** Marks the code as wrong (the slots turn red until it is edited) and puts the caret back in it. */
