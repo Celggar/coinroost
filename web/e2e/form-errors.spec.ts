@@ -246,3 +246,60 @@ test('a file removed at the page end leaves the page gliding, never pulled back 
 	await expect(page.locator('.drop input')).toBeFocused();
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
+
+test('a pair confirmed at the page end leaves the page gliding as the pairing form goes', async () => {
+	const post = async (url: string, data: object) => {
+		const response = await page.request.post(url, { data });
+		expect(response.status(), url).toBe(201);
+		return response.json();
+	};
+	const accounts: { id: string; name: string }[] = (
+		await (await page.request.get('/api/v1/accounts')).json()
+	).items;
+	const own = await post('/api/v1/categories', { name: 'Propias', kind: 'transfer' });
+	for (const [name, amount] of [
+		['Corriente', -50000],
+		['Ahorro', 50000]
+	] as const) {
+		await post('/api/v1/transactions', {
+			date: '2026-05-15',
+			description: 'BETWEEN ACCOUNTS',
+			category_id: own.id,
+			legs: [
+				{
+					account_id: accounts.find((a) => a.name === name)!.id,
+					amount_minor: amount,
+					statement_text: 'BETWEEN ACCOUNTS'
+				}
+			]
+		});
+	}
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('/transfers');
+	const confirm = page.getByRole('button', { name: say('waiting.pair_one') });
+	await expect(page.getByRole('form', { name: say('unmatched.by_hand') })).toBeVisible();
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	await expect(confirm).toBeInViewport();
+	// Every frame from the click on: the pairing form left with the pair, its card shrank at once and the browser
+	// pulled the page back 232 px in that frame (pass 16 sweep).
+	type Frames = { frames: number[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push(scrollY);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await confirm.click({ force: true });
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	await expect(page.getByRole('form', { name: say('unmatched.by_hand') })).toHaveCount(0);
+	const travel = frames[0] - frames[frames.length - 1];
+	const steps = frames.slice(1).map((y, i) => Math.abs(y - frames[i]));
+	expect(travel, `the page from ${frames[0]}`).toBeGreaterThan(40);
+	expect(Math.max(...steps), `${travel} px in all`).toBeLessThan(travel / 2);
+	await page.setViewportSize({ width: 1280, height: 720 });
+});

@@ -5,7 +5,7 @@
 	import { day } from '#lib/format.ts';
 	import { accountName, legText, reasonLabel, type AccountNames } from '#lib/transfers/legs.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
@@ -101,99 +101,115 @@
 	}
 </script>
 
-<section class="card" aria-labelledby="unmatched-title">
-	<h2 id="unmatched-title" tabindex="-1">{t('unmatched.title')}</h2>
-	<div class="in-place">
-		{#if preview.unmatched.length === 0}
-			<p in:rise out:vanish>{t('unmatched.nothing')}</p>
-		{:else}
-			<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:rise out:vanish>
-				{#each preview.unmatched as item (item.leg.transaction_id)}
-					<li in:rise out:vanish animate:glide>
-						<div class="txn-line">
-							<span>{day(item.leg.date)}</span>
-							<span class="description">{accountName(item.leg.account_id, names)}</span>
-							<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
-						</div>
-						<div class="hint">{item.leg.description}</div>
-						<div class="hint">{reasonLabel(item.reason)}</div>
-						<!-- Each possible other side reads like a leg, inset, with a short button beside it (under it on a
-						     phone); the button's name says which leg it pairs with. -->
-						{#if item.candidates.length}
-							<ul class="candidates">
-								{#each item.candidates as candidate (candidate.transaction_id)}
-									<li>
-										<div class="candidate">
-											<div class="txn-line">
-												<span>{day(candidate.date)}</span>
-												<span class="description">{accountName(candidate.account_id, names)}</span>
-												<Money minor={candidate.amount_minor} currency={candidate.currency} />
+<!-- The card shrinks as the pairing form leaves instead of at once: at the page's end it went 490 → 178 px in one
+     frame and pulled the page back 232 px (pass 16 sweep). -->
+<section class="card follows" aria-labelledby="unmatched-title" use:followContent>
+	<div class="stack">
+		<h2 id="unmatched-title" tabindex="-1">{t('unmatched.title')}</h2>
+		<div class="in-place">
+			{#if preview.unmatched.length === 0}
+				<p in:rise out:vanish>{t('unmatched.nothing')}</p>
+			{:else}
+				<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:rise out:vanish>
+					{#each preview.unmatched as item (item.leg.transaction_id)}
+						<li in:rise out:vanish animate:glide>
+							<div class="txn-line">
+								<span>{day(item.leg.date)}</span>
+								<span class="description">{accountName(item.leg.account_id, names)}</span>
+								<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
+							</div>
+							<div class="hint">{item.leg.description}</div>
+							<div class="hint">{reasonLabel(item.reason)}</div>
+							<!-- Each possible other side reads like a leg, inset, with a short button beside it (under it on a
+							     phone); the button's name says which leg it pairs with. -->
+							{#if item.candidates.length}
+								<ul class="candidates">
+									{#each item.candidates as candidate (candidate.transaction_id)}
+										<li>
+											<div class="candidate">
+												<div class="txn-line">
+													<span>{day(candidate.date)}</span>
+													<span class="description">{accountName(candidate.account_id, names)}</span
+													>
+													<Money minor={candidate.amount_minor} currency={candidate.currency} />
+												</div>
+												<div class="hint">{candidate.description}</div>
 											</div>
-											<div class="hint">{candidate.description}</div>
-										</div>
-										<button
-											class="secondary"
-											disabled={busy}
-											aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
-											onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
-											>{t('unmatched.pair')}</button
-										>
-									</li>
+											<button
+												class="secondary"
+												disabled={busy}
+												aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
+												onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
+												>{t('unmatched.pair')}</button
+											>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+
+		<!-- Pairing by hand needs two legs to choose from; with fewer it is not offered. -->
+		{#if choices.length >= 2}
+			<form
+				in:rise
+				out:vanish
+				novalidate
+				onsubmit={submit}
+				onchange={(event) => {
+					errors = without(errors, event);
+					error = '';
+				}}
+				aria-label={t('unmatched.by_hand')}
+			>
+				<h3>{t('unmatched.by_hand')}</h3>
+				<p class="hint">{t('unmatched.by_hand_hint')}</p>
+				<div class="fields pick">
+					<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
+						{#snippet children(wiring)}
+							<select {...wiring} bind:value={first} required>
+								<option value="" disabled>{t('unmatched.choose')}</option>
+								{#each choices as leg (leg.transaction_id)}
+									<option value={leg.transaction_id}>{legText(leg, names)}</option>
 								{/each}
-							</ul>
-						{/if}
-					</li>
-				{/each}
-			</ul>
+							</select>
+						{/snippet}
+					</Field>
+					<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
+						{#snippet children(wiring)}
+							<select {...wiring} bind:value={second} required>
+								<option value="" disabled>{t('unmatched.choose')}</option>
+								{#each choices as leg (leg.transaction_id)}
+									<option value={leg.transaction_id}>{legText(leg, names)}</option>
+								{/each}
+							</select>
+						{/snippet}
+					</Field>
+				</div>
+				<FormError text={error} />
+				<div class="actions">
+					<button type="submit" disabled={busy}>{t('unmatched.pair_them')}</button>
+				</div>
+			</form>
 		{/if}
 	</div>
-
-	<!-- Pairing by hand needs two legs to choose from; with fewer it is not offered. -->
-	{#if choices.length >= 2}
-		<form
-			in:rise
-			out:vanish
-			novalidate
-			onsubmit={submit}
-			onchange={(event) => {
-				errors = without(errors, event);
-				error = '';
-			}}
-			aria-label={t('unmatched.by_hand')}
-		>
-			<h3>{t('unmatched.by_hand')}</h3>
-			<p class="hint">{t('unmatched.by_hand_hint')}</p>
-			<div class="fields pick">
-				<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
-					{#snippet children(wiring)}
-						<select {...wiring} bind:value={first} required>
-							<option value="" disabled>{t('unmatched.choose')}</option>
-							{#each choices as leg (leg.transaction_id)}
-								<option value={leg.transaction_id}>{legText(leg, names)}</option>
-							{/each}
-						</select>
-					{/snippet}
-				</Field>
-				<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
-					{#snippet children(wiring)}
-						<select {...wiring} bind:value={second} required>
-							<option value="" disabled>{t('unmatched.choose')}</option>
-							{#each choices as leg (leg.transaction_id)}
-								<option value={leg.transaction_id}>{legText(leg, names)}</option>
-							{/each}
-						</select>
-					{/snippet}
-				</Field>
-			</div>
-			<FormError text={error} />
-			<div class="actions">
-				<button type="submit" disabled={busy}>{t('unmatched.pair_them')}</button>
-			</div>
-		</form>
-	{/if}
 </section>
 
 <style>
+	/* Clipped at the padding's edge, the buttons' focus rings stay whole. */
+	.follows {
+		position: relative;
+		overflow: clip;
+		align-content: start;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.follows {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
 	/* One choice per line: a leg's text is long, and a half-width select cut it mid-word (pass 1). */
 	.pick {
 		grid-template-columns: minmax(0, 1fr);
