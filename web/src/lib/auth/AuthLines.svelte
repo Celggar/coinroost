@@ -67,12 +67,17 @@
 			animation: draw 560ms var(--ease-enter) backwards;
 		}
 	}
+	/* On a phone the brand scrolls with the page, so its band does too: fixed, a page raised 23 px to show an alert put
+	   the band back across «ES» and the logo (pass 12). One screen tall, at the page's top, whatever the card's length. */
 	@media (max-width: 899px) {
 		.wide {
 			display: none;
 		}
 		.narrow {
 			display: block;
+			position: absolute;
+			bottom: auto;
+			height: 100lvh;
 		}
 	}
 	@keyframes fade-in {
