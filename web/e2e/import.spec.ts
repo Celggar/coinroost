@@ -552,6 +552,22 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 			for (const fold of await page.locator('summary').all()) await fold.click();
 			await expect(page.locator('details[open]')).not.toHaveCount(0);
 			expect(await overflow(page), 'dashboard with every fold open').toBeLessThanOrEqual(0);
+			// Each month's figures end on one line, so their decimals line up (pass 17: to the left they read ragged).
+			const ends = await page
+				.locator('details[open] table.rows-on-phone tbody tr')
+				.evaluateAll((rows) =>
+					rows.map((row) =>
+						[...row.querySelectorAll('td.number')].map((cell) => {
+							const range = document.createRange();
+							range.selectNodeContents(cell);
+							return Math.round([...range.getClientRects()].at(-1)!.right);
+						})
+					)
+				);
+			// The month table's cards (the employers' history mixes words in).
+			const months = ends.filter((row) => row.length > 1);
+			expect(months.length).toBeGreaterThan(0);
+			for (const row of months) expect(new Set(row).size, String(row)).toBe(1);
 		}
 		if (path === '/import') {
 			// With a card open and its transactions table expanded (the account made in the import test reads

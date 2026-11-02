@@ -430,6 +430,16 @@ details[open]::details-content {
 		color: var(--muted);
 		font-size: var(--text-sm);
 	}
+	/* A card of figures only (a month's income, spending and net) keeps them to the right, so their decimals line up:
+	   to the left, «$100.50» over «−$1,183.86» read ragged (pass 17). Where a figure shares its card with words, it
+	   starts where the words do. */
+	.rows-on-phone tr:not(:has(> td:not(.number))) td.number {
+		justify-items: end;
+		text-align: right;
+	}
+	.rows-on-phone tr:not(:has(> td:not(.number))) td.number::before {
+		justify-self: start;
+	}
 	/* The row's name heads its card. */
 	.rows-on-phone td:first-child {
 		grid-template-columns: minmax(0, 1fr);
