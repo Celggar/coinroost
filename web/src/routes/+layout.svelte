@@ -96,7 +96,8 @@
 {:else if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
-	<main><p class="hint loading" out:placeholder>{t('app.loading')}</p></main>
+	<!-- Not a <main>: while it fades out the shell's main is already there, and a page has one main. -->
+	<div class="boot"><p class="hint loading" out:placeholder>{t('app.loading')}</p></div>
 {/if}
 
 <style>
@@ -154,6 +155,15 @@
 	}
 	main:focus {
 		outline: none;
+	}
+	/* The boot line sits where a page's first line does (base.css, main). */
+	.boot {
+		max-width: 960px;
+		margin: 0 auto;
+		padding: var(--space-lg);
+	}
+	.boot > p {
+		margin-bottom: var(--space-lg);
 	}
 	/* First in the tab order, out of sight until it has the focus (WCAG 2.4.1). */
 	.skip {
