@@ -57,8 +57,8 @@
 			notify(problem(error, response.status, t('rules.move_failed')), 'bad');
 		}
 		await load();
-		// The buttons were disabled while it moved, which drops the focus: it follows the rule, to the same button,
-		// or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).
+		// The focus stays on the pressed button while it moves (aria-disabled, pass 18) and follows the rule, to the same
+		// button, or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).
 		await tick();
 		const moved = focusOn(`[data-move="${rule.id}-${way}"]`, `[data-move^="${rule.id}-"]`);
 		// The rule glides to its place after the focus went to it: once it lands, the page shows it whole, or near the
@@ -156,8 +156,8 @@
 									<button
 										class="secondary"
 										data-move="{rule.id}-up"
-										onclick={() => move(rule, rule.position - 1)}
-										disabled={busy}
+										onclick={() => busy || move(rule, rule.position - 1)}
+										aria-disabled={busy}
 										aria-label={t('rules.up_named', { name: rule.name })}
 										in:pop={{ start: 0.9 }}
 										out:vanish>{t('rules.up')}</button
@@ -167,8 +167,8 @@
 									<button
 										class="secondary"
 										data-move="{rule.id}-down"
-										onclick={() => move(rule, rule.position + 1)}
-										disabled={busy}
+										onclick={() => busy || move(rule, rule.position + 1)}
+										aria-disabled={busy}
 										aria-label={t('rules.down_named', { name: rule.name })}
 										in:pop={{ start: 0.9 }}
 										out:vanish>{t('rules.down')}</button

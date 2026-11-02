@@ -92,7 +92,7 @@
 						{/each}
 					</ul>
 					<div class="actions">
-						<button onclick={apply} disabled={busy}
+						<button onclick={() => busy || apply()} aria-disabled={busy}
 							>{plural(preview.pairs.length, 'waiting.pair_one', 'waiting.pair_other')}</button
 						>
 					</div>

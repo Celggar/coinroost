@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
+import { watchDrops } from './focus.ts';
 import { english, say } from './messages.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
@@ -326,6 +327,7 @@ test('a rule moved up keeps its focused button on screen', async ({ context }) =
 	const up = page.locator(`[data-move="${made[2]}-up"]`);
 	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 90));
 	await up.focus();
+	const drops = await watchDrops(page);
 	const reloaded = page.waitForResponse(
 		(r) => r.url().includes('/api/v1/rules') && r.request().method() === 'GET'
 	);
@@ -343,6 +345,7 @@ test('a rule moved up keeps its focused button on screen', async ({ context }) =
 		)
 	);
 	await expect(up).toBeFocused();
+	expect(await drops()).toEqual([]);
 	await expect
 		.poll(() =>
 			up.evaluate(
@@ -400,11 +403,13 @@ test('on a phone, deleting a rule leaves the page where it was', async ({ contex
 	await ask.click();
 	const yes = page.getByRole('button', { name: say('rules.delete_it') });
 	const start = await still(page);
+	const drops = await watchDrops(page);
 	await yes.click();
 	await expect(page.getByRole('heading', { name: 'Delete B' })).toHaveCount(0);
 	// The focus goes to the page's title, which a phone shows in its top bar: focused bare, the page jumped to its
 	// start in one frame (pass 15).
 	await expect(page.locator('main h1')).toBeFocused();
+	expect(await drops()).toEqual([]);
 	expect(await still(page)).toBe(start);
 	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
 });

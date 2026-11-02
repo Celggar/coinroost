@@ -37,7 +37,8 @@
 <span class="swap-cell">
 	{#if asking}
 		<span class="choice" in:pop={{ start: 0.9 }} out:vanish>
-			<button class="danger" onclick={onconfirm} disabled={busy}>{yes}</button>
+			<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works (pass 18). -->
+			<button class="danger" onclick={() => busy || onconfirm()} aria-disabled={busy}>{yes}</button>
 			<button class="secondary" bind:this={keep} onclick={() => open(false)}>{no}</button>
 		</span>
 	{:else}

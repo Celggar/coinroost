@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { watchDrops } from './focus.ts';
 import { say } from './messages.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
@@ -388,6 +389,7 @@ test('a split pair takes its place without the old line drawn over it', async ()
 			};
 			requestAnimationFrame(step);
 		});
+		const drops = await watchDrops(page);
 		await page.getByRole('button', { name: say('made.split_it') }).click();
 		await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 90);
 		const frames = await page.evaluate(() => (window as unknown as Frames).frames);
@@ -397,6 +399,8 @@ test('a split pair takes its place without the old line drawn over it', async ()
 		).toEqual([]);
 		await page.getByRole('button', { name: say('waiting.pair_one') }).click();
 		await expect(page.getByRole('button', { name: /^Separar/ })).toHaveCount(1);
+		await expect(page.locator('#made-title')).toBeFocused();
+		expect(await drops()).toEqual([]);
 	}
 	await page.emulateMedia({ reducedMotion: null });
 	await page.setViewportSize({ width: 1280, height: 720 });

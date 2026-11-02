@@ -276,7 +276,7 @@
 						<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
 					{:else}
 						<div class="actions" out:vanish>
-							<button onclick={commit} disabled={busy}>
+							<button onclick={() => busy || commit()} aria-disabled={busy}>
 								{plural(reading.new, 'file.import_one', 'file.import_other')}
 							</button>
 						</div>

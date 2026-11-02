@@ -128,7 +128,7 @@
 					{/each}
 				</ul>
 				<div class="actions" in:rise|global out:vanish>
-					<button onclick={apply} disabled={busy}>
+					<button onclick={() => busy || apply()} aria-disabled={busy}>
 						{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
 					</button>
 				</div>

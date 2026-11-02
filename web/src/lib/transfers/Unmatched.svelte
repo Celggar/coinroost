@@ -79,6 +79,7 @@
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		const form = event.currentTarget as HTMLFormElement;
 		error = '';
 		errors = check(form);
@@ -138,9 +139,10 @@
 											</div>
 											<button
 												class="secondary"
-												disabled={busy}
+												aria-disabled={busy}
 												aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
-												onclick={() => suggested(item.leg.transaction_id, candidate.transaction_id)}
+												onclick={() =>
+													busy || suggested(item.leg.transaction_id, candidate.transaction_id)}
 												>{t('unmatched.pair')}</button
 											>
 										</li>
@@ -192,7 +194,7 @@
 				</div>
 				<FormError text={error} />
 				<div class="actions">
-					<button type="submit" disabled={busy}>{t('unmatched.pair_them')}</button>
+					<button type="submit" aria-disabled={busy}>{t('unmatched.pair_them')}</button>
 				</div>
 			</form>
 		{/if}

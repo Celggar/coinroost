@@ -47,7 +47,7 @@
 	let holding = $state(false);
 
 	async function choose(transaction: Schemas['Transaction'], categoryId: string) {
-		if (!categoryId) return;
+		if (!categoryId || busy) return;
 		busy = transaction.id;
 		const {
 			data,
@@ -173,7 +173,8 @@
 										<select
 											id="category-{transaction.id}"
 											value=""
-											disabled={busy !== null}
+											disabled={busy !== null && busy !== transaction.id}
+											aria-disabled={busy === transaction.id}
 											onchange={(event) => choose(transaction, event.currentTarget.value)}
 										>
 											<option value="" disabled>{t('uncategorized.choose')}</option>
