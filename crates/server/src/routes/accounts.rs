@@ -244,6 +244,13 @@ pub struct BankProfile {
     format: &'static str,
     /// ISO 4217 code of the statements it reads.
     currency: String,
+    /// The kind of account its statements come from, when it reads only one.
+    kind: Option<AccountKind>,
+}
+
+/// A profile's kind as an account kind; profiles are built in, and a test reads every one.
+fn profile_kind(kind: Option<&str>) -> Option<AccountKind> {
+    kind.and_then(|k| serde_json::from_value(serde_json::Value::String(k.to_owned())).ok())
 }
 
 #[derive(Serialize, ToSchema)]
@@ -265,6 +272,7 @@ async fn list_profiles(_session: Session) -> Json<BankProfiles> {
                 FileFormat::Xlsx => "xlsx",
                 FileFormat::Pdf => "pdf",
             },
+            kind: profile_kind(p.kind.as_deref()),
             id: p.id,
             name: p.name,
             currency: p.currency,

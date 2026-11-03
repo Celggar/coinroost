@@ -9,6 +9,7 @@ id = "bac-card"
 name = "BAC credit card statement (CSV)"
 format = "csv"
 currency = "USD"
+kind = "credit_card"
 
 [detect]
 all = ["minimum payment"]

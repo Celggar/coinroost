@@ -92,6 +92,25 @@ async fn creates_and_lists_accounts(db: PgPool) {
 }
 
 #[sqlx::test]
+async fn a_profile_that_reads_one_kind_of_account_names_it(db: PgPool) {
+    let api = Api::new(db);
+    let user = api.household("Profiles").await;
+    let (status, list) = api.call("GET", "/api/v1/profiles", Some(&user.token), None).await;
+    assert_eq!(status, StatusCode::OK, "{list}");
+    let items = list["items"].as_array().unwrap();
+    let kind = |id: &str| items.iter().find(|p| p["id"] == id).map(|p| p["kind"].clone());
+    // A card's statement belongs to a credit card; an account statement may be checking or savings, so no kind.
+    assert_eq!(kind("bac-card"), Some(json!("credit_card")));
+    assert_eq!(kind("bac-account"), Some(Value::Null));
+    // Every kind a built-in profile writes is one the API knows: a misspelt one would read as none.
+    let written = coinroost_normalizer::Profile::builtin()
+        .into_iter()
+        .filter(|p| p.kind.is_some())
+        .count();
+    assert_eq!(items.iter().filter(|p| !p["kind"].is_null()).count(), written);
+}
+
+#[sqlx::test]
 async fn creates_and_lists_categories(db: PgPool) {
     let api = Api::new(db);
     let user = api.household("Categories").await;

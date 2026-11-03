@@ -75,7 +75,12 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	const page = await loggedIn(context);
 	await page.goto('/accounts');
 	await page.getByLabel(say('accounts.name')).fill('Checking');
+	// A card's file makes the account a credit card; a file that reads either kind gives back the chosen one.
+	const kind = page.getByLabel(say('accounts.kind'));
+	await page.getByLabel(say('accounts.bank_file')).selectOption('bac-card');
+	await expect(kind).toHaveValue('credit_card');
 	await page.getByLabel(say('accounts.bank_file')).selectOption('bac-account');
+	await expect(kind).toHaveValue('checking');
 	await page.getByLabel(say('accounts.key')).fill('bac');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Checking' }));

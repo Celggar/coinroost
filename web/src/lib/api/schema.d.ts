@@ -706,6 +706,7 @@ export interface components {
             format: string;
             /** @description ISO 4217 code of the statements it reads. */
             currency: string;
+            kind?: components["schemas"]["AccountKind"] | null;
         };
         BankProfiles: {
             items: components["schemas"]["BankProfile"][];

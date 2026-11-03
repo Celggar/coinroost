@@ -8,6 +8,7 @@ id = "bg-christmas-savings"
 name = "Banco General Christmas savings statement (PDF)"
 format = "pdf"
 currency = "USD"
+kind = "savings"
 
 [detect]
 all = ["ahorros navidad", "saldo total"]

@@ -2451,6 +2451,17 @@
           "currency": {
             "type": "string",
             "description": "ISO 4217 code of the statements it reads."
+          },
+          "kind": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccountKind",
+                "description": "The kind of account its statements come from, when it reads only one."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },

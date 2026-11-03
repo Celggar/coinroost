@@ -30,6 +30,8 @@
 
 	let name = $state('');
 	let kind = $state<Schemas['AccountKind']>('checking');
+	// The kind the person chose themselves: a bank file that reads one kind sets it, and another file gives it back.
+	let kindByHand: Schemas['AccountKind'] = 'checking';
 	let currency = $state('USD');
 	let profile = $state('');
 	let namespace = $state('');
@@ -69,6 +71,8 @@
 	function pickProfile() {
 		const chosen = profiles.find((p) => p.id === profile);
 		if (chosen) currency = chosen.currency;
+		// A card's statement belongs to a credit card: the kind follows the file (pass 20, it stayed «Corriente»).
+		kind = chosen?.kind ?? kindByHand;
 	}
 
 	const words = (text: string) =>
@@ -117,6 +121,7 @@
 		// The whole form back to how it opened: kept, the last account's kind passed to the next unnoticed (pass 14).
 		name = '';
 		kind = 'checking';
+		kindByHand = 'checking';
 		currency = 'USD';
 		profile = '';
 		namespace = '';
@@ -211,7 +216,7 @@
 				</Field>
 				<Field label={t('accounts.kind')} name="kind" error={errors.kind}>
 					{#snippet children(wiring)}
-						<select {...wiring} bind:value={kind}>
+						<select {...wiring} bind:value={kind} onchange={() => (kindByHand = kind)}>
 							{#each kinds as option (option)}
 								<option value={option}>{kindName(option)}</option>
 							{/each}

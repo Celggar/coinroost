@@ -125,6 +125,10 @@ pub struct Profile {
     pub format: FileFormat,
     /// ISO 4217 code.
     pub currency: String,
+    /// The kind of account its statements come from, when the format reads only one (`credit_card` for a card's
+    /// statement); a form for a new account starts with it.
+    #[serde(default)]
+    pub kind: Option<String>,
     #[serde(default)]
     pub detect: Detect,
     #[serde(default)]
