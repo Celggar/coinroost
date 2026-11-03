@@ -289,6 +289,16 @@ input::placeholder {
 	border-color: var(--bad);
 	box-shadow: 0 0 0 1px var(--bad);
 }
+/* Forced colors drop the red and the shadow, so a field in error looked like a valid one (pass 19): it takes a
+   thicker border instead, and the padding gives back what the border took, so the value stays where it was. */
+@media (forced-colors: active) {
+	[aria-invalid='true'] {
+		border-width: 3px;
+	}
+	:where(input, select, textarea)[aria-invalid='true'] {
+		padding-inline: calc(var(--space-md) - 2px);
+	}
+}
 
 /* A label that wraps its control (the sign-in pages): the text over the control. */
 label {
@@ -342,4 +352,12 @@ label {
 	font-size: var(--text-sm);
 	font-weight: 600;
 	line-height: 1.4;
+}
+/* In forced colors an error and a hint share one ink: the error keeps a bar at its start, as GOV.UK marks a field
+   group in error, so it never reads as a hint. */
+@media (forced-colors: active) {
+	.field-error {
+		border-inline-start: 3px solid;
+		padding-inline-start: var(--space-sm);
+	}
 }

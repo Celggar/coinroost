@@ -160,6 +160,10 @@
 			outline: 2px solid Highlight;
 			outline-offset: 2px;
 		}
+		/* The error's red is gone: the slots take the thicker border every field in error takes. */
+		.row:has(input[aria-invalid='true']) .slot {
+			border-width: 3px;
+		}
 	}
 	/* A border, not a background: forced colors keep borders and drop backgrounds. */
 	.dash {
