@@ -151,6 +151,15 @@
 	.slot.active::after {
 		opacity: 1;
 	}
+	/* In error the active slot keeps the red edge inside its ring, as a focused field does (pass 20): the ring's own
+	   edge and its first pixel take the error's red, then the gap and the focus colour. */
+	.row:has(input[aria-invalid='true']) .slot::after {
+		border-color: var(--bad);
+		box-shadow:
+			0 0 0 1px var(--bad),
+			0 0 0 2px var(--ring-gap, var(--surface)),
+			0 0 0 4px var(--focus);
+	}
 	/* Forced colors drop shadows: the system draws the ring as an outline. */
 	@media (forced-colors: active) {
 		.slot::after {

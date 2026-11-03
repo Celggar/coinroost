@@ -28,6 +28,17 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	await page.getByLabel(say('login.code')).fill(wrong);
 	await page.getByRole('button', { name: say('setup.finish') }).click();
 	await expect(page.getByRole('alert')).toHaveText(say('setup.wrong_code'));
+	// The active slot keeps the error's red inside its focus ring, like the other five (pass 20).
+	const edges = await page.evaluate(() => {
+		const slots = [...document.querySelectorAll('.slot')];
+		const active = slots.find((slot) => slot.classList.contains('active'))!;
+		const other = slots.find((slot) => slot !== active)!;
+		return [
+			getComputedStyle(active, '::after').borderTopColor,
+			getComputedStyle(other).borderTopColor
+		];
+	});
+	expect(edges[0]).toBe(edges[1]);
 	await page.getByLabel(say('login.code')).fill(right);
 	await page.getByRole('button', { name: say('setup.finish') }).click();
 	// Step 3: the new user's recovery codes, shown once.
