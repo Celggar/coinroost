@@ -9,7 +9,7 @@
 	import { LIST } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
-	import { focusOn, retry } from '#lib/ui/focus.ts';
+	import { focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
 	import { focusShown, showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { arrive, glide, grow, placeholder, pop, swapIn, vanish } from '#lib/motion.ts';
@@ -25,7 +25,12 @@
 
 	const names = $derived(nameMaps(categories, payees, accounts));
 
+	// What the next load runs once the new lists are in hand, just before they replace the old ones; once.
+	let arriving: (() => void) | undefined;
+
 	async function load() {
+		const before = arriving;
+		arriving = undefined;
 		loadError = '';
 		const [r, c, p, a] = await Promise.all([
 			api.GET('/api/v1/rules'),
@@ -38,6 +43,7 @@
 			loadError = problem(failed?.error, failed?.response?.status, t('rules.failed'));
 			return;
 		}
+		before?.();
 		rules = r.data.items;
 		categories = c.data.items;
 		payees = p.data.items;
@@ -56,6 +62,8 @@
 		if (!response.ok) {
 			notify(problem(error, response.status, t('rules.move_failed')), 'bad');
 		}
+		// The list holds the focus while its rows change places, so the row that moves takes none out with it.
+		arriving = () => holdFocus(document.querySelector('ol.rules'));
 		await load();
 		// The focus stays on the pressed button while it moves (aria-disabled, pass 18) and follows the rule, to the same
 		// button, or to its other one when the rule reached the top or the bottom (the one leaving is inert, so skipped).

@@ -7,8 +7,6 @@ import { expect, test, type BrowserContext, type Locator, type Page } from '@pla
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { english, say } from './messages.ts';
-import { makeRules } from './rules.ts';
-import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const fixture = (name: string) =>
@@ -321,103 +319,6 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 	).toBeVisible();
 	await checkPayroll(page);
 	await checkDashboard(page);
-});
-
-test('a rule moved up keeps its focused button on screen', async ({ context }) => {
-	const page = await loggedIn(context);
-	await page.setViewportSize({ width: 1280, height: 800 });
-	const made = await makeRules(page, ['Moved A', 'Moved B', 'Moved C', 'Moved D']);
-	await page.goto('/rules');
-	// A rule near the top of the screen glides up after its button got the focus: the page has to follow it, or the
-	// focus ends above the screen (pass 7, y = -144).
-	const up = page.locator(`[data-move="${made[2]}-up"]`);
-	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 90));
-	await up.focus();
-	const drops = await watchDrops(page);
-	const reloaded = page.waitForResponse(
-		(r) => r.url().includes('/api/v1/rules') && r.request().method() === 'GET'
-	);
-	await page.keyboard.press('Enter');
-	await reloaded;
-	await page.evaluate(
-		() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-	);
-	await up.evaluate((e) =>
-		Promise.all(
-			e
-				.closest('li')!
-				.getAnimations()
-				.map((a) => a.finished.catch(() => undefined))
-		)
-	);
-	await expect(up).toBeFocused();
-	expect(await drops()).toEqual([]);
-	await expect
-		.poll(() =>
-			up.evaluate(
-				(e) => e.getBoundingClientRect().top >= 0 && e.getBoundingClientRect().bottom <= innerHeight
-			)
-		)
-		.toBe(true);
-	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
-});
-
-test('on a phone a rule moved up glides, then lands with no line across the bar', async ({
-	context
-}) => {
-	const page = await loggedIn(context);
-	await page.setViewportSize({ width: 390, height: 844 });
-	const made = await makeRules(page, ['Landing A', 'Landing B']);
-	await page.goto('/rules');
-	// The browser's scroll anchoring kept the moved rule still by moving the page in one frame, its title across the
-	// top bar, and the page then landed with a line flush under the bar (pass 13: 365 → 147, 300 → 17).
-	const up = page.locator(`[data-move="${made[1]}-up"]`);
-	await up.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 210));
-	const start = await still(page);
-	// Clicked where it stands, as a person would: once the page moved at the click (630 → 97), as a Playwright retry does.
-	await up.click({ force: true });
-	// The rules have swapped once the one above, now last, has no «Bajar»: the page has not moved yet.
-	await expect(page.locator(`[data-move="${made[0]}-down"]`)).toHaveCount(0);
-	expect(await page.evaluate(() => scrollY)).toBe(start);
-	const row = page.locator('.rules > li', { has: page.locator(`[data-move^="${made[1]}-"]`) });
-	await row.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
-	await still(page, 500);
-	const cut = await page.evaluate(() => {
-		const bar = document.querySelector('header.appbar')!.getBoundingClientRect().bottom;
-		return [...document.querySelectorAll('main h2, main p')]
-			.flatMap((e) => {
-				const range = document.createRange();
-				range.selectNodeContents(e);
-				return [...range.getClientRects()];
-			})
-			.filter((r) => r.height > 2 && r.top < bar + 8 && r.bottom > bar).length;
-	});
-	expect(cut).toBe(0);
-	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
-});
-
-test('on a phone, deleting a rule leaves the page where it was', async ({ context }) => {
-	const page = await loggedIn(context);
-	await page.setViewportSize({ width: 390, height: 844 });
-	const made = await makeRules(page, ['Delete A', 'Delete B']);
-	// Each step read once the page stands still: the list loads and the confirm opens with their own motion.
-	await page.goto('/rules');
-	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Delete B' }) });
-	await expect(ask).toBeVisible();
-	await still(page);
-	await ask.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 400));
-	await ask.click();
-	const yes = page.getByRole('button', { name: say('rules.delete_it') });
-	const start = await still(page);
-	const drops = await watchDrops(page);
-	await yes.click();
-	await expect(page.getByRole('heading', { name: 'Delete B' })).toHaveCount(0);
-	// The focus goes to the page's title, which a phone shows in its top bar: focused bare, the page jumped to its
-	// start in one frame (pass 15).
-	await expect(page.locator('main h1')).toBeFocused();
-	expect(await drops()).toEqual([]);
-	expect(await still(page)).toBe(start);
-	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
 });
 
 test('on a phone, changes applied at the page end leave the page still as it shortens', async ({

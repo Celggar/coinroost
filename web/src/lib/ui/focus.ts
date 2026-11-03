@@ -22,6 +22,19 @@ export function focusOn(...selectors: string[]): HTMLElement | null {
 }
 
 /**
+ * Keeps the focus inside `box` while its rows are put in a new order, once the caller has the new order and before it
+ * hands it over. A keyed list moves a row by taking it out and back in, and a focused button taken out drops the focus
+ * to the page: «Bajar» dropped it every time, the row going down being the one moved (pass 20). The box takes the
+ * focus in the same task, before any frame, and gives it up to whatever the caller focuses next.
+ */
+export function holdFocus(box: HTMLElement | null) {
+	if (!box?.contains(document.activeElement)) return;
+	box.tabIndex = -1;
+	box.focus({ preventScroll: true });
+	box.addEventListener('focusout', () => box.removeAttribute('tabindex'), { once: true });
+}
+
+/**
  * Runs a page's load again from its «Intentar de nuevo» (`from`, the button pressed) and puts the focus where one can
  * go on: on that place's button again when the load failed again, else on `heading` (the page's title by default),
  * whose content is coming back. Only the alert where the button was counts: another section's own failure keeps its
