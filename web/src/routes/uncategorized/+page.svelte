@@ -2,6 +2,7 @@
 	import { focusOn, retry } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
+	import FirstStep from '#lib/ui/FirstStep.svelte';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -102,31 +103,9 @@
 		{#if transactions.length === 0}
 			<!-- Global: these blocks come with the one above them, where a local transition does not play. -->
 			{#if empty}
-				<!-- Nothing imported yet: the step that comes first, as Summary and Import show it. Without an account
-				     that reads a bank file, Import would only send people on to Accounts (pass 6). -->
+				<!-- Nothing imported yet: the step that comes first, as Summary, Import and Transfers show it. -->
 				<div in:swapIn|global>
-					{#if accounts.length === 0}
-						<EmptyState
-							icon="bank"
-							text={t('dashboard.no_accounts')}
-							href="/accounts"
-							action={t('dashboard.to_accounts')}
-						/>
-					{:else if !accounts.some((a) => a.profile)}
-						<EmptyState
-							icon="bank"
-							text={t('import.no_bank_file')}
-							href="/accounts"
-							action={t('file.open_accounts')}
-						/>
-					{:else}
-						<EmptyState
-							icon="import"
-							text={t('uncategorized.none_yet')}
-							href="/import"
-							action={t('uncategorized.import_first')}
-						/>
-					{/if}
+					<FirstStep {accounts} />
 				</div>
 			{:else}
 				<div id="all-done" in:swapIn|global>

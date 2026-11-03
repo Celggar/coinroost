@@ -1,6 +1,6 @@
 <script lang="ts">
 	// A page with nothing to show yet says what is missing and offers the one way on, as a card like the import page's
-	// zone: the same look on every page that can be empty (summary, uncategorized, coverage, import).
+	// zone: the same look on every page that can be empty (summary, uncategorized, transfers, coverage, import).
 	import Icon from '#lib/nav/Icon.svelte';
 	import type { IconName } from '#lib/nav/destinations.ts';
 
