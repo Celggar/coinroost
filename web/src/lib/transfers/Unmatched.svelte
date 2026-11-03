@@ -37,6 +37,13 @@
 		)
 	);
 
+	// A chosen side reads whole under its list: a list cuts what does not fit its width, and a long account name left
+	// the description out (pass 21).
+	const whole = (id: string) => {
+		const leg = choices.find((l) => l.transaction_id === id);
+		return leg ? legText(leg, names) : '';
+	};
+
 	/** Why a pair was not made, and whether the API refused the two chosen (422) rather than failing to answer. */
 	type Refusal = Failure & { refused: boolean };
 
@@ -173,7 +180,12 @@
 				<h3>{t('unmatched.by_hand')}</h3>
 				<p class="hint">{t('unmatched.by_hand_hint')}</p>
 				<div class="fields pick">
-					<Field label={t('unmatched.one_side')} name="first" error={errors.first}>
+					<Field
+						label={t('unmatched.one_side')}
+						name="first"
+						hint={whole(first)}
+						error={errors.first}
+					>
 						{#snippet children(wiring)}
 							<select {...wiring} bind:value={first} required>
 								<option value="" disabled>{t('unmatched.choose')}</option>
@@ -183,7 +195,12 @@
 							</select>
 						{/snippet}
 					</Field>
-					<Field label={t('unmatched.other_side')} name="second" error={errors.second}>
+					<Field
+						label={t('unmatched.other_side')}
+						name="second"
+						hint={whole(second)}
+						error={errors.second}
+					>
 						{#snippet children(wiring)}
 							<select {...wiring} bind:value={second} required>
 								<option value="" disabled>{t('unmatched.choose')}</option>

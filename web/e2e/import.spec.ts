@@ -296,7 +296,12 @@ test('pairs two legs and splits them', async ({ context }) => {
 	const other = form.getByLabel(say('unmatched.other_side'));
 	await form.getByLabel(say('unmatched.one_side')).selectOption({ label: outflow });
 	await expect(other.getByRole('option', { name: outflow })).toBeDisabled();
-	await other.selectOption({ label: '15 may 2026 · Savings · +$500.00 · FROM CHECKING' });
+	const inflow = '15 may 2026 · Savings · +$500.00 · FROM CHECKING';
+	await other.selectOption({ label: inflow });
+	// Each chosen side reads whole under its list, which cuts what does not fit (pass 21).
+	for (const leg of [outflow, inflow]) {
+		await expect(form.locator('p.hint').filter({ hasText: leg })).toBeVisible();
+	}
 	const refusal = { status: 422, code: 'transfer_not_balanced', detail: 'they do not cancel' };
 	await page.route(
 		'**/api/v1/transfers',
@@ -306,7 +311,8 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(other).toHaveAttribute('aria-invalid', 'true');
 	await expect(other).toBeFocused();
-	const reason = form.locator(`[id="${await other.getAttribute('aria-describedby')}"]`);
+	const ids = (await other.getAttribute('aria-describedby'))?.split(' ') ?? [];
+	const reason = form.locator(`[id="${ids.find((id) => id.endsWith('-error'))}"]`);
 	await expect(reason).toHaveText(say('problem.transfer_not_balanced'));
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('unmatched.paired'));
