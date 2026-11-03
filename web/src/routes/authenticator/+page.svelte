@@ -146,4 +146,11 @@
 		font-weight: 400;
 		line-height: 1.5;
 	}
+	/* Under forced colors it keeps the links' system colour, as it keeps their look: as a button it took ButtonText,
+	   beside a link in LinkText (pass 23). */
+	@media (forced-colors: active) {
+		.back {
+			color: LinkText;
+		}
+	}
 </style>

@@ -52,6 +52,21 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await page.setViewportSize({ width: 360, height: 800 });
 	expect(await endsAlone(page.getByText(say('setup.key')))).toBe(false);
 	await page.setViewportSize({ width: 1280, height: 720 });
+	// Under forced colors «Atrás», a button dressed as a link, keeps the links' colour (pass 23: ButtonText beside
+	// LinkText on /authenticator, which shares the style).
+	await page.emulateMedia({ forcedColors: 'active' });
+	const colours = await page
+		.getByRole('button', { name: say('setup.back'), exact: true })
+		.evaluate((back) => {
+			const link = document.body.appendChild(document.createElement('a'));
+			link.href = '#';
+			link.textContent = 'link';
+			const pair = [getComputedStyle(back).color, getComputedStyle(link).color];
+			link.remove();
+			return pair;
+		});
+	expect(colours[0]).toBe(colours[1]);
+	await page.emulateMedia({ forcedColors: 'none' });
 	// A clipboard that refuses (a phone without the permission): the page says so and selects the key for a copy by
 	// hand. It said nothing (pass 22).
 	type Held = Clipboard & { real?: Clipboard['writeText'] };
