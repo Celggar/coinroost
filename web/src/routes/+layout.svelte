@@ -156,14 +156,15 @@
 	main:focus {
 		outline: none;
 	}
-	/* The boot line sits where a page's first line does (base.css, main). */
+	/* The boot line sits where a page's first line does (base.css, main). Its room is the line's own: the line leaves
+	   the flow as it fades, and a box keeping 32 px of padding held the app under it, then let it jump up (pass 21). */
 	.boot {
 		max-width: 960px;
 		margin: 0 auto;
-		padding: var(--space-lg);
 	}
 	.boot > p {
-		margin-bottom: var(--space-lg);
+		margin: 0;
+		padding: var(--space-lg);
 	}
 	/* First in the tab order, out of sight until it has the focus (WCAG 2.4.1). */
 	.skip {
