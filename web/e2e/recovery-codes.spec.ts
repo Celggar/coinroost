@@ -190,6 +190,16 @@ test('recovery codes let a person back in and make them set up a new authenticat
 		return next.getClientRects()[0].top - ring;
 	});
 	expect(clear).toBeGreaterThanOrEqual(0);
+	// And 6 px off its first and last letters: 2 px hugged them (pass 23).
+	const side = await title.evaluate((e) => {
+		const words = document.createRange();
+		words.selectNodeContents(e);
+		const text = words.getBoundingClientRect();
+		const box = e.getBoundingClientRect();
+		const offset = parseFloat(getComputedStyle(e).outlineOffset);
+		return Math.min(text.left - box.left, box.right - text.right) + offset;
+	});
+	expect(side).toBeGreaterThanOrEqual(6);
 	const renewed = await shownCodes(page);
 	expect(renewed.some((code) => codes.includes(code))).toBe(false);
 	await expect(page.getByTestId('recovery-status')).toHaveText(

@@ -112,9 +112,13 @@ button:focus-visible,
 }
 
 /* A heading or a line that takes the focus (after a retry, once what had it is gone, a check's answer) wears the
-   ring around its words, as the phone's bar title does, not a square box across the page (pass 9, pass 11). */
+   ring around its words, as the phone's bar title does, not a square box across the page (pass 9, pass 11). The
+   ring stands 6 px off the first and last letters, the words where they were: 2 px from the box hugged the letters
+   (pass 23, «No cambiaría nada.»). */
 :where(h1, h2, h3, p)[tabindex='-1']:focus-visible {
 	width: fit-content;
+	padding-inline: 4px;
+	margin-inline: -4px;
 	border-radius: 4px;
 }
 
