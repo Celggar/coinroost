@@ -3,6 +3,7 @@
 // a new set retires the old one.
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { endsAlone } from './lines.ts';
 import { say, type Key } from './messages.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -47,6 +48,25 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await page.getByLabel(say('login.password')).fill(password);
 	await page.getByRole('button', { name: say('setup.continue'), exact: true }).click();
 	const secret = (await page.getByTestId('setup-key').innerText()).replace(/\s/g, '');
+	// On a 360 px phone the key's label wraps with its last two words together: «configuración» was alone (pass 22).
+	await page.setViewportSize({ width: 360, height: 800 });
+	expect(await endsAlone(page.getByText(say('setup.key')))).toBe(false);
+	await page.setViewportSize({ width: 1280, height: 720 });
+	// A clipboard that refuses (a phone without the permission): the page says so and selects the key for a copy by
+	// hand. It said nothing (pass 22).
+	type Held = Clipboard & { real?: Clipboard['writeText'] };
+	await page.evaluate(() => {
+		const clipboard = navigator.clipboard as Held;
+		clipboard.real = clipboard.writeText.bind(clipboard);
+		clipboard.writeText = () => Promise.reject(new DOMException('Denied', 'NotAllowedError'));
+	});
+	await page.getByRole('button', { name: say('setup.copy'), exact: true }).click();
+	await expect(page.locator('.key p.field-error')).toHaveText(say('setup.copy_failed'));
+	expect(await page.evaluate(() => getSelection()?.toString().replace(/\s/g, ''))).toBe(secret);
+	await page.evaluate(() => {
+		const clipboard = navigator.clipboard as Held;
+		clipboard.writeText = clipboard.real!;
+	});
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(secret));
 	await page.getByRole('button', { name: say('setup.finish'), exact: true }).click();
 

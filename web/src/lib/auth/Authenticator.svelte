@@ -8,7 +8,7 @@
 	// Android a link that opens the app on this device. Used by the setup link's second step and by the new
 	// authenticator after a recovery code.
 	import { t } from '#lib/i18n.svelte.ts';
-	import { DURATION, pop, vanish } from '#lib/motion.ts';
+	import { DURATION, grow, pop, vanish } from '#lib/motion.ts';
 
 	let { enrollment }: { enrollment: { uri: string; secret: string; qr_svg: string } } = $props();
 
@@ -16,6 +16,8 @@
 	const agent = navigator.userAgent;
 	let qrPng = $state('');
 	let copied = $state(false);
+	let copyFailed = $state(false);
+	let key = $state<HTMLElement>();
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const qr = $derived(`data:image/svg+xml;base64,${btoa(enrollment.qr_svg)}`);
@@ -65,7 +67,16 @@
 	}
 
 	async function copy() {
-		await navigator.clipboard.writeText(enrollment.secret);
+		try {
+			await navigator.clipboard.writeText(enrollment.secret);
+		} catch {
+			// The clipboard refused (a blocked permission, a browser without one): the key is selected for a copy by
+			// hand, and the page says so. It said nothing, and «Copiar» stayed as it was (pass 22, on a phone).
+			copyFailed = true;
+			if (key) getSelection()?.selectAllChildren(key);
+			return;
+		}
+		copyFailed = false;
 		copied = true;
 		clearTimeout(copiedTimer);
 		copiedTimer = setTimeout(() => (copied = false), 2000);
@@ -78,7 +89,9 @@
 <div class="key">
 	<span class="key-label">{t('setup.key')}</span>
 	<div class="key-box">
-		<code data-testid="setup-key"><span>{lines[0]}</span> <span>{lines[1]}</span></code>
+		<code data-testid="setup-key" bind:this={key}
+			><span>{lines[0]}</span> <span>{lines[1]}</span></code
+		>
 		<button type="button" class="copy" aria-label={t('setup.copy')} onclick={copy}>
 			<!-- Both words in the same cell, unseen: the button keeps the wider one's width, so «Copiada» never narrows
 			     the key and makes it break again (pass 7). -->
@@ -93,7 +106,10 @@
 			{/key}
 		</button>
 	</div>
-	<span class="visually-hidden" aria-live="polite">{copied ? t('setup.copied') : ''}</span>
+	{#if copyFailed}<p class="field-error" transition:grow>{t('setup.copy_failed')}</p>{/if}
+	<span class="visually-hidden" aria-live="polite"
+		>{copied ? t('setup.copied') : copyFailed ? t('setup.copy_failed') : ''}</span
+	>
 	{#if sameDevice}<a class="open" href={sameDevice}>{t('setup.open_app')}</a>{/if}
 </div>
 

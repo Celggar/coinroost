@@ -36,9 +36,28 @@ export function setLocale(locale: Locale) {
 	}
 }
 
+/** `text` with its last two words held together, so where it wraps no word is left alone on the last line: CSS's
+ * `text-wrap: pretty` left «… clave de / configuración» under a 360 px label (pass 22). Only a text of three words or
+ * more, and only its own words: a placeholder's value can be long, a word already held to another (a hard space)
+ * would make a run too long for a phone's narrow column, and so would two long words. */
+export function held(text: string): string {
+	const words = text.split(' ');
+	if (words.length < 3) return text;
+	const [before, last] = words.slice(-2);
+	if (/[{} ]/.test(before + last) || before.length + last.length > 24) return text;
+	return `${words.slice(0, -2).join(' ')} ${before} ${last}`;
+}
+
+const kept = new Map<string, string>();
+
 /** The text of `key` in the current language, with `{name}` placeholders filled from `params`. */
 export function t(key: Key, params?: Record<string, string | number>): string {
-	const text = catalogs[i18n.locale][key];
+	const id = `${i18n.locale}:${key}`;
+	let text = kept.get(id);
+	if (text === undefined) {
+		text = held(catalogs[i18n.locale][key]);
+		kept.set(id, text);
+	}
 	if (!params) return text;
 	return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
 		name in params ? String(params[name]) : whole

@@ -2,7 +2,7 @@
 	// A new set of recovery codes, shown once: two columns of codes, and buttons to copy them all or download them as
 	// a text file (the way GitHub and Google hand them out). The file says what they are and when they were made.
 	import { tag, t } from '#lib/i18n.svelte.ts';
-	import { DURATION, pop, vanish } from '#lib/motion.ts';
+	import { DURATION, grow, pop, vanish } from '#lib/motion.ts';
 
 	let {
 		codes,
@@ -11,12 +11,22 @@
 	}: { codes: string[]; email?: string; createdAt?: string } = $props();
 
 	let copied = $state(false);
+	let copyFailed = $state(false);
+	let list = $state<HTMLElement>();
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const made = $derived(createdAt ? new Date(createdAt) : new Date());
 
 	async function copy() {
-		await navigator.clipboard.writeText(codes.join('\n'));
+		try {
+			await navigator.clipboard.writeText(codes.join('\n'));
+		} catch {
+			// The clipboard refused: the codes are selected for a copy by hand, and the page says so (as the key does).
+			copyFailed = true;
+			if (list) getSelection()?.selectAllChildren(list);
+			return;
+		}
+		copyFailed = false;
 		copied = true;
 		clearTimeout(copiedTimer);
 		copiedTimer = setTimeout(() => (copied = false), 2000);
@@ -42,7 +52,12 @@
 	}
 </script>
 
-<ol class="codes" aria-label={t('recovery.list')} in:pop|global={{ delay: 150, start: 0.95 }}>
+<ol
+	class="codes"
+	bind:this={list}
+	aria-label={t('recovery.list')}
+	in:pop|global={{ delay: 150, start: 0.95 }}
+>
 	{#each codes as code (code)}
 		<li><code>{code}</code></li>
 	{/each}
@@ -57,8 +72,11 @@
 		{/key}
 	</button>
 	<button type="button" class="secondary" onclick={download}>{t('recovery.download')}</button>
-	<span class="visually-hidden" aria-live="polite">{copied ? t('recovery.copied') : ''}</span>
+	<span class="visually-hidden" aria-live="polite"
+		>{copied ? t('recovery.copied') : copyFailed ? t('recovery.copy_failed') : ''}</span
+	>
 </div>
+{#if copyFailed}<p class="field-error" transition:grow>{t('recovery.copy_failed')}</p>{/if}
 
 <style>
 	.codes {
