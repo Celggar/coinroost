@@ -225,6 +225,23 @@ test('the login swaps its second step by a fade through, the two never at once',
 	expect(shown.filter((count) => count > 1)).toEqual([]);
 	expect(shown.at(-1)).toBe(1);
 	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
+	// Back and forth again before the step has left: the recovery code comes back and takes typing. It came back
+	// disabled, shut on its way out (pass 23 sweep).
+	await page.evaluate(
+		async ([back, again]) => {
+			const words = (text: string) => text.replace(/\s+/g, ' ').trim();
+			const button = (name: string) =>
+				[...document.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')].find(
+					(b) => words(b.textContent ?? '') === words(name)
+				)!;
+			button(back).click();
+			await new Promise(requestAnimationFrame);
+			button(again).click();
+		},
+		[say('login.use_code'), say('login.use_recovery')]
+	);
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeEnabled();
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
 });
 
 test('on a short phone the login keeps its top band of lines, above the brand', async ({

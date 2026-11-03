@@ -219,16 +219,24 @@ export function stepIn(node: Element, { direction = 1 } = {}): TransitionConfig 
 	});
 }
 
-/** Shuts an element on its way out of a `{#key}` block, whose old content never comes back: no focus or clicks, and
- * its fields drop out of the form, or an empty required one left there for the length of the exit would block a
- * quick submit of what replaced it. Not for `{#if}` blocks, whose exit can turn around and bring the element back. */
+/** Shuts an element on its way out of a `{#key}` block: no focus or clicks, and its fields drop out of the form, or an
+ * empty required one left there for the length of the exit would block a quick submit of what replaced it. Svelte
+ * brings a leaving block back when its key returns before the exit ends, and gives it back its `inert`: the controls
+ * this shut come back with it. They stayed off: «Cancelar» and «Crear códigos nuevos» again within 70 ms left the
+ * code field disabled (pass 23 sweep). */
 function shut(node: Element) {
-	if (node instanceof HTMLElement) node.inert = true;
-	for (const control of node.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
-		'button, input'
-	)) {
-		control.disabled = true;
-	}
+	if (!(node instanceof HTMLElement)) return;
+	node.inert = true;
+	const controls = [
+		...node.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button, input')
+	].filter((control) => !control.disabled);
+	for (const control of controls) control.disabled = true;
+	const back = new MutationObserver(() => {
+		if (node.inert) return;
+		back.disconnect();
+		for (const control of controls) control.disabled = false;
+	});
+	back.observe(node, { attributes: true, attributeFilter: ['inert'] });
 }
 
 /** Out of a `{#key}` block that swaps one view for another: a quick fade, shut ([`shut`]). */
