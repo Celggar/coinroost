@@ -13,6 +13,9 @@ const load = (language: string): Record<Key, string> =>
 const es = load('es');
 const en = load('en');
 
+/** Both catalogs, for the checks every text must pass. */
+export const catalogs = { es, en };
+
 const fill = (text: string, params: Params = {}) =>
 	text.replace(/\{(\w+)\}/g, (whole, name: string) =>
 		name in params ? String(params[name]) : whole
