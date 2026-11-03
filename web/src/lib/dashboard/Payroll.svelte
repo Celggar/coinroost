@@ -31,7 +31,7 @@
 </script>
 
 {#if error || payroll?.employers.length}
-	<section class="card" aria-labelledby="payroll-title">
+	<section class="card" aria-labelledby="payroll-title" in:arrive>
 		<h2 id="payroll-title">{t('payroll.title')}</h2>
 		{#if error}
 			<p class="alert" role="alert" in:arrive out:placeholder>

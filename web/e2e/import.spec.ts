@@ -334,6 +334,30 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 	await checkDashboard(page);
 });
 
+test('the payments card fades in when its answer comes after the summary', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.route('**/api/v1/payroll*', async (route) => {
+		await new Promise((done) => setTimeout(done, 1500));
+		await route.continue();
+	});
+	// The card's opacity in the first frame it is on the page. It came whole and opaque in one frame: its fade sat
+	// inside the block that made it, where a local transition does not play (pass 21).
+	type First = { opacity: number | null };
+	await page.addInitScript(() => {
+		const w = window as unknown as First;
+		w.opacity = null;
+		const step = () => {
+			const card = document.querySelector('[aria-labelledby="payroll-title"]');
+			if (card) w.opacity = Number(getComputedStyle(card).opacity);
+			else requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await page.goto('/');
+	await page.waitForFunction(() => (window as unknown as First).opacity !== null);
+	expect(await page.evaluate(() => (window as unknown as First).opacity)).toBeLessThan(0.5);
+});
+
 test('on a phone, changes applied at the page end leave the page still as it shortens', async ({
 	context
 }) => {
