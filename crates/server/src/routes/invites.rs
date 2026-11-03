@@ -77,7 +77,8 @@ pub struct InviteEnrollment {
     request_body = EnrollmentRequest,
     responses(
         (status = OK, description = "What the authenticator app needs", body = InviteEnrollment),
-        (status = NOT_FOUND, description = "The link was used, expired or does not exist", body = Problem)))]
+        (status = NOT_FOUND, description = "The link was used, expired or does not exist", body = Problem),
+        (status = CONFLICT, description = "A user with that email already exists", body = Problem)))]
 async fn enrollment(
     State(state): State<AppState>,
     Json(body): Json<EnrollmentRequest>,

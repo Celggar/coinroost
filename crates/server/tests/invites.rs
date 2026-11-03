@@ -257,6 +257,28 @@ async fn a_short_password_or_a_taken_email_leaves_the_link_usable(db: PgPool) {
     );
 }
 
+#[sqlx::test]
+async fn a_taken_email_is_refused_before_the_authenticator_step(db: PgPool) {
+    let api = Api::new(db);
+    let taken = api.household("Taken").await;
+    let token = link(&api, None).await;
+    let upper = taken.email.to_uppercase();
+    let (status, problem) = post(
+        &api,
+        "enrollment",
+        json!({"token": token, "email": format!(" {upper} ")}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{problem}");
+    assert_eq!(problem["pointer"], "#/email", "{problem}");
+    assert!(
+        problem.get("uri").is_none() && problem.get("secret").is_none(),
+        "{problem}"
+    );
+    // The link is still good for another email.
+    enroll(&api, &token).await;
+}
+
 /// Both acceptances pass the first check before either uses the link: the test holds the link's row until both
 /// wait on it, so only the statement that uses the link can stop the second.
 #[sqlx::test]

@@ -665,6 +665,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "A user with that email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "security": [

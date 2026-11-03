@@ -111,6 +111,18 @@ pub struct Enrollment {
 /// The link's authenticator secret, generated on first use and the same afterwards, labeled with `email`.
 pub async fn enrollment(db: &PgPool, token: &str, email: &str) -> ApiResult<Enrollment> {
     let invite = live(db, token).await?;
+    // A taken email is said here, before the person scans the code and types one: said only at the end, they went
+    // back to the first step with the entry already saved in their app under that email (pass 20). Whoever holds a
+    // live link could learn it at the end anyway.
+    let in_use: bool = sqlx::query_scalar("select exists (select 1 from users where email = $1)")
+        .bind(email.trim().to_lowercase())
+        .fetch_one(db)
+        .await?;
+    if in_use {
+        return Err(ApiError::Conflict(
+            Reason::new("already_exists", "a user with that email already exists").at("email"),
+        ));
+    }
     let (secret,): (Vec<u8>,) = sqlx::query_as(
         "update invites set totp_secret = coalesce(totp_secret, $2) where id = $1 returning totp_secret",
     )
