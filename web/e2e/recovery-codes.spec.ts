@@ -106,6 +106,18 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	expect(
 		await title.evaluate((e) => e.matches(':focus-visible') && getComputedStyle(e).outlineStyle)
 	).toBe('solid');
+	// Its ring, 2 px off the words and 3 px wide, sat on the line under it, over its accents (pass 21).
+	const clear = await title.evaluate((e) => {
+		const style = getComputedStyle(e);
+		const ring =
+			e.getBoundingClientRect().bottom +
+			parseFloat(style.outlineOffset) +
+			parseFloat(style.outlineWidth);
+		const next = document.createRange();
+		next.selectNodeContents(e.nextElementSibling!);
+		return next.getClientRects()[0].top - ring;
+	});
+	expect(clear).toBeGreaterThanOrEqual(0);
 	const renewed = await shownCodes(page);
 	expect(renewed.some((code) => codes.includes(code))).toBe(false);
 	await expect(page.getByTestId('recovery-status')).toHaveText(

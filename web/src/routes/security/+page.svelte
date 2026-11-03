@@ -206,7 +206,7 @@
 						</form>
 					{:else if fresh}
 						<div class="stack">
-							<div>
+							<div class="titled">
 								<h3 tabindex="-1" bind:this={freshTitle}>{t('security.new_title')}</h3>
 								<p class="hint">{t('security.new_lead')}</p>
 							</div>
@@ -253,6 +253,11 @@
 	}
 	h3 {
 		font-size: var(--text-lg);
+	}
+	/* The title takes the focus and wears its ring 5 px off its words: the line under it stays clear (pass 21). */
+	.titled {
+		display: grid;
+		gap: var(--space-sm);
 	}
 	p {
 		margin: 0;
