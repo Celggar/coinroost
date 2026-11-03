@@ -253,7 +253,7 @@
 	"waiting.paired_one": "1 pair confirmed.",
 	"waiting.paired_other": "{count} pairs confirmed.",
 	"waiting.title": "Pairs waiting",
-	"waiting.nothing": "Nothing waiting: imports pair what is certain on their own.",
+	"waiting.nothing": "Nothing waiting. Imports pair the sure matches on their own.",
 	"waiting.hint": "Pairing changes no balance: the same two legs become one transfer.",
 	"waiting.found": "{description} · found because {why}",
 	"waiting.drops_manual": "Drops a category you chose for the incoming side",
