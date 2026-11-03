@@ -15,8 +15,16 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	expect(invite, 'run through e2e/run.sh').not.toBe('');
 	await page.goto(`/setup#${invite}`);
 	await expect(page.getByRole('heading', { name: say('setup.step_account') })).toBeVisible();
-	await page.getByLabel(say('login.email')).fill(email);
+	// An email another user has is said on this step, before the code (pass 20), marked and focused.
+	const field = page.getByLabel(say('login.email'));
+	await field.fill(process.env.E2E_EMAIL ?? '');
 	await page.getByLabel(say('login.password')).fill(password);
+	await page.getByRole('button', { name: say('setup.continue') }).click();
+	await expect(page.getByRole('alert')).toHaveText(say('setup.taken'));
+	await expect(field).toHaveAttribute('aria-invalid', 'true');
+	await expect(field).toBeFocused();
+	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toHaveCount(0);
+	await field.fill(email);
 	await page.getByRole('button', { name: say('setup.continue') }).click();
 
 	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toBeVisible();

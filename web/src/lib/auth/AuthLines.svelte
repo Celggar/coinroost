@@ -3,9 +3,12 @@
 	// scaled SVG with pathLength draws dashes wrong in Chromium); with reduced motion they only fade in. Their color
 	// comes from the shell's --line and --line-opacity.
 	//
-	// Wide screens get long waves across the page; phones get two short bands, top and bottom. The top band stays
-	// above the brand row: lower, it crossed «Coinroost» and the headline at mid-height and read as a strike-through
-	// (pass 11).
+	// Wide screens get long waves across the page; phones get two bands, top and bottom. The top band stays above the
+	// brand row: lower, it crossed «Coinroost» and the headline at mid-height and read as a strike-through (pass 11).
+	// Each band is its own drawing, pinned to its edge of the first screen at its own size: one 390 × 844 drawing
+	// centred on a shorter screen cut the top band off (pass 20: 390 × 664, the band at −82 px), and scaled to a
+	// wider one it would cross the brand. Their waves run on to 1060 px, so a window up to 899 px wide shows them
+	// whole at the size a 390 px phone does.
 	const wide = [
 		'M-40 620 C 220 520, 380 700, 640 560 S 1040 380, 1320 470',
 		'M-40 660 C 240 560, 400 740, 660 600 S 1060 420, 1320 510',
@@ -13,11 +16,13 @@
 		'M-40 160 C 200 260, 420 60, 700 180 S 1100 300, 1320 200',
 		'M-40 200 C 220 300, 440 100, 720 220 S 1120 340, 1320 240'
 	];
-	const narrow = [
-		'M-20 14 C 70 40, 150 -6, 250 12 S 360 42, 410 22',
-		'M-20 32 C 80 54, 160 12, 260 30 S 370 56, 410 40',
-		'M-20 760 C 60 700, 150 800, 240 740 S 350 680, 410 720',
-		'M-20 792 C 70 732, 160 832, 250 772 S 360 712, 410 752'
+	const top = [
+		'M-20 14 C 70 40, 150 -6, 250 12 S 360 42, 410 22 S 540 -2, 640 14 S 770 44, 830 24 S 950 -2, 1060 14',
+		'M-20 32 C 80 54, 160 12, 260 30 S 370 56, 410 40 S 550 14, 650 32 S 780 58, 840 42 S 960 16, 1060 32'
+	];
+	const bottom = [
+		'M-20 760 C 60 700, 150 800, 240 740 S 350 680, 410 720 S 520 790, 610 740 S 720 690, 800 720 S 900 790, 1060 740',
+		'M-20 792 C 70 732, 160 832, 250 772 S 360 712, 410 752 S 530 822, 620 772 S 730 722, 810 752 S 910 822, 1060 772'
 	];
 </script>
 
@@ -32,13 +37,23 @@
 	{/each}
 </svg>
 <svg
-	class="lines narrow"
+	class="lines narrow top"
 	aria-hidden="true"
-	viewBox="0 0 390 844"
-	preserveAspectRatio="xMidYMid slice"
+	viewBox="0 0 1060 64"
+	preserveAspectRatio="xMinYMin slice"
 >
-	{#each narrow as d, i (d)}
+	{#each top as d, i (d)}
 		<path {d} pathLength="1" style:animation-delay="{i * 70}ms" />
+	{/each}
+</svg>
+<svg
+	class="lines narrow bottom"
+	aria-hidden="true"
+	viewBox="0 680 1060 164"
+	preserveAspectRatio="xMinYMax slice"
+>
+	{#each bottom as d, i (d)}
+		<path {d} pathLength="1" style:animation-delay="{(i + 2) * 70}ms" />
 	{/each}
 </svg>
 
@@ -68,7 +83,8 @@
 		}
 	}
 	/* On a phone the brand scrolls with the page, so its band does too: fixed, a page raised 23 px to show an alert put
-	   the band back across «ES» and the logo (pass 12). One screen tall, at the page's top, whatever the card's length. */
+	   the band back across «ES» and the logo (pass 12). The top band sits at the page's top and the bottom one at the
+	   foot of the first screen, whatever the card's length; both keep their drawing's height, 1 px to 1 px. */
 	@media (max-width: 899px) {
 		.wide {
 			display: none;
@@ -77,7 +93,14 @@
 			display: block;
 			position: absolute;
 			bottom: auto;
-			height: 100lvh;
+		}
+		.narrow.top {
+			top: 0;
+			height: 64px;
+		}
+		.narrow.bottom {
+			top: calc(100lvh - 164px);
+			height: 164px;
 		}
 	}
 	/* Decoration only: with the system's colors forced they kept the brand's green, outside the palette the person

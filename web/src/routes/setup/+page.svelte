@@ -117,6 +117,12 @@
 			enrollment = data;
 			error = { text: '', n: error.n + 1 };
 			go('code');
+		} else if (response.status === 409) {
+			// Said here, before the code step (pass 20): the email is marked and takes the focus, ready to change.
+			fail(t('setup.taken'));
+			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
+			field?.setAttribute('aria-invalid', 'true');
+			field?.focus();
 		} else {
 			fail(problem(failure, response.status, t('setup.failed')));
 		}

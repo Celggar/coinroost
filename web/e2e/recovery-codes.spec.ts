@@ -173,3 +173,25 @@ test('the login swaps its second step by a fade through, the two never at once',
 	expect(shown.at(-1)).toBe(1);
 	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
 });
+
+test('on a short phone the login keeps its top band of lines, above the brand', async ({
+	page
+}) => {
+	// An iPhone 13 with Safari's bars shows 390 × 664: one 390 × 844 drawing centred on it put the band at −82 px,
+	// off the screen (pass 20).
+	await page.setViewportSize({ width: 390, height: 664 });
+	await page.goto('/login');
+	await expect(page.getByRole('heading', { name: say('login.title') })).toBeVisible();
+	const { band, brand } = await page.evaluate(() => {
+		const tops = [...document.querySelectorAll('svg.narrow path')]
+			.map((path) => path.getBoundingClientRect())
+			.sort((a, b) => a.top - b.top)
+			.slice(0, 2);
+		return {
+			band: [tops[0].top, Math.max(...tops.map((r) => r.bottom))],
+			brand: document.querySelector('.brand')!.getBoundingClientRect().top
+		};
+	});
+	expect(band[0]).toBeGreaterThanOrEqual(0);
+	expect(band[1]).toBeLessThanOrEqual(brand);
+});
