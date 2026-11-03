@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
+import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -122,7 +123,8 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	expect(described).toContain(await reason.getAttribute('id'));
 	await expect(other.getByRole('link', { name: say('file.open_accounts') })).toBeVisible();
 	// In the page's language: the text of the problem's code, never the API's English detail.
-	const why = (await reason.textContent())?.trim();
+	// Spaces as a reader sees them: the app holds a text's last two words with a hard space.
+	const why = (await reason.textContent())?.replace(/\s+/g, ' ').trim();
 	expect([say('problem.file_unreadable'), say('problem.file_missing_columns')]).toContain(why);
 
 	const drops = await watchDrops(page);
@@ -569,6 +571,12 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 			await card.getByText(say('file.show_other', { count: transactions })).click();
 			await expect(card.getByRole('table')).toBeVisible();
 			expect(await overflow(page), 'import with a table open').toBeLessThanOrEqual(0);
+		}
+		if (path === '/uncategorized') {
+			// At 360 px each tab's label holds on one line within its padding, even with the widest count («99+»):
+			// «Sin categoría 16» broke after «Sin» and «Transferencias 2» ran into its padding (pass 22 sweep).
+			await page.setViewportSize({ width: 360, height: 800 });
+			for (const tab of await widestTabs(page)) expect(tab).toEqual({ lines: 1, spill: 0 });
 		}
 		await page.close();
 	}

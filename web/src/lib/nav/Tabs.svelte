@@ -101,19 +101,31 @@
 			background: Highlight;
 		}
 	}
-	/* A phone: the two tabs share the width. */
+	/* A phone: the two tabs share the width, each label on one line. */
 	@media (max-width: 899px) {
 		.tabs {
 			grid-auto-columns: minmax(0, 1fr);
 			margin-bottom: var(--space-lg);
 		}
+		.name {
+			white-space: nowrap;
+		}
 	}
-	/* The narrowest phones: a smaller label and padding keep each tab on one line. */
-	@media (max-width: 359px) {
+	/* Narrower phones: less padding, then a smaller label, keep the longest («Transferencias 99+») inside its tab. At
+	   360 px «Sin categoría» broke after «Sin» and «Transferencias» ran 11 px into its padding (pass 22 sweep). */
+	@media (max-width: 419px) {
 		a {
 			padding: 0 var(--space-sm);
+		}
+	}
+	@media (max-width: 379px) {
+		a {
 			font-size: var(--text-sm);
-			white-space: nowrap;
+		}
+	}
+	@media (max-width: 339px) {
+		a {
+			padding: 0 var(--space-xs);
 		}
 	}
 </style>
