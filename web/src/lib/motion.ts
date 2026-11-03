@@ -4,7 +4,7 @@
 // which CSS media rules do not reach, so each one reads the setting itself.
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
-import { flip, type AnimationConfig } from 'svelte/animate';
+import type { AnimationConfig } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
 
 /** Milliseconds, as in app.css. */
@@ -154,16 +154,23 @@ export function pop(
  * A list item slides to its new place when others come or go; under reduced motion it lands there at once. One moved
  * up by an item leaving above it waits in its place while that one fades: the leaving one is taken out of the flow
  * (Svelte fixes it `absolute`), and the one moved up at once sat under it, both cards' text on top of each other (pass
- * 16; sliding up at once, it passed under the fading card).
+ * 16; sliding up at once, it passed under the fading card). It moves by the distance between its two places alone:
+ * Svelte's `flip` scales that by the box without its borders, and a bordered card waited 2 px above its place (pass 21).
  */
 export function glide(node: Element, positions: { from: DOMRect; to: DOMRect }): AnimationConfig {
 	const up = positions.from.top - positions.to.top;
+	const side = positions.from.left - positions.to.left;
 	const leaving = [...(node.parentElement?.children ?? [])].some(
 		(e) => e !== node && e instanceof HTMLElement && e.style.position === 'absolute'
 	);
 	const wait = up > 0 && leaving ? FADED : 0;
 	if (still()) return { duration: wait, css: () => `transform: translateY(${up}px)` };
-	return flip(node, positions, { delay: wait, duration: DURATION.medium, easing: EASE.standard });
+	return {
+		delay: wait,
+		duration: DURATION.medium,
+		easing: EASE.standard,
+		css: (_t, u) => `transform: translate(${u * side}px, ${u * up}px)`
+	};
 }
 
 /** Out: a quick fade. */

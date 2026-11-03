@@ -152,3 +152,39 @@ test('on a phone, deleting a rule leaves the page where it was', async ({ contex
 	expect(await still(page)).toBe(start);
 	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
 });
+
+test('a rule under a deleted one waits in its place while that one fades', async ({ context }) => {
+	const page = await loggedIn(context);
+	const [above, under] = await makeRules(page, ['Wait A', 'Wait B']);
+	await page.goto('/rules');
+	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Wait A' }) });
+	await expect(ask).toBeVisible();
+	await ask.click();
+	const yes = page.getByRole('button', { name: say('rules.delete_it') });
+	await still(page);
+	// Every frame while the deleted card fades: how far the card under it stands from where it stood. A bordered card
+	// waited 2 px above its place, then slid on (pass 21: Svelte's flip scales the distance by the box without borders).
+	type Frames = { moved: number[] };
+	await page.evaluate(
+		([gone, next]) => {
+			const w = window as unknown as Frames;
+			const leaving = document.querySelector(`[data-rule="${gone}"]`)!;
+			const watched = document.querySelector(`[data-rule="${next}"]`)!;
+			const start = watched.getBoundingClientRect().top;
+			w.moved = [];
+			const step = () => {
+				const fading = leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02;
+				if (fading) w.moved.push(watched.getBoundingClientRect().top - start);
+				if (leaving.isConnected) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		},
+		[above, under]
+	);
+	await yes.click();
+	await expect(page.getByRole('heading', { name: 'Wait A' })).toHaveCount(0);
+	const moved = await page.evaluate(() => (window as unknown as Frames).moved);
+	expect(moved.length).toBeGreaterThan(3);
+	expect(moved.filter((offset) => Math.abs(offset) > 0.5)).toEqual([]);
+	expect((await page.request.delete(`/api/v1/rules/${under}`)).ok()).toBe(true);
+});
