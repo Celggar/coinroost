@@ -134,6 +134,13 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(card.getByText(added)).toHaveCount(0);
 	await expect(card.getByText(say('file.imported'))).toBeFocused();
 	expect(await drops()).toEqual([]);
+	// The line's ring goes around its words: a 48 px box left 12 px above them and 2 px beside them (pass 21).
+	const above = await card.getByText(say('file.imported')).evaluate((e) => {
+		const words = document.createRange();
+		words.selectNodeContents(e.lastChild!);
+		return words.getBoundingClientRect().top - e.getBoundingClientRect().top;
+	});
+	expect(above).toBeLessThanOrEqual(4);
 	// The card is the record of that import: it says what it added, like the notice, not «0 new».
 	await expect(count(card, say('file.added'))).toHaveText(String(transactions));
 	await expect(count(card, say('file.already'))).toHaveText('0');

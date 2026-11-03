@@ -365,8 +365,12 @@
 	/* The file's import, done: a check and what it added. */
 	/* As tall as the button it replaces: 28 px shorter, it shrank a page scrolled to its end, the browser pulled the page
 	   back and left the text above cut across the top bar (pass 13). */
-	.result {
+	/* The cell keeps the button's height; the line, as tall as its words, wears its ring around them (pass 21). */
+	.in-place:has(> .result) {
 		min-height: var(--primary-height);
+		align-items: center;
+	}
+	.result {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
