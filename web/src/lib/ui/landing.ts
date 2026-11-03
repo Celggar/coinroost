@@ -126,6 +126,13 @@ function edges() {
 	};
 }
 
+/** Whether `node` shows whole between the bars, where nothing needs to move to show it. */
+export function inView(node: HTMLElement): boolean {
+	const { top, floor } = edges();
+	const box = node.getBoundingClientRect();
+	return box.top >= top && box.bottom <= floor;
+}
+
 /** Where a field's context starts: its label when it has one, else the field. */
 function labelTop(control: HTMLElement): number {
 	const label = 'labels' in control ? (control as HTMLInputElement).labels?.[0] : undefined;

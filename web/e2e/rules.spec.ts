@@ -153,6 +153,42 @@ test('on a phone, deleting a rule leaves the page where it was', async ({ contex
 	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
 });
 
+test('on a phone, an error that opens in view leaves the page where it was', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.goto('/rules');
+	const to = page.getByLabel(say('ruleform.max'), { exact: true });
+	await expect(to).toBeVisible();
+	await page.getByLabel(say('ruleform.name'), { exact: true }).fill('Amounts reversed');
+	await page.getByLabel(say('ruleform.text'), { exact: true }).fill('PAGO ');
+	await page.getByLabel(say('ruleform.payee'), { exact: true }).selectOption('text');
+	await page.getByLabel(say('ruleform.min'), { exact: true }).fill('50');
+	await to.fill('5');
+	// The field mid-screen with its label and the room for its error: the error opened there and the page still slid
+	// 110 px to clear a line under the top bar (pass 22).
+	await to.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 374));
+	const start = await still(page);
+	type Moves = { ys: number[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Moves;
+		w.ys = [];
+		const step = () => {
+			w.ys.push(scrollY);
+			if (w.ys.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await to.press('Enter');
+	await expect(page.locator(`[id="${await to.getAttribute('id')}-error"]`)).toBeVisible();
+	await page.waitForFunction(() => (window as unknown as Moves).ys.length >= 60);
+	expect(new Set(await page.evaluate(() => (window as unknown as Moves).ys))).toEqual(
+		new Set([start])
+	);
+	await expect(to).toBeFocused();
+});
+
 test('a rule under a deleted one waits in its place while that one fades', async ({ context }) => {
 	const page = await loggedIn(context);
 	const [above, under] = await makeRules(page, ['Wait A', 'Wait B']);

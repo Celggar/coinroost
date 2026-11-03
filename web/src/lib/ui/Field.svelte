@@ -7,7 +7,7 @@
 	import { fade, slide } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { DURATION, EASE, fadeThrough } from '#lib/motion.ts';
-	import { showWhole } from '#lib/ui/landing.ts';
+	import { inView, showWhole } from '#lib/ui/landing.ts';
 
 	export type Wiring = {
 		id: string;
@@ -74,7 +74,9 @@
 			?.getAttribute('aria-describedby')
 			?.split(' ')
 			.includes(node.id);
-		if (own) showWhole(node);
+		// Already whole between the bars, it moves nothing: showWhole also clears lines cut by the top bar, and slid the
+		// page 110 px under an error that showed mid-screen (pass 22, Reglas at 390).
+		if (own && !inView(node)) showWhole(node);
 	}
 </script>
 
