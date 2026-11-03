@@ -200,7 +200,13 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	await page.getByRole('button', { name: say('changes.check') }).click();
 	await expect(page.getByText(say('changes.would_one'))).toBeVisible();
 	await expect(
-		page.getByText(say('changes.category', { from: '—', to: 'Groceries' }))
+		// The arrow is drawn, and read as a word (pass 23: the font's «→» sat tiny and low).
+		page.getByText(
+			say('changes.category', { from: '—', to: 'Groceries' }).replace(
+				' → ',
+				` ${say('transfer.to')} `
+			)
+		)
 	).toBeVisible();
 	// The answer lands whole, down to the button that applies it, above the page's bottom room: a whole field at the
 	// top once won over it, and the button stood half below the screen (pass 14).

@@ -6,6 +6,7 @@
 	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
+	import Arrow from '#lib/ui/Arrow.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
@@ -123,7 +124,11 @@
 								<span class="description">{change.description}</span>
 								<Money minor={change.amount_minor} currency={change.currency} />
 							</div>
-							<div class="hint">{what(change).join(LIST)}</div>
+							<!-- «De → a» with the drawn arrow: the font's «→» sat tiny and under the baseline (pass 23). -->
+							<div class="hint">
+								{#each what(change) as part, i (i)}{#if i}{LIST}{/if}{#each part.split(' → ') as side, j (j)}{#if j}<Arrow
+											/>{/if}{side}{/each}{/each}
+							</div>
 						</li>
 					{/each}
 				</ul>
