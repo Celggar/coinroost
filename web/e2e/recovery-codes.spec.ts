@@ -130,8 +130,44 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	);
 
 	// A new set, after the app's next code; the old set stops working.
+	// On a short phone the form opens down to its buttons: at 390 × 600 «Crear códigos» sat 9 px under the bottom bar
+	// (pass 23). 560 high here, so the case holds whatever the language's line breaks.
+	await page.setViewportSize({ width: 390, height: 560 });
+	await page.evaluate(() => scrollTo(0, 0));
+	await still(page);
 	await page.getByRole('button', { name: say('security.regenerate'), exact: true }).click();
 	await expect(page.getByLabel(say('login.code'), { exact: true })).toBeFocused();
+	const send = page.getByRole('button', { name: say('security.confirm'), exact: true });
+	const under = () =>
+		send.evaluate(
+			(button) =>
+				button.getBoundingClientRect().bottom -
+				document.querySelector('nav.bar')!.getBoundingClientRect().top
+		);
+	await expect.poll(under).toBeLessThanOrEqual(0);
+	// Cancelled and asked for again before the form has left: the form comes back and takes the code. It came back
+	// with its field disabled, shut on its way out (pass 23 sweep).
+	await page.evaluate(
+		async ([cancel, again]) => {
+			const words = (text: string) => text.replace(/\s+/g, ' ').trim();
+			const button = (name: string) =>
+				[...document.querySelectorAll('button')].find(
+					(b) => words(b.textContent ?? '') === words(name)
+				)!;
+			button(cancel).click();
+			await new Promise(requestAnimationFrame);
+			button(again).click();
+		},
+		[say('security.cancel'), say('security.regenerate')]
+	);
+	const typed = page.getByRole('textbox', {
+		name: say('login.code'),
+		exact: true,
+		disabled: false
+	});
+	await expect(typed).toBeFocused();
+	await expect(page.getByLabel(say('login.code'), { exact: true })).toHaveCount(1);
+	await page.setViewportSize({ width: 1280, height: 720 });
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(fresh, Date.now() + 30_000));
 	// Sent from the keyboard: the new codes' title takes the focus and wears the ring, as every focused title does;
 	// it had none (pass 20).

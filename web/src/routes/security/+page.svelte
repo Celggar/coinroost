@@ -28,6 +28,15 @@
 	let codeField: CodeField | undefined = $state();
 	let regenerateButton: HTMLButtonElement | undefined = $state();
 	let freshTitle: HTMLHeadingElement | undefined = $state();
+	let buttons: HTMLElement | undefined = $state();
+
+	/** The confirm form from its focused code field down to its buttons, where they fit: at 390 × 600 «Crear códigos»
+	 * sat 9 px under the bottom bar as the form opened, and stayed there under the code's error (pass 23). */
+	async function keepButtons(held?: HTMLElement) {
+		const field = document.activeElement;
+		if (field instanceof HTMLElement && field !== document.body)
+			await showWhole(field, buttons ?? field, held);
+	}
 
 	/** The view that came in takes the focus: the button that was pressed left with the old one. Focused without a
 	 * scroll, and the page glides to it: a bare focus scrolls in one frame. `held`: the card, while its room is held. */
@@ -37,6 +46,7 @@
 		if (next === 'confirm') codeField?.focus({ preventScroll: true });
 		else if (next === 'show') freshTitle?.focus({ preventScroll: true });
 		else regenerateButton?.focus({ preventScroll: true });
+		if (next === 'confirm') return keepButtons(held);
 		const target = document.activeElement;
 		if (target instanceof HTMLElement && target !== document.body)
 			await showWhole(target, target, held);
@@ -85,7 +95,8 @@
 		// A wrong code is about the field: its error goes under it, and the caret goes back to it for the next try.
 		if (response.status === 422) {
 			codeError = t('setup.wrong_code');
-			codeField?.focus();
+			codeField?.focus({ preventScroll: true });
+			await keepButtons();
 			return;
 		}
 		const text =
@@ -100,11 +111,17 @@
 	// their room after. Let go at once at the page's end, the page was pulled back 165 px in one frame (pass 16 sweep).
 	let holding = $state(false);
 
+	// Which `done` holds the card: one that lands late lets go only of its own hold. «Cancelar» and the form asked for
+	// again at once left the first landing waiting for the page to settle, and it let go during «Listo, los guardé»,
+	// whose card then shrank at the page's end (pass 23 sweep).
+	let landing = 0;
+
 	async function done() {
+		const mine = ++landing;
 		holding = true;
 		fresh = null;
 		await show('view', card);
-		holding = false;
+		if (mine === landing) holding = false;
 	}
 
 	onMount(load);
@@ -117,6 +134,7 @@
 		if (!why) return false;
 		codeError = why;
 		focusFirst(form, errors);
+		void keepButtons();
 		return true;
 	}
 </script>
@@ -191,7 +209,7 @@
 								bind:value={code}
 							/>
 							<FormAlert {...error} />
-							<div class="buttons">
+							<div class="buttons" bind:this={buttons}>
 								<button type="submit" class="primary" aria-disabled={busy}>
 									{#key busy}
 										<span in:pop={{ start: 0.9 }} out:vanish>
