@@ -254,10 +254,6 @@
 	h3 {
 		font-size: var(--text-lg);
 	}
-	/* Focused by the page when the new codes arrive, so a screen reader starts there; it is not a control. */
-	h3:focus {
-		outline: none;
-	}
 	p {
 		margin: 0;
 	}

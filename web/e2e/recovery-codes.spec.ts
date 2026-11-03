@@ -98,8 +98,14 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await page.getByRole('button', { name: say('security.regenerate'), exact: true }).click();
 	await expect(page.getByLabel(say('login.code'), { exact: true })).toBeFocused();
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(fresh, Date.now() + 30_000));
-	await page.getByRole('button', { name: say('security.confirm'), exact: true }).click();
-	await expect(page.getByRole('heading', { name: say('security.new_title') })).toBeVisible();
+	// Sent from the keyboard: the new codes' title takes the focus and wears the ring, as every focused title does;
+	// it had none (pass 20).
+	await page.getByRole('button', { name: say('security.confirm'), exact: true }).press('Enter');
+	const title = page.getByRole('heading', { name: say('security.new_title') });
+	await expect(title).toBeFocused();
+	expect(
+		await title.evaluate((e) => e.matches(':focus-visible') && getComputedStyle(e).outlineStyle)
+	).toBe('solid');
 	const renewed = await shownCodes(page);
 	expect(renewed.some((code) => codes.includes(code))).toBe(false);
 	await expect(page.getByTestId('recovery-status')).toHaveText(
