@@ -7,6 +7,7 @@
 	import { fade, slide } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { DURATION, EASE, fadeThrough } from '#lib/motion.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 
 	export type Wiring = {
 		id: string;
@@ -65,6 +66,16 @@
 			css: (t: number, u: number) => `${opening.css?.(t, u) ?? ''}; opacity: ${t}`
 		};
 	};
+	// Opened at a page's end, the error sat under the bottom bar while its field kept the focus above it (pass 21: a
+	// file's account at 390 × 600). Once the page settles (a card grows to hold it), it moves just enough to show the
+	// error, which sits right under its field. Only the focused field's: a form sent with several would start as many.
+	function reveal(node: HTMLElement) {
+		const own = document.activeElement
+			?.getAttribute('aria-describedby')
+			?.split(' ')
+			.includes(node.id);
+		if (own) showWhole(node);
+	}
 </script>
 
 <div class="form-field">
@@ -79,5 +90,12 @@
 		>
 			{#if typeof shown === 'string'}{shown}{:else}{@render shown()}{/if}
 		</p>{/if}
-	{#if error}<p class="field-error" id={errorId} transition:open>{error}</p>{/if}
+	{#if error}<p
+			class="field-error"
+			id={errorId}
+			transition:open
+			onintroend={(event) => reveal(event.currentTarget)}
+		>
+			{error}
+		</p>{/if}
 </div>

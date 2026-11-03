@@ -7,6 +7,7 @@ import { expect, test, type BrowserContext, type Locator, type Page } from '@pla
 import { checkDashboard, checkPayroll, loadEmployers } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { english, say } from './messages.ts';
+import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const fixture = (name: string) =>
@@ -375,6 +376,40 @@ test('on a phone, changes applied at the page end leave the page still as it sho
 	expect(pulled).toEqual([]);
 	await expect(page.getByText(say('changes.nothing'))).toBeInViewport();
 	expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+});
+
+test('on a short phone, a file the account cannot read says why above the bottom bar', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 600 });
+	await page.goto('/import');
+	await page
+		.getByLabel(say('import.choose'))
+		.setInputFiles([
+			statement,
+			{ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('just, some\nwords') }
+		]);
+	const card = page.getByRole('article', { name: 'notes.txt' });
+	await expect(card.getByText(say('file.not_found'))).toBeVisible();
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	// From the page's end, the error opened under the account and the page stayed: its last line sat under the
+	// bottom bar while the account kept the focus above it (pass 21).
+	const account = card.getByLabel(say('file.account'));
+	await account.focus();
+	await account.selectOption({ label: 'Checking' });
+	const reason = card.locator('.field-error');
+	await expect(reason).not.toBeEmpty();
+	// Once the card has grown to hold it, the page moves: how far the error's end stands below the bar's top.
+	const under = () =>
+		reason.evaluate(
+			(e) =>
+				e.getBoundingClientRect().bottom -
+				document.querySelector('nav.bar')!.getBoundingClientRect().top
+		);
+	await expect.poll(under).toBeLessThanOrEqual(0);
+	await expect(account).toBeInViewport();
 });
 
 test('a failed recovery status offers no codes to make', async ({ context }) => {
