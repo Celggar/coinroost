@@ -29,7 +29,8 @@ function coverTop(): number {
 }
 
 // A tile's label and figure are lines too: a `dt` stood 3.3 px under the bar (pass 13).
-const LINES = 'h1, h2, h3, p, label, legend, li, dt, dd, img, [data-whole]';
+// A table's cells too: a new account sorted first landed with the column names cut by the window's top (pass 20).
+const LINES = 'h1, h2, h3, p, label, legend, li, dt, dd, th, td, img, [data-whole]';
 // A select's value stood across the bar after changes were applied (pass 14).
 const CONTROLS = 'select, input, button, textarea';
 
@@ -71,7 +72,14 @@ function clean(selector: string, ways: Ways, y: number, hi: number, max: number)
 	const boxes = [...document.querySelectorAll<HTMLElement>(selector)]
 		.map((e) => ({ e, r: e.getBoundingClientRect() }))
 		.filter(({ e, r }) => r.height > 2 && !pinned(e))
-		.map(({ r }) => ({ top: r.top + scrollY, bottom: r.bottom + scrollY }));
+		.map(({ e, r }) => {
+			// A cell counts by its words, inside its padding: the rows' boxes touch, so no line between two rows was
+			// ever clear of both, and the search went up past the whole table.
+			const cell = e.matches('th, td') ? getComputedStyle(e) : null;
+			const pad = (side: string) =>
+				cell ? parseFloat(cell.getPropertyValue(`padding-${side}`)) || 0 : 0;
+			return { top: r.top + scrollY + pad('top'), bottom: r.bottom + scrollY - pad('bottom') };
+		});
 	// The page cannot go above its start or past its end (`max`): a position out there is no answer.
 	// A box that starts within 8 px under the cover reads as cut too: a label flush with the bar's edge looked cut
 	// (pass 9). Going up leaves it 8 px clear; going down hides it whole under the bar.

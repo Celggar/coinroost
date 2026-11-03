@@ -20,7 +20,7 @@ password=$(head -c 24 /dev/urandom | base64)
 secret=$(printf '%s\n' "$password" | "$server" user add "$email" | sed -n 's/^secret //p')
 [ -n "$secret" ] || { echo "user add printed no secret" >&2; exit 1; }
 # add_user <name>: one more user, in <name>_email, <name>_password and <name>_secret. A TOTP code is accepted once,
-# so a test that logs in on its own (the form errors, the forced colors, the rules) takes its own user.
+# so a test that logs in on its own (the form errors, the forced colors, the rules, the landing) takes its own user.
 add_user() {
   local email password secret
   email="e2e-$1-$(date +%s)-$$@example.com"
@@ -34,6 +34,7 @@ add_user() {
 add_user forms
 add_user contrast
 add_user rules
+add_user landing
 # Setup links for the web enrollment test and the recovery-code test, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -87,4 +88,5 @@ BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2
   E2E_FORMS_EMAIL="$forms_email" E2E_FORMS_PASSWORD="$forms_password" E2E_FORMS_SECRET="$forms_secret" \
   E2E_CONTRAST_EMAIL="$contrast_email" E2E_CONTRAST_PASSWORD="$contrast_password" E2E_CONTRAST_SECRET="$contrast_secret" \
   E2E_RULES_EMAIL="$rules_email" E2E_RULES_PASSWORD="$rules_password" E2E_RULES_SECRET="$rules_secret" \
+  E2E_LANDING_EMAIL="$landing_email" E2E_LANDING_PASSWORD="$landing_password" E2E_LANDING_SECRET="$landing_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" npx playwright test "$@"
