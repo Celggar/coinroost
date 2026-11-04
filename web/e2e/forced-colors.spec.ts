@@ -22,6 +22,17 @@ test('a field in error stands apart from a valid one, and its error from a hint'
 	await page.emulateMedia({ forcedColors: 'active' });
 	await page.goto('/accounts');
 
+	// The recovery link keeps the links' system colour, as «Atrás» on setup does: it came out as plain text (pass 29).
+	const link = await page.evaluate(() => {
+		const a = document.body.appendChild(document.createElement('a'));
+		a.href = '/';
+		const colour = getComputedStyle(a).color;
+		a.remove();
+		return colour;
+	});
+	const recovery = page.getByRole('button', { name: say('login.use_recovery') });
+	await expect(recovery).toHaveCSS('color', link);
+
 	// The sign-in page, sent with the password only: the email and the code are marked.
 	const email = page.getByLabel(say('login.email'));
 	const password = page.getByLabel(say('login.password'));

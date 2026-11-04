@@ -191,4 +191,10 @@
 		font-weight: 400;
 		line-height: 1.5;
 	}
+	/* Under forced colors it keeps the links' system colour, as «Atrás» on setup does (pass 29). */
+	@media (forced-colors: active) {
+		.switch {
+			color: LinkText;
+		}
+	}
 </style>
