@@ -60,7 +60,7 @@
 								})
 							)
 							.join(LIST),
-						href: '#payroll',
+						href: '#payroll-title',
 						action: t('review.see')
 					}
 				: {
@@ -142,7 +142,9 @@
 					icon: 'check',
 					tone: 'ok',
 					title: t('review.accounts'),
-					detail: t('review.all_current')
+					detail: pending.unread.length
+						? t('review.current_unread', { names: list(pending.unread) })
+						: t('review.all_current')
 				},
 		transfers > 0
 			? {

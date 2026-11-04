@@ -17,6 +17,13 @@ async function bothOffer(page: Page, action: string, href: string) {
 	await expect(page.getByRole('heading', { name: say('waiting.title') })).toHaveCount(0);
 }
 
+/** With no data nothing can be up to date: the summary leads with its way on, no green lines over it (pass 29). */
+async function nothingDoneYet(page: Page, action: string) {
+	await page.goto('/');
+	await expect(page.getByRole('link', { name: action })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('review.title') })).toHaveCount(0);
+}
+
 test('with nothing imported, Transfers offers the first step as Uncategorized does', async ({
 	page
 }) => {
@@ -34,6 +41,7 @@ test('with nothing imported, Transfers offers the first step as Uncategorized do
 	const cash = { name: 'Efectivo', kind: 'cash', currency: 'USD', namespace: 'efectivo' };
 	expect((await page.request.post('/api/v1/accounts', { data: cash })).ok()).toBe(true);
 	await bothOffer(page, say('file.open_accounts'), '/accounts');
+	await nothingDoneYet(page, say('file.open_accounts'));
 	// An account that reads a bank file: the way on is Import.
 	const bank = {
 		name: 'Banco',
@@ -44,4 +52,5 @@ test('with nothing imported, Transfers offers the first step as Uncategorized do
 	};
 	expect((await page.request.post('/api/v1/accounts', { data: bank })).ok()).toBe(true);
 	await bothOffer(page, say('uncategorized.import_first'), '/import');
+	await nothingDoneYet(page, say('dashboard.to_import'));
 });

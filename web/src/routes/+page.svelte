@@ -127,10 +127,11 @@
 
 <div class="stack">
 	<!-- The top shows whole, once the reports, the counts and the payroll have answered: a card or a row arriving
-		 later pushed the period's control down under the pointer. A household with no account gets the empty card. -->
+		 later pushed the period's control down under the pointer. A household with no account gets the empty card, and one
+		 with no data yet goes without «Por revisar»: three green lines over «import a statement» said all was done (pass 29). -->
 	{#if ready && reports}
 		<div class="stack" in:arrive>
-			{#if reports.hasAccounts && pending.ready}
+			{#if reports.hasAccounts && pending.ready && pending.started}
 				<Review {payroll} />
 			{/if}
 
@@ -250,7 +251,7 @@
 	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. The transition lives on the
 	   block, not on the dimmed state: there, taking the class away put the figures back to full in one frame. */
 	.reports {
-		transition: opacity 0.2s;
+		transition: opacity var(--duration-exit) var(--ease-standard);
 	}
 	.stale {
 		opacity: 0.6;

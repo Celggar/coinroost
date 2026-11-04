@@ -38,7 +38,8 @@
 
 {#if error || payroll?.employers.length}
 	<section class="card" id="payroll" aria-labelledby="payroll-title" in:arrive>
-		<h2 id="payroll-title">{t('payroll.title')}</h2>
+		<!-- `tabindex`: «Ver» on the summary's card lands here, and the browser gives the focus only to what can hold it. -->
+		<h2 id="payroll-title" tabindex="-1">{t('payroll.title')}</h2>
 		{#if error}
 			<p class="alert" role="alert" in:arrive out:placeholder>
 				{error}

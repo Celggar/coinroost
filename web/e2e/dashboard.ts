@@ -145,6 +145,10 @@ export async function checkDashboard(page: Page) {
 }
 
 export async function checkPayroll(page: Page) {
+	// «Ver» on the summary's card goes to the payments card and takes the focus along: it stayed on the page (pass 29).
+	const review = page.getByRole('region', { name: say('review.title') });
+	await review.getByRole('link', { name: say('review.see') }).click();
+	await expect(page.locator('#payroll-title')).toBeFocused();
 	const today = await page.evaluate(() => {
 		const now = new Date();
 		const pad = (n: number) => String(n).padStart(2, '0');

@@ -512,6 +512,7 @@
 	"review.import": "Importar",
 	"review.accounts": "Cuentas",
 	"review.all_current": "Todas al día",
+	"review.current_unread": "Al día; sin datos todavía: {names}.",
 	"review.transfers_one": "{count} transferencia por revisar",
 	"review.transfers_other": "{count} transferencias por revisar",
 	"review.pairs_one": "{count} pareja por confirmar",

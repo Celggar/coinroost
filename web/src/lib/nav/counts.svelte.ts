@@ -19,6 +19,10 @@ export const pending = $state({
 	spending: [] as { currency: string; minor: number }[],
 	/** The late accounts, with their latest data. */
 	late: [] as { name: string; latest: string | null }[],
+	/** The accounts with no data at all. */
+	unread: [] as string[],
+	/** Some account has data: until one does, nothing can be up to date, and the card has nothing true to say. */
+	started: false,
 	pairs: 0,
 	unmatched: 0,
 	/** The first answers failed: the summary shows without the card rather than wait for ever. */
@@ -56,6 +60,8 @@ export async function refreshCounts() {
 		const late = coverage.data.items.filter((i) => i.delay === 'late');
 		counts.accounts = late.length;
 		pending.late = late.map((i) => ({ name: i.name, latest: i.latest ?? null }));
+		pending.unread = coverage.data.items.filter((i) => !i.latest).map((i) => i.name);
+		pending.started = pending.unread.length < coverage.data.items.length;
 	}
 	// Once all three answered, the card shows; a later failed refresh keeps the last numbers.
 	if (open.data && pairing.data && coverage.data) pending.ready = true;

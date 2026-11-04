@@ -118,7 +118,7 @@
 	.range {
 		margin: 0;
 		color: var(--muted);
-		transition: opacity 0.2s;
+		transition: opacity var(--duration-exit) var(--ease-standard);
 	}
 	@container period (min-width: 54rem) {
 		.period-row {
