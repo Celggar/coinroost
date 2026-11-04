@@ -13,19 +13,20 @@ export async function holdRoom(box: HTMLElement | null, change: () => unknown) {
 	if (!box) return change();
 	const before = box.offsetHeight;
 	box.style.minHeight = `${before}px`;
+	// What the box holds keeps its own height: stretched into the room, a list's rows grew over the one leaving (pass 26).
+	box.style.alignItems = 'start';
+	const letGo = () => box.style.removeProperty('align-items');
 	await change();
 	await tick();
 	box.style.minHeight = '';
-	// Measured at their own height: in one grid cell, what stays stretches to what is leaving.
-	box.style.alignItems = 'start';
 	const staying = [...box.children].filter((e) => e instanceof HTMLElement && !e.inert);
 	const after = Math.max(0, ...staying.map((e) => (e as HTMLElement).offsetHeight));
-	box.style.alignItems = '';
-	if (after >= before) return;
-	box.animate([{ minHeight: `${before}px` }, { minHeight: `${after}px` }], {
+	if (after >= before) return letGo();
+	const room = box.animate([{ minHeight: `${before}px` }, { minHeight: `${after}px` }], {
 		delay: FADED,
 		duration: prefersReducedMotion.current ? 0 : DURATION.medium,
 		easing: EASE_CSS.standard,
 		fill: 'backwards'
 	});
+	room.onfinish = room.oncancel = letGo;
 }

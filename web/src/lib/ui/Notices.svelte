@@ -6,7 +6,7 @@
 	// the next action: a press anywhere, a key that is not moving the focus, a field changed or a file dropped (no press
 	// in either), or a page change; the action that made it is over by the time it shows.
 	import { afterNavigate } from '$app/navigation';
-	import { FADED, lift, rise } from '#lib/motion.ts';
+	import { lift, swapIn } from '#lib/motion.ts';
 	import { dismiss, notices } from './notices.svelte.ts';
 
 	let { offset = 0 }: { offset?: number } = $props();
@@ -22,13 +22,9 @@
 		dismiss();
 	}
 
-	// It comes from the edge it sits on, once the one it replaces has gone: in one place, the two read as doubled
-	// text for 150 ms (pass 25).
-	const enter = (node: Element) =>
-		rise(node, {
-			y: phone() ? -12 : 12,
-			delay: (node.parentElement?.children.length ?? 0) > 1 ? FADED : 0
-		});
+	// It comes from the edge it sits on, once the one it replaces has gone, in either motion setting: in one place, the
+	// two read as doubled text for 150 ms (pass 25).
+	const enter = (node: Element) => swapIn(node, { y: phone() ? -12 : 12 });
 	const leave = (node: Element) => lift(node, { y: phone() ? -8 : 8 });
 	// The last two words hold together, so a wrapped notice never ends on one word: `text-wrap: pretty` left
 	// «PAGO TARJETA EJEMPLO: / Supermercado.» (pass 12), and `balance` picks the same break for those widths.

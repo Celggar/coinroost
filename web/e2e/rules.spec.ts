@@ -243,10 +243,11 @@ for (const [names, gone, reducedMotion] of [
 		await ask.click();
 		const yes = page.getByRole('button', { name: say('rules.delete_it') });
 		await still(page);
-		// Every frame: where the block after the form stands in the page, the page's own scroll left out. A row that
-		// leaves goes out of the flow at once, and what follows the list went up 238 px in one frame, under the rule
-		// still fading (pass 25).
-		type Frames = { moved: number[]; tops: number[] };
+		// Every frame: where the block after the form stands in the page, the page's own scroll left out, and how tall
+		// the first rule stands. A row that leaves goes out of the flow at once, and what follows the list went up 238 px
+		// in one frame, under the rule still fading (pass 25); held by the list's box, the rules left stretched into its
+		// room, over the one leaving (pass 26).
+		type Frames = { moved: number[]; tops: number[]; heights: number[] };
 		await page.evaluate(
 			(id) => {
 				const w = window as unknown as Frames;
@@ -256,8 +257,11 @@ for (const [names, gone, reducedMotion] of [
 				const start = top();
 				w.moved = [];
 				w.tops = [];
+				w.heights = [];
+				const first = document.querySelector('ol.rules > li')!;
 				const step = () => {
 					w.tops.push(top());
+					if (first !== leaving) w.heights.push(first.getBoundingClientRect().height);
 					if (leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02) {
 						w.moved.push(top() - start);
 					}
@@ -269,10 +273,11 @@ for (const [names, gone, reducedMotion] of [
 		);
 		await yes.click();
 		await page.waitForFunction(() => (window as unknown as Frames).tops.length >= 90);
-		const { moved, tops } = await page.evaluate(() => {
+		const { moved, tops, heights } = await page.evaluate(() => {
 			const w = window as unknown as Frames;
-			return { moved: w.moved, tops: w.tops };
+			return { moved: w.moved, tops: w.tops, heights: w.heights };
 		});
+		expect(new Set(heights.map(Math.round)).size, heights.join(' ')).toBeLessThanOrEqual(1);
 		expect(moved.length).toBeGreaterThan(3);
 		expect(moved.filter((offset) => Math.abs(offset) > 0.5)).toEqual([]);
 		const travel = tops[0] - tops[tops.length - 1];
@@ -288,31 +293,35 @@ for (const [names, gone, reducedMotion] of [
 	});
 }
 
-test('a notice that replaces another waits for it to leave: never two at once', async ({
-	context
-}) => {
-	const page = await loggedIn(context);
-	await page.route('**/api/v1/rules/preview', (route) => route.fulfill({ status: 503 }));
-	await page.goto('/rules');
-	const check = page.getByRole('button', { name: say('changes.check') });
-	await check.click();
-	await expect(page.locator('.note')).toBeVisible();
-	await still(page, 500);
-	// Every frame: how many notices show. The second came in over the first, the same words 4 px off (pass 25).
-	type Frames = { shown: number[] };
-	await page.evaluate(() => {
-		const w = window as unknown as Frames;
-		w.shown = [];
-		const step = () => {
-			const notes = [...document.querySelectorAll('.note')];
-			w.shown.push(notes.filter((n) => Number(getComputedStyle(n).opacity) > 0.02).length);
-			if (w.shown.length < 60) requestAnimationFrame(step);
-		};
-		requestAnimationFrame(step);
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`a notice waits for the one it replaces: never two at once (${reducedMotion})`, async ({
+		context
+	}) => {
+		const page = await loggedIn(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.route('**/api/v1/rules/preview', (route) => route.fulfill({ status: 503 }));
+		await page.goto('/rules');
+		const check = page.getByRole('button', { name: say('changes.check') });
+		await check.click();
+		await expect(page.locator('.note')).toBeVisible();
+		await still(page, 500);
+		// Every frame: how many notices show. The second came in over the first, the same words 4 px off (pass 25).
+		type Frames = { shown: number[] };
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			w.shown = [];
+			const step = () => {
+				const notes = [...document.querySelectorAll('.note')];
+				w.shown.push(notes.filter((n) => Number(getComputedStyle(n).opacity) > 0.02).length);
+				if (w.shown.length < 60) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await check.click();
+		await page.waitForFunction(() => (window as unknown as Frames).shown.length >= 60);
+		const shown = await page.evaluate(() => (window as unknown as Frames).shown);
+		expect(Math.max(...shown)).toBe(1);
+		expect(shown[shown.length - 1]).toBe(1);
+		await page.emulateMedia({ reducedMotion: null });
 	});
-	await check.click();
-	await page.waitForFunction(() => (window as unknown as Frames).shown.length >= 60);
-	const shown = await page.evaluate(() => (window as unknown as Frames).shown);
-	expect(Math.max(...shown)).toBe(1);
-	expect(shown[shown.length - 1]).toBe(1);
-});
+}
