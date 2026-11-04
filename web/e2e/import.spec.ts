@@ -9,6 +9,7 @@ import {
 	checkBackOnTab,
 	checkDashboard,
 	checkLatePayroll,
+	checkLateRowFades,
 	checkMonthFigures,
 	checkPayroll,
 	checkPayrollWithTop,
@@ -367,6 +368,10 @@ test('on a phone a row of «Por revisar» opens its page where the words are tap
 	browser
 }) => {
 	await checkRowTap(browser, session.cookies);
+});
+
+test('under reduced motion, what follows a row turning «al día» fades in', async ({ context }) => {
+	await checkLateRowFades(await loggedIn(context));
 });
 
 test('the payments card fades in when its answer comes after the summary', async ({ context }) => {

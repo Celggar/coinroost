@@ -145,6 +145,62 @@ export async function checkDashboard(page: Page) {
 	await ranking(page, 'ranking.payees', pays, byId(payeeList), 'ranking.no_payee');
 }
 
+/** An account brought up to date on another device: the answer reaches the open summary, its row shrinks and what
+ * follows moves. Under reduced motion nothing may slide, so it fades in at its new place. */
+export async function checkLateRowFades(page: Page) {
+	const name = 'An account with a name so long that its detail takes several lines on a phone';
+	let late = true;
+	let release = () => {};
+	const released = new Promise<void>((done) => (release = done));
+	await page.route('**/api/v1/coverage*', async (route) => {
+		const answer = await route.fetch();
+		const body = await answer.json();
+		if (!late) await released;
+		const [first, ...rest] = body.items;
+		const items = [{ ...first, name, latest: '2026-01-31', delay: late ? 'late' : 'up_to_date' }];
+		await route.fulfill({
+			response: answer,
+			json: {
+				...body,
+				items: [...items, ...rest.map((x: object) => ({ ...x, delay: 'up_to_date' }))]
+			}
+		});
+	});
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.goto('/');
+	const review = page.getByRole('region', { name: say('review.title') });
+	await expect(review.getByText(name)).toBeVisible();
+	// Both refreshes wait, so the summary is back with the old answer when the new one lands.
+	late = false;
+	await page.locator('a[href="/accounts"]:visible').first().click();
+	await page.waitForURL('**/accounts');
+	await page.locator('a[href="/"]:visible').first().click();
+	await expect(review.getByText(name)).toBeVisible();
+	type Frames = { seen: { top: number; opacity: number }[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		const next = document.getElementById('review-title')?.closest('section')?.nextElementSibling;
+		if (!next) throw new Error('nothing follows the card');
+		w.seen = [];
+		const step = () => {
+			const opacity = Number(getComputedStyle(next).opacity);
+			w.seen.push({ top: next.getBoundingClientRect().top, opacity });
+			if (w.seen.length < 120) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	release();
+	await expect(review.getByText(name)).toBeHidden();
+	await page.waitForFunction(() => (window as unknown as Frames).seen.length >= 120);
+	const seen = await page.evaluate(() => (window as unknown as Frames).seen);
+	const moved = seen.findIndex((frame) => frame.top !== seen[0].top);
+	expect(moved).toBeGreaterThan(0);
+	expect(seen[0].top - seen[moved].top).toBeGreaterThan(4);
+	expect(seen[moved].opacity).toBeLessThan(0.9);
+	expect(seen.at(-1)?.opacity).toBe(1);
+}
+
 export async function checkPayroll(page: Page) {
 	// «Ver» on the summary's card glides to the payments card and takes the focus along: it stayed on the page (pass
 	// 29), then got there in one frame, 1039 px at once (pass 31).

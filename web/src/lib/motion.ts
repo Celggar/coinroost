@@ -6,6 +6,7 @@ import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { AnimationConfig } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
+import { fadeWhatFollows } from '#lib/ui/followers.ts';
 
 /** Milliseconds, as in app.css. */
 export const DURATION = { short: 150, exit: 200, medium: 300, long: 500 } as const;
@@ -364,6 +365,7 @@ export function followContent(node: HTMLElement, held = false) {
 			clearTimeout(settle);
 			settle = setTimeout(rest, DURATION.medium + 100);
 		}
+		if (still()) fadeWhatFollows(node, height, DURATION.medium);
 		node.style.height = `${height}px`;
 	};
 	// A resize is seen after the frame's layout, a step after scripts that read it there; a change to the content (a
