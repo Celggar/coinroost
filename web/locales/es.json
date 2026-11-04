@@ -441,7 +441,7 @@
 	"problem.out_of_range": "Un valor está fuera de rango.",
 	"problem.text_length": "Escribe un texto (no solo espacios) dentro del largo permitido.",
 	"problem.text_too_long": "Este texto es demasiado largo.",
-	"problem.currency_unknown": "Usa un código de moneda de 3 letras, como USD.",
+	"problem.currency_unknown": "Usa un código de moneda de 3\u00a0letras, como USD.",
 	"problem.namespace_format": "Usa minúsculas, números, «-» o «_», empezando con letra o número.",
 	"problem.unknown_profile": "Ese formato de archivo del banco no existe.",
 	"problem.profile_currency_mismatch": "Ese archivo del banco está en otra moneda que la cuenta.",

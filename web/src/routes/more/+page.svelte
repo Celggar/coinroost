@@ -136,4 +136,9 @@
 		display: inline-block;
 		max-width: 100%;
 	}
+	/* The domain holds together too: at its own hyphen it left «…@ejemplo-» / «largo.test» (pass 26). */
+	.address > span:last-child {
+		display: inline-block;
+		max-width: 100%;
+	}
 </style>
