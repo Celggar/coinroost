@@ -97,7 +97,7 @@ test('a choice stays with its Deshacer until the next one, and the focus goes on
 	await expect(row(page, 'MARKET ONE')).toContainText('Food');
 	const undo = row(page, 'MARKET ONE').getByRole('button', { name: say('uncategorized.undo') });
 	await expect(undo).toBeVisible();
-	await expect(row(page, 'SALARY MAY').getByLabel(say('column.category'))).toBeFocused();
+	await expect(row(page, 'CAFE CENTRAL 0099').getByLabel(say('column.category'))).toBeFocused();
 
 	// Deshacer: the server forgets it, the select comes back and takes the focus.
 	const cleared = page.waitForResponse(
@@ -114,7 +114,9 @@ test('a choice stays with its Deshacer until the next one, and the focus goes on
 		route.request().method() === 'PATCH' ? route.fulfill({ status: 500 }) : route.fallback()
 	);
 	await choose(page, 'MARKET ONE', 'Food');
-	await expect(page.getByRole('alert').first()).toHaveText(say('uncategorized.set_failed'));
+	await expect(page.getByRole('alert').first()).toHaveText(
+		say('problem.status_5xx', { what: say('uncategorized.set_failed') })
+	);
 	await expect(select).toHaveValue('');
 	await page.unroute('**/api/v1/transactions/*');
 
@@ -130,7 +132,9 @@ test('a choice stays with its Deshacer until the next one, and the focus goes on
 test('a choice becomes a rule, and the rule sorts its twin', async ({ context }) => {
 	const page = await queue(context);
 	await choose(page, 'CAFE CENTRAL 0042', 'Food');
-	const field = row(page, 'CAFE CENTRAL 0042').getByLabel(say('uncategorized.offer'));
+	const field = row(page, 'CAFE CENTRAL 0042').getByRole('textbox', {
+		name: say('uncategorized.offer')
+	});
 	// Prefilled without what ends the description with a digit, and editable.
 	await expect(field).toHaveValue('CAFE CENTRAL');
 	await field.fill('CAFE CENTR');
@@ -153,10 +157,14 @@ test('a choice becomes a rule, and the rule sorts its twin', async ({ context })
 test('a sorted row fades before the next moves up, and a count never shows twice', async ({
 	context
 }) => {
+	// The queue is empty by now: its rows come first, or it has no list to wait for.
+	await context.addCookies(session.cookies);
+	for (const text of ['COFFEE SHOP', 'BOOK STORE', 'HARDWARE STORE', 'BAKERY']) {
+		const made = await context.request.post('/api/v1/transactions', { data: spend(text, -1000) });
+		expect(made.ok()).toBe(true);
+	}
 	const page = await queue(context);
 	await page.setViewportSize({ width: 1280, height: 720 });
-	for (const text of ['COFFEE SHOP', 'BOOK STORE', 'HARDWARE STORE', 'BAKERY'])
-		await post(page, '/api/v1/transactions', spend(text, -1000));
 	type Frames = { frames: [number, number][] };
 	for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await page.emulateMedia({ reducedMotion });

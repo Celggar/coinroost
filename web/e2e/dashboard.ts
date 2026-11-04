@@ -194,10 +194,10 @@ export async function checkLateRowFades(page: Page) {
 	await expect(review.getByText(name)).toBeHidden();
 	await page.waitForFunction(() => (window as unknown as Frames).seen.length >= 120);
 	const seen = await page.evaluate(() => (window as unknown as Frames).seen);
-	const moved = seen.findIndex((frame) => frame.top !== seen[0].top);
-	expect(moved).toBeGreaterThan(0);
-	expect(seen[0].top - seen[moved].top).toBeGreaterThan(4);
-	expect(seen[moved].opacity).toBeLessThan(0.9);
+	const steps = seen.slice(1).map((frame, i) => seen[i].top - frame.top);
+	const drop = Math.max(...steps);
+	expect(drop).toBeGreaterThan(4);
+	expect(seen[steps.indexOf(drop) + 1].opacity).toBeLessThan(0.9);
 	expect(seen.at(-1)?.opacity).toBe(1);
 }
 

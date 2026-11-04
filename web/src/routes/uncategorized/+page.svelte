@@ -135,8 +135,12 @@
 		// The row before has had its time: it leaves, and this one takes its place as the last sorted.
 		const before = sorted?.id;
 		if (before) transactions = transactions.filter((x) => x.id !== before);
-		sorted = { id: transaction.id, category: categoryId, name, offering: true };
+		sorted = { id: transaction.id, category: categoryId, name, offering: false };
 		if (waiting.length === 0) confetti('sorted');
+		// The offer opens once the list has placed its rows: opened with them, the rows below measured their place with it
+		// whole, went back up over it and slid down as it grew.
+		await tick();
+		if (sorted?.id === transaction.id) sorted.offering = true;
 		await goOn(transaction.id);
 	}
 
@@ -160,7 +164,9 @@
 		refreshCounts();
 		sorted = null;
 		await tick();
-		focusOn(`#category-${transaction.id}`);
+		// Undone before its fade ended, the row gets the same select back, still on the choice.
+		const select = focusOn(`#category-${transaction.id}`);
+		if (select instanceof HTMLSelectElement) select.value = '';
 	}
 
 	/** «Solo esta vez»: the offer closes and the row keeps its Deshacer until the next choice. */
