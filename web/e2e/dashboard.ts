@@ -177,11 +177,20 @@ export async function checkLateRowFades(page: Page) {
 	await page.waitForURL('**/accounts');
 	await page.locator('a[href="/"]:visible').first().click();
 	await expect(review.getByText(name)).toBeVisible();
-	type Frames = { seen: { top: number; opacity: number }[] };
-	await page.evaluate(() => {
+	await watchWhatFollows(page, 'section:has(#review-title)');
+	release();
+	await expect(review.getByText(name)).toBeHidden();
+	await expectFadedIn(page, 1);
+}
+
+type Frames = { seen: { top: number; opacity: number }[] };
+
+/** Records, frame by frame, where what follows `selector` stands and how much of it shows. */
+async function watchWhatFollows(page: Page, selector: string) {
+	await page.evaluate((selector) => {
 		const w = window as unknown as Frames;
-		const next = document.getElementById('review-title')?.closest('section')?.nextElementSibling;
-		if (!next) throw new Error('nothing follows the card');
+		const next = document.querySelector(selector)?.nextElementSibling;
+		if (!next) throw new Error('nothing follows');
 		w.seen = [];
 		const step = () => {
 			const opacity = Number(getComputedStyle(next).opacity);
@@ -189,16 +198,34 @@ export async function checkLateRowFades(page: Page) {
 			if (w.seen.length < 120) requestAnimationFrame(step);
 		};
 		requestAnimationFrame(step);
-	});
-	release();
-	await expect(review.getByText(name)).toBeHidden();
+	}, selector);
+}
+
+/** It moved at once, up (1) or down (-1), and stood at its new place only through a fade. */
+async function expectFadedIn(page: Page, way: 1 | -1) {
 	await page.waitForFunction(() => (window as unknown as Frames).seen.length >= 120);
 	const seen = await page.evaluate(() => (window as unknown as Frames).seen);
-	const steps = seen.slice(1).map((frame, i) => seen[i].top - frame.top);
+	const steps = seen.slice(1).map((frame, i) => (seen[i].top - frame.top) * way);
 	const drop = Math.max(...steps);
 	expect(drop).toBeGreaterThan(4);
 	expect(seen[steps.indexOf(drop) + 1].opacity).toBeLessThan(0.9);
 	expect(seen.at(-1)?.opacity).toBe(1);
+}
+
+/** «Otro…» under reduced motion: the dates take their room and give it back at once, and what follows the period fades
+ * in at its new place both ways. */
+export async function checkOtherFades(page: Page) {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.goto('/');
+	const other = page.getByRole('button', { name: say('dashboard.other'), exact: true });
+	await expect(other).toBeVisible();
+	await watchWhatFollows(page, '.period');
+	await other.click();
+	await expectFadedIn(page, -1);
+	await watchWhatFollows(page, '.period');
+	await page.getByRole('button', { name: say('dashboard.this_year'), exact: true }).click();
+	await expectFadedIn(page, 1);
 }
 
 export async function checkPayroll(page: Page) {

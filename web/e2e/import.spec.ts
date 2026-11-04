@@ -10,6 +10,7 @@ import {
 	checkDashboard,
 	checkLatePayroll,
 	checkLateRowFades,
+	checkOtherFades,
 	checkMonthFigures,
 	checkPayroll,
 	checkPayrollWithTop,
@@ -372,6 +373,12 @@ test('on a phone a row of «Por revisar» opens its page where the words are tap
 
 test('under reduced motion, what follows a row turning «al día» fades in', async ({ context }) => {
 	await checkLateRowFades(await loggedIn(context));
+});
+
+test('under reduced motion, what follows the period fades in as «Otro…» opens and closes', async ({
+	context
+}) => {
+	await checkOtherFades(await loggedIn(context));
 });
 
 test('the payments card fades in when its answer comes after the summary', async ({ context }) => {

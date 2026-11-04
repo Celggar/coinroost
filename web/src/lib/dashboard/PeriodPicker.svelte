@@ -9,6 +9,7 @@
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import { DURATION, EASE, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
+	import { fadeAfter } from '#lib/ui/followers.ts';
 
 	let {
 		from = $bindable(),
@@ -56,6 +57,11 @@
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
 			: slide(node, { duration: DURATION.exit, easing: EASE.standard });
+	// Under reduced motion their room comes and goes at once: what follows fades in at its new place.
+	function follow(event: Event) {
+		const period = (event.currentTarget as Element).parentElement;
+		if (period && prefersReducedMotion.current) fadeAfter(period, DURATION.medium);
+	}
 </script>
 
 <!-- The period (P3): one segmented control under its label and the range the figures stand for, beside it
@@ -92,7 +98,14 @@
 	</div>
 	<!-- The gap above the dates is their own padding, so it opens and closes with them. -->
 	{#if custom}
-		<div class="dates" id="period-dates" in:open out:close>
+		<div
+			class="dates"
+			id="period-dates"
+			in:open
+			out:close
+			onintrostart={follow}
+			onoutroend={follow}
+		>
 			<DateRange bind:from bind:to />
 		</div>
 	{/if}
