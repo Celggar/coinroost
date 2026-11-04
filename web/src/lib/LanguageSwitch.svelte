@@ -3,6 +3,7 @@
 	import { i18n, setLocale, t, type Locale } from '#lib/i18n.svelte.ts';
 	import { pop } from '#lib/motion.ts';
 	import { saveLocale, session } from '#lib/session.svelte.ts';
+	import { crossFade } from '#lib/ui/cross-fade.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	// `wide`: the full names across the width, as a segmented control (the «Más» page), the chosen one filled and
@@ -30,7 +31,7 @@
 			setLocale(locale);
 			return;
 		}
-		document.startViewTransition(async () => {
+		crossFade(async () => {
 			setLocale(locale);
 			await tick();
 		});

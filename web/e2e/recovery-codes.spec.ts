@@ -124,16 +124,37 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await page.getByRole('button', { name: say('authenticator.finish'), exact: true }).click();
 	await expect(page.getByRole('alert')).toHaveText(say('setup.wrong_code'));
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(fresh));
+	// The window changes size just as this change of page ends, as a phone turned then would. The cross-fade waited for
+	// a frame that never came: the screen stood still for 4 s, the old page under the new one (D19). It takes the
+	// moment about two runs in three; on the other runs this checks nothing, and never fails.
+	await page.exposeFunction('resizeNow', () => page.setViewportSize({ width: 390, height: 560 }));
+	await page.evaluate(() => {
+		const start = document.startViewTransition.bind(document);
+		document.startViewTransition = ((update: () => Promise<void>) =>
+			start(async () => {
+				await update();
+				document.startViewTransition = start;
+				(window as unknown as { resizeNow: () => void }).resizeNow();
+			})) as typeof document.startViewTransition;
+	});
 	await page.getByRole('button', { name: say('authenticator.finish'), exact: true }).click();
 	await expect(page).toHaveURL(/\/security$/);
+	const nextFrame = await page.evaluate(
+		() =>
+			new Promise<number>((done) => {
+				const from = performance.now();
+				requestAnimationFrame(() => done(performance.now() - from));
+			})
+	);
+	expect(nextFrame).toBeLessThan(1000);
 	await expect(page.getByTestId('recovery-status')).toHaveText(
 		left('security.codes_left_other', 9)
 	);
 
 	// A new set, after the app's next code; the old set stops working.
 	// On a short phone the form opens down to its buttons: at 390 × 600 «Crear códigos» sat 9 px under the bottom bar
-	// (pass 23). 560 high here, so the case holds whatever the language's line breaks.
-	await page.setViewportSize({ width: 390, height: 560 });
+	// (pass 23). 560 high here (set at the landing above), so the case holds whatever the language's line breaks.
+	await expect(page.locator('main')).toHaveCount(1);
 	await page.evaluate(() => scrollTo(0, 0));
 	await still(page);
 	await page.getByRole('button', { name: say('security.regenerate'), exact: true }).click();
