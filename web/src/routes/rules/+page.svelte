@@ -10,6 +10,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
+	import { holdRoom } from '#lib/ui/hold-room.ts';
 	import { focusShown, showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import { arrive, glide, grow, placeholder, pop, swapIn, vanish } from '#lib/motion.ts';
@@ -84,7 +85,7 @@
 		if (!response.ok) {
 			notify(problem(error, response.status, t('rules.delete_failed')), 'bad');
 		}
-		await load();
+		await holdRoom(document.querySelector('.rules-page > .in-place'), load);
 		// The rule and its buttons are gone: the focus goes to the page's title. Where the title shows (from 900 px) the
 		// page glides to it; on a phone the top bar holds the title and the page stays. Focused bare, the page jumped to
 		// its start in one frame (pass 15).

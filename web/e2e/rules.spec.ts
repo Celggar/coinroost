@@ -224,3 +224,95 @@ test('a rule under a deleted one waits in its place while that one fades', async
 	expect(moved.filter((offset) => Math.abs(offset) > 0.5)).toEqual([]);
 	expect((await page.request.delete(`/api/v1/rules/${under}`)).ok()).toBe(true);
 });
+
+// With reduced motion a lone rule's list already held its height until it had faded, then went at once, as it should.
+for (const [names, gone, reducedMotion] of [
+	[['Foot A', 'Foot B'], 'Foot B', 'no-preference'],
+	[['Foot A', 'Foot B'], 'Foot B', 'reduce'],
+	[['Alone'], 'Alone', 'no-preference']
+] as const) {
+	test(`what follows the list waits while «${gone}» fades (${reducedMotion})`, async ({
+		context
+	}) => {
+		const page = await loggedIn(context);
+		await page.emulateMedia({ reducedMotion });
+		const made = await makeRules(page, [...names]);
+		await page.goto('/rules');
+		const ask = page.getByRole('button', { name: say('rules.delete_named', { name: gone }) });
+		await expect(ask).toBeVisible();
+		await ask.click();
+		const yes = page.getByRole('button', { name: say('rules.delete_it') });
+		await still(page);
+		// Every frame: where the block after the form stands in the page, the page's own scroll left out. A row that
+		// leaves goes out of the flow at once, and what follows the list went up 238 px in one frame, under the rule
+		// still fading (pass 25).
+		type Frames = { moved: number[]; tops: number[] };
+		await page.evaluate(
+			(id) => {
+				const w = window as unknown as Frames;
+				const leaving = document.querySelector(`[data-rule="${id}"]`)!;
+				const after = document.querySelector('section.follows')!;
+				const top = () => after.getBoundingClientRect().top + scrollY;
+				const start = top();
+				w.moved = [];
+				w.tops = [];
+				const step = () => {
+					w.tops.push(top());
+					if (leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02) {
+						w.moved.push(top() - start);
+					}
+					if (w.tops.length < 90) requestAnimationFrame(step);
+				};
+				requestAnimationFrame(step);
+			},
+			made[made.length - 1]
+		);
+		await yes.click();
+		await page.waitForFunction(() => (window as unknown as Frames).tops.length >= 90);
+		const { moved, tops } = await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			return { moved: w.moved, tops: w.tops };
+		});
+		expect(moved.length).toBeGreaterThan(3);
+		expect(moved.filter((offset) => Math.abs(offset) > 0.5)).toEqual([]);
+		const travel = tops[0] - tops[tops.length - 1];
+		expect(travel).toBeGreaterThan(100);
+		if (reducedMotion === 'no-preference') {
+			const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));
+			expect(Math.max(...steps), tops.map(Math.round).join(' ')).toBeLessThan(travel / 2);
+		}
+		for (const id of made.slice(0, -1)) {
+			expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+		}
+		await page.emulateMedia({ reducedMotion: null });
+	});
+}
+
+test('a notice that replaces another waits for it to leave: never two at once', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.route('**/api/v1/rules/preview', (route) => route.fulfill({ status: 503 }));
+	await page.goto('/rules');
+	const check = page.getByRole('button', { name: say('changes.check') });
+	await check.click();
+	await expect(page.locator('.note')).toBeVisible();
+	await still(page, 500);
+	// Every frame: how many notices show. The second came in over the first, the same words 4 px off (pass 25).
+	type Frames = { shown: number[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.shown = [];
+		const step = () => {
+			const notes = [...document.querySelectorAll('.note')];
+			w.shown.push(notes.filter((n) => Number(getComputedStyle(n).opacity) > 0.02).length);
+			if (w.shown.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await check.click();
+	await page.waitForFunction(() => (window as unknown as Frames).shown.length >= 60);
+	const shown = await page.evaluate(() => (window as unknown as Frames).shown);
+	expect(Math.max(...shown)).toBe(1);
+	expect(shown[shown.length - 1]).toBe(1);
+});

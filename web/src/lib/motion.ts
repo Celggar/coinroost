@@ -64,7 +64,7 @@ const still = () => prefersReducedMotion.current;
  * How long what replaces a leaving block waits: its fade (`vanish`, short) and three frames to spare. Waiting exactly
  * the fade, a fade that started two frames late still showed at 30 % when the next card moved under it (pass 16 gates).
  */
-const FADED = DURATION.exit;
+export const FADED = DURATION.exit;
 
 /** In: rises a little into place. A delay that waits for the card to grow is dropped when nothing grows. */
 export function rise(node: Element, { delay = 0, y = 12 } = {}): TransitionConfig {
