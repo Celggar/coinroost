@@ -102,7 +102,7 @@
 		padding: 0 var(--space-lg);
 		border-radius: 999px;
 		color: var(--muted);
-		font-weight: 600;
+		font-weight: 400;
 		text-decoration: none;
 	}
 	.label {
@@ -114,8 +114,14 @@
 			color: var(--text);
 		}
 	}
+	/* The pill is a tint under 3:1 against the bar, so the weight and the icon say «you are here» too (N5, pass 29). */
 	a[aria-current='page'] {
 		color: var(--text);
+		font-weight: 700;
+	}
+	a[aria-current='page'] :global(.icon) {
+		fill: color-mix(in oklab, currentColor 22%, transparent);
+		stroke-width: 2.6;
 	}
 	/* The current item's pill grows from its centre (M3 active indicator); with reduced motion it only fades. */
 	.pill {

@@ -131,7 +131,7 @@
 		border-radius: 999px;
 		background: none;
 		color: var(--muted);
-		font-weight: 600;
+		font-weight: 400;
 	}
 	/* At rest it reads like the rail's other rows, in grey; it takes the text colour under the pointer and while its
 	   panel is open, so it never looks like a second current page. The initial keeps the text colour on its tint. */

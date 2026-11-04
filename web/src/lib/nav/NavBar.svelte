@@ -128,11 +128,20 @@
 		min-height: 64px;
 		color: var(--muted);
 		font-size: var(--text-xs);
-		font-weight: 600;
+		font-weight: 400;
 		text-decoration: none;
 	}
+	/* The pill is a tint under 3:1 against the bar, so the weight and the icon say «you are here» too (N5, pass 29). */
 	a[aria-current='page'] {
 		color: var(--text);
+		font-weight: 700;
+	}
+	a[aria-current='page'] :global(.icon) {
+		fill: color-mix(in oklab, currentColor 22%, transparent);
+		stroke-width: 2.6;
+	}
+	a[aria-current='page'] :global(.icon.dots) {
+		stroke-width: 4;
 	}
 	.indicator {
 		position: relative;
