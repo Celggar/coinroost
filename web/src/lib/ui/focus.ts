@@ -37,6 +37,18 @@ export function passFocus(event: FocusEvent) {
 }
 
 /**
+ * Gives the focus to what a form just made, a row that takes none by itself, so a person goes on from it. The form
+ * that held the focus is closing. The page does not move here either: `showWhole` shows the row once it settles.
+ */
+export function focusMade(selector: string): HTMLElement | null {
+	const row = document.querySelector<HTMLElement>(selector);
+	if (!row) return null;
+	row.tabIndex = -1;
+	row.focus({ preventScroll: true });
+	return row;
+}
+
+/**
  * Keeps the focus inside `box` while its rows are put in a new order, once the caller has the new order and before it
  * hands it over. A keyed list moves a row by taking it out and back in, and a focused button taken out drops the focus
  * to the page: «Bajar» dropped it every time, the row going down being the one moved (pass 20). The box takes the

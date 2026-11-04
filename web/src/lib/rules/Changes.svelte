@@ -118,7 +118,7 @@
      page back 171 px in one frame (pass 14). -->
 <section
 	class="follows"
-	class:card={!inline}
+	class:card={!inline && preview}
 	aria-labelledby={inline ? undefined : 'changes-title'}
 	aria-label={inline ? t('changes.title') : undefined}
 	bind:this={card}
@@ -126,16 +126,19 @@
 >
 	<div class="stack">
 		{#if !inline}
-			<h2 id="changes-title">{t('changes.title')}</h2>
-			<p class="hint">{t('changes.hint')}</p>
+			{#if preview}
+				<h2 id="changes-title" in:rise|global>{t('changes.title')}</h2>
+				<p class="hint" in:rise|global>{t('changes.hint')}</p>
+			{/if}
 			<div class="actions">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
 				<button
+					id={preview ? undefined : 'changes-title'}
 					class="secondary"
 					onclick={() => {
 						check();
 					}}
-					aria-disabled={busy}>{t('changes.check')}</button
+					aria-disabled={busy}>{preview ? t('changes.check') : t('changes.open')}</button
 				>
 			</div>
 		{/if}

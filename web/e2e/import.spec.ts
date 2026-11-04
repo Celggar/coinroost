@@ -20,6 +20,7 @@ import {
 } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { expectCardGlides, watchCard } from './frames.ts';
+import { unfold } from './forms.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
 import { pickLanguage } from './account.ts';
@@ -98,6 +99,7 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(kind).toHaveValue('credit_card');
 	await page.getByLabel(say('accounts.bank_file')).selectOption('bac-account');
 	await expect(kind).toHaveValue('checking');
+	await unfold(page);
 	await page.getByLabel(say('accounts.key')).fill('bac');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Checking' }));
@@ -182,14 +184,16 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 
 test('a manual category survives applying the rules', async ({ context }) => {
 	const page = await loggedIn(context);
-	await page.goto('/rules');
+	await page.goto('/categories');
 	for (const name of ['Groceries', 'Other']) {
 		await page.getByLabel(say('categoryform.name')).fill(name);
 		await page.getByRole('button', { name: say('categoryform.create') }).click();
 		await expect(page.getByRole('status')).toHaveText(say('categoryform.created', { name }));
 	}
+	await page.goto('/rules');
 	await page.getByLabel(say('ruleform.name')).fill('Market');
 	await page.getByLabel(say('ruleform.text')).fill('SUPERMERCADO');
+	await unfold(page);
 	await page.getByLabel(say('ruleform.money')).selectOption('out');
 	await page.getByLabel(say('ruleform.category')).selectOption({ label: 'Groceries' });
 	await page.getByRole('button', { name: say('ruleform.add') }).click();
@@ -211,7 +215,7 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	await expect(all).toContainText(String(transactions - 1));
 
 	await page.getByRole('link', { name: say('nav.rules'), exact: true }).click();
-	await page.getByRole('button', { name: say('changes.check') }).click();
+	await page.getByRole('button', { name: say('changes.open') }).click();
 	await expect(page.getByText(say('changes.would_one'))).toBeVisible();
 	await expect(
 		// The arrow is drawn, and read as a word (pass 23: the font's «→» sat tiny and low).
@@ -514,6 +518,7 @@ test('every page fits a 390 px screen', async ({ browser }) => {
 		['/coverage', say('coverage.title')],
 		['/accounts', say('accounts.title')],
 		['/rules', say('rules.title')],
+		['/categories', say('categories.title')],
 		['/uncategorized', say('uncategorized.title')],
 		['/transfers', say('transfers.title')]
 	];

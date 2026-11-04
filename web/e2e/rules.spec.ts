@@ -2,6 +2,7 @@
 // never falls to the page, and the page lands where the person can see what happened. Its own user.
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { watchDrops } from './focus.ts';
+import { unfold } from './forms.ts';
 import { say } from './messages.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
@@ -160,6 +161,7 @@ test('on a phone, an error that opens in view leaves the page where it was', asy
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto('/rules');
 	const to = page.getByLabel(say('ruleform.max'), { exact: true });
+	await unfold(page);
 	await expect(to).toBeVisible();
 	await page.getByLabel(say('ruleform.name'), { exact: true }).fill('Amounts reversed');
 	await page.getByLabel(say('ruleform.text'), { exact: true }).fill('PAGO ');
@@ -412,7 +414,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await page.emulateMedia({ reducedMotion });
 		await page.route('**/api/v1/rules/preview', (route) => route.fulfill({ status: 503 }));
 		await page.goto('/rules');
-		const check = page.getByRole('button', { name: say('changes.check') });
+		const check = page.getByRole('button', { name: say('changes.open') });
 		await check.click();
 		await expect(page.locator('.note')).toBeVisible();
 		await still(page, 500);
@@ -436,3 +438,53 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await page.emulateMedia({ reducedMotion: null });
 	});
 }
+
+test('«Nueva regla» opens the form in place, what few rules need folded', async ({ context }) => {
+	const page = await loggedIn(context);
+	const made = await makeRules(page, ['Open A']);
+	await page.goto('/rules');
+	const add = page.locator('#new-rule');
+	const form = page.getByRole('form', { name: say('ruleform.title') });
+	await expect(add).toBeVisible();
+	await expect(form).toHaveCount(0);
+	await add.click();
+	await expect(form.getByLabel(say('ruleform.name'))).toBeFocused();
+	await expect(form.getByLabel(say('ruleform.min'))).toBeHidden();
+	await form.getByRole('button', { name: say('ruleform.cancel') }).click();
+	await expect(form).toHaveCount(0);
+	await expect(add).toBeFocused();
+	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
+});
+
+test('on a phone a new rule is a full-screen dialog, sent from its top', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	const made = await makeRules(page, ['Sheet A']);
+	await page.goto('/rules');
+	const add = page.locator('#new-rule');
+	await add.click();
+	const sheet = page.getByRole('dialog', { name: say('ruleform.title') });
+	const name = sheet.getByLabel(say('ruleform.name'));
+	await expect(name).toBeFocused();
+	await sheet.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
+	expect(await sheet.boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 });
+	// Esc leaves it, and the focus goes back to the button: modal to its last frame, the page behind took none.
+	await page.keyboard.press('Escape');
+	await expect(add).toBeFocused();
+	await expect(sheet).toHaveCount(0);
+	// Sent, the new rule has the focus at once, the dialog still sliding away over it.
+	await add.click();
+	await name.fill('Sheet B');
+	await sheet.getByLabel(say('ruleform.text')).fill('SHEET B');
+	await unfold(page);
+	await sheet.getByLabel(say('ruleform.payee')).selectOption('text');
+	const drops = await watchDrops(page);
+	await sheet.getByRole('button', { name: say('ruleform.save') }).click();
+	const row = page.locator('ol.rules > li', { hasText: 'Sheet B' });
+	await expect(row).toBeFocused();
+	await expect(sheet).toHaveCount(0);
+	expect(await drops()).toEqual([]);
+	made.push((await row.getAttribute('data-rule'))!);
+	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+	await page.setViewportSize({ width: 1280, height: 720 });
+});

@@ -2,6 +2,7 @@
 // a field in error still stands apart from a valid one, on the sign-in page and in the app, and an error from a hint
 // (pass 19). Its own user (see run.sh).
 import { expect, test, type Locator } from '@playwright/test';
+import { unfold } from './forms.ts';
 import { say } from './messages.ts';
 import { totp } from './totp.ts';
 
@@ -48,6 +49,7 @@ test('a field in error stands apart from a valid one, and its error from a hint'
 	await expect(page.getByRole('heading', { name: say('accounts.title') })).toBeVisible();
 
 	// An app form sent empty: «Nombre» is marked, «Marcadores» (optional) is not.
+	await unfold(page);
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	const name = page.getByLabel(say('accounts.name'), { exact: true });
 	const markers = page.getByLabel(say('accounts.markers'));

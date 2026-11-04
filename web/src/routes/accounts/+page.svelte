@@ -1,56 +1,27 @@
 <script lang="ts">
-	import { retry } from '#lib/ui/focus.ts';
+	import { focusMade, focusOn, retry } from '#lib/ui/focus.ts';
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount, tick } from 'svelte';
-	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
-	import { has, t, type Key } from '#lib/i18n.svelte.ts';
-	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
-	import Field from '#lib/ui/Field.svelte';
-	import FormError from '#lib/ui/FormError.svelte';
-	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
-	import { landOn } from '#lib/ui/landing.ts';
-	import { notify } from '#lib/ui/notices.svelte.ts';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fade, slide } from 'svelte/transition';
+	import AccountForm from '#lib/accounts/AccountForm.svelte';
+	import { formatName, kindName } from '#lib/accounts/names.ts';
+	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { t } from '#lib/i18n.svelte.ts';
+	import { arrive, DURATION, EASE, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
 	let profiles = $state<Schemas['BankProfile'][]>([]);
 	let loadError = $state('');
 	let loaded = $state(false);
 
-	// A new kind in the contract fails the type check until it has a name here.
-	const kindKeys = {
-		checking: 'kind.checking',
-		savings: 'kind.savings',
-		credit_card: 'kind.credit_card',
-		cash: 'kind.cash',
-		loan: 'kind.loan',
-		investment: 'kind.investment'
-	} satisfies Record<Schemas['AccountKind'], Key>;
-	const kinds = Object.keys(kindKeys) as Schemas['AccountKind'][];
-	const kindName = (kind: Schemas['AccountKind']) => t(kindKeys[kind]);
+	let adding = $state(false);
 
-	let name = $state('');
-	let kind = $state<Schemas['AccountKind']>('checking');
-	// The kind the person chose themselves: a bank file that reads one kind sets it, and another file gives it back.
-	let kindByHand: Schemas['AccountKind'] = 'checking';
-	let currency = $state('USD');
-	let profile = $state('');
-	let namespace = $state('');
-	let namespaceEdited = $state(false);
-	let markers = $state('');
-	let cardPrefixes = $state('');
-	let formError = $state('');
-	let errors = $state<Errors>({});
-	let busy = $state(false);
-
-	const suggested = $derived(
-		name
-			.normalize('NFD')
-			.replace(/[̀-ͯ]/g, '')
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '')
-			.slice(0, 64)
-	);
+	const open = (node: Element) =>
+		prefersReducedMotion.current
+			? fade(node, { duration: DURATION.short })
+			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
 
 	async function load() {
 		loadError = '';
@@ -68,81 +39,28 @@
 		loaded = true;
 	}
 
-	function pickProfile() {
-		const chosen = profiles.find((p) => p.id === profile);
-		if (chosen) currency = chosen.currency;
-		// A card's statement belongs to a credit card: the kind follows the file (pass 20, it stayed «Corriente»).
-		kind = chosen?.kind ?? kindByHand;
-	}
-
-	const words = (text: string) =>
-		text
-			.split(',')
-			.map((w) => w.trim())
-			.filter(Boolean);
-
-	async function submit(event: SubmitEvent) {
-		event.preventDefault();
-		if (busy) return;
-		const form = event.currentTarget as HTMLFormElement;
-		formError = '';
-		errors = check(form);
-		// A key that still follows the name is empty only because the name is: the name's error says it (pass 8).
-		if (!namespaceEdited && errors.name) errors = drop(errors, 'namespace');
-		if (Object.keys(errors).length) {
-			focusFirst(form, errors);
-			return;
-		}
-		busy = true;
-		const { data, error, response } = await api.POST('/api/v1/accounts', {
-			body: {
-				name,
-				kind,
-				currency,
-				namespace: namespaceEdited ? namespace : suggested,
-				profile: profile || null,
-				detection: { markers: words(markers), card_prefixes: words(cardPrefixes) }
-			}
-		});
-		busy = false;
-		if (!data) {
-			const why = failure(error, response?.status, t('accounts.create_failed'));
-			if (why.field && form.elements.namedItem(why.field)) {
-				errors = { [why.field]: why.message };
-				await tick();
-				focusFirst(form, errors);
-			} else {
-				formError = why.message;
-			}
-			return;
-		}
-		notify(t('accounts.created', { name: data.name }));
-		accounts = [...accounts, data].sort((a, b) => a.name.localeCompare(b.name));
-		// The whole form back to how it opened: kept, the last account's kind passed to the next unnoticed (pass 14).
-		name = '';
-		kind = 'checking';
-		kindByHand = 'checking';
-		currency = 'USD';
-		profile = '';
-		namespace = '';
-		namespaceEdited = false;
-		markers = '';
-		cardPrefixes = '';
-		// The focus stays where the send left it until the page settles; then it goes back to the form, ready for the
-		// next, and the page shows the new account above it when both fit, as Reglas does: down to the form
-		// only, the new account stood above the screen on a phone (pass 15). Scrolled to by the browser, the page jumped
-		// (pass 13). One sorted too far above to show with the form shows alone, with the focus (`landOn`).
+	/** Opens the form on the name field, the page moving as the form grows. */
+	async function add() {
+		adding = true;
 		await tick();
-		const row = document.querySelector<HTMLElement>(`[data-account="${data.id}"]`) ?? undefined;
-		const field = form.elements.namedItem('name') as HTMLInputElement | null;
-		if (field) await landOn(field, form, row);
+		focusOn('form input[name="name"]');
 	}
 
-	/** A bank format's name in the page's language; the profile's own (English) name when there is no text for it. */
-	const formatName = (profile: { id: string; name: string }) => {
-		const key = `profile.${profile.id}`;
-		return has(key) ? t(key) : profile.name;
-	};
+	async function close() {
+		adding = false;
+		await tick();
+		focusOn('#new-account');
+	}
+
+	/** The form closes and the new account, in its place in the list, takes the focus and shows whole. */
+	async function created(account: Schemas['Account']) {
+		accounts = [...accounts, account].sort((a, b) => a.name.localeCompare(b.name));
+		adding = false;
+		await tick();
+		const row = focusMade(`[data-account="${account.id}"]`);
+		if (row) await showWhole(row);
+	}
+
 	const profileName = (id: string | null | undefined) => {
 		const profile = profiles.find((p) => p.id === id);
 		return profile ? formatName(profile) : id ? id : '—';
@@ -155,7 +73,12 @@
 	<title>{t('app.title', { page: t('accounts.title') })}</title>
 </svelte:head>
 
-<h1>{t('accounts.title')}</h1>
+<div class="title-bar">
+	<h1>{t('accounts.title')}</h1>
+	{#if loaded && accounts.length && !adding}
+		<button id="new-account" onclick={add} in:vanish out:vanish>+ {t('accounts.add')}</button>
+	{/if}
+</div>
 
 {#if loadError}
 	<p class="alert" role="alert" in:arrive out:placeholder>
@@ -197,110 +120,15 @@
 			<p out:vanish>{t('accounts.none_yet')}</p>
 		{/if}
 
-		<form
-			class="card"
-			novalidate
-			onsubmit={submit}
-			oninput={(event) => {
-				errors = without(errors, event);
-				// The key follows the name until it is edited: a name that fills it also clears its error.
-				if (!namespaceEdited && suggested) errors = drop(errors, 'namespace');
-			}}
-		>
-			<h2>{t('accounts.new')}</h2>
-			<div class="fields">
-				<Field label={t('accounts.name')} name="name" error={errors.name}>
-					{#snippet children(wiring)}
-						<input {...wiring} required maxlength="200" bind:value={name} />
-					{/snippet}
-				</Field>
-				<Field label={t('accounts.kind')} name="kind" error={errors.kind}>
-					{#snippet children(wiring)}
-						<select {...wiring} bind:value={kind} onchange={() => (kindByHand = kind)}>
-							{#each kinds as option (option)}
-								<option value={option}>{kindName(option)}</option>
-							{/each}
-						</select>
-					{/snippet}
-				</Field>
-				<Field
-					label={t('accounts.bank_file')}
-					name="profile"
-					hint={t('accounts.bank_file_hint')}
-					error={errors.profile}
-				>
-					{#snippet children(wiring)}
-						<select {...wiring} bind:value={profile} onchange={pickProfile}>
-							<option value="">{t('accounts.no_profile')}</option>
-							{#each profiles as option (option.id)}
-								<option value={option.id}>{formatName(option)}</option>
-							{/each}
-						</select>
-					{/snippet}
-				</Field>
-				<Field label={t('accounts.currency')} name="currency" error={errors.currency}>
-					{#snippet children(wiring)}
-						<!-- The API's rules (validate.rs), checked before sending: one error per send took three sends for
-						     three (pass 14). No length cap: «dolares» was cut to «dol» without a word; the pattern says
-						     what is wrong instead. -->
-						<input
-							{...wiring}
-							required
-							pattern={'[A-Za-z]{3}'}
-							data-format="problem.currency_unknown"
-							bind:value={currency}
-						/>
-					{/snippet}
-				</Field>
-				<Field
-					label={t('accounts.key')}
-					name="namespace"
-					hint={t('accounts.key_hint')}
-					error={errors.namespace}
-				>
-					{#snippet children(wiring)}
-						<input
-							{...wiring}
-							required
-							maxlength="64"
-							pattern={'[a-z0-9][a-z0-9_\\-]{0,63}'}
-							data-format="problem.namespace_format"
-							value={namespaceEdited ? namespace : suggested}
-							oninput={(event) => {
-								namespace = event.currentTarget.value;
-								namespaceEdited = true;
-							}}
-						/>
-					{/snippet}
-				</Field>
-				<Field
-					label={t('accounts.markers')}
-					name="detection.markers"
-					hint={t('accounts.markers_hint')}
-					error={errors['detection.markers']}
-				>
-					{#snippet children(wiring)}
-						<input {...wiring} bind:value={markers} />
-					{/snippet}
-				</Field>
-				<Field
-					label={t('accounts.prefixes')}
-					name="detection.card_prefixes"
-					hint={t('accounts.prefixes_hint')}
-					error={errors['detection.card_prefixes']}
-				>
-					{#snippet children(wiring)}
-						<input {...wiring} inputmode="numeric" bind:value={cardPrefixes} />
-					{/snippet}
-				</Field>
+		{#if adding || accounts.length === 0}
+			<div transition:open>
+				<AccountForm
+					{profiles}
+					oncreated={created}
+					oncancel={accounts.length ? close : undefined}
+				/>
 			</div>
-			<FormError text={formError} />
-			<div class="actions">
-				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
-				     until the page landed (pass 17). -->
-				<button type="submit" aria-disabled={busy}>{t('accounts.create')}</button>
-			</div>
-		</form>
+		{/if}
 	</div>
 {:else}
 	<p class="hint loading" out:placeholder>{t('app.loading')}</p>

@@ -419,7 +419,7 @@ export async function checkAppliedAtEnd(page: Page) {
 	expect(response.ok()).toBe(true);
 	const id = (await response.json()).id;
 	await page.goto('/rules');
-	await page.getByRole('button', { name: say('changes.check') }).click();
+	await page.getByRole('button', { name: say('changes.open') }).click();
 	const apply = page.getByRole('button', { name: say('changes.apply_one') });
 	await apply.scrollIntoViewIfNeeded();
 	// Every frame from the click on: the applied change left at the page's end, the page shrank, and the browser pulled

@@ -282,7 +282,7 @@
 					<EmptyState
 						icon="rules"
 						text={t('uncategorized.no_categories')}
-						href="/rules#new-category"
+						href="/categories#new-category"
 						action={t('uncategorized.create_categories')}
 					/>
 				{/if}

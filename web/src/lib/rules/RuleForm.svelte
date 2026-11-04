@@ -6,18 +6,22 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
-	import { landOn } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
 		categories,
 		payees,
 		accounts,
+		sheet = false,
+		oncancel,
 		oncreated
 	}: {
 		categories: Schemas['Category'][];
 		payees: Schemas['Payee'][];
 		accounts: Schemas['Account'][];
+		/** Inside a full-screen dialog, which holds the title and the send button. */
+		sheet?: boolean;
+		oncancel?: () => void;
 		oncreated: (rule: Schemas['Rule']) => unknown;
 	} = $props();
 
@@ -33,6 +37,9 @@
 	let error = $state('');
 	let errors = $state<Errors>({});
 	let busy = $state(false);
+	let more = $state(false);
+	// What the fold holds: an error there opens it, or the field it names could not take the focus.
+	const FOLDED = ['direction', 'account', 'min', 'max', 'payee'];
 
 	/** The browser's checks, then the amounts: each must read as money, and the range must not be upside down. */
 	function checkAll(form: HTMLFormElement): Errors {
@@ -59,6 +66,8 @@
 		error = '';
 		errors = checkAll(form);
 		if (Object.keys(errors).length) {
+			if (FOLDED.some((field) => errors[field])) more = true;
+			await tick();
 			focusFirst(form, errors);
 			return;
 		}
@@ -90,6 +99,7 @@
 			const why = failure(failed, response?.status, t('ruleform.failed'));
 			if (why.field && form.elements.namedItem(why.field)) {
 				errors = { [why.field]: why.message };
+				if (FOLDED.includes(why.field)) more = true;
 				await tick();
 				focusFirst(form, errors);
 			} else {
@@ -98,21 +108,13 @@
 			return;
 		}
 		notify(t('ruleform.added', { name: data.name, position: data.position }));
-		name = text = min = max = category = payee = account = '';
-		direction = '';
-		// The focus stays where the send left it until the page has the new rule and has settled; then it goes back to
-		// the form, ready for the next (`landOn`). Scrolled to by the browser, the page jumped
-		// 725 px in one frame (pass 13).
-		const field = form.elements.namedItem('name') as HTMLInputElement | null;
-		const left = document.activeElement;
-		// The page hands back the new rule's place in the list, to show it above the form.
-		const made = await oncreated(data);
-		if (field) await landOn(field, form, made instanceof HTMLElement ? made : undefined, left);
+		await oncreated(data);
 	}
 </script>
 
 <form
-	class="card"
+	class:card={!sheet}
+	id="rule-form"
 	novalidate
 	onsubmit={submit}
 	oninput={(event) => {
@@ -129,8 +131,7 @@
 	}}
 	aria-label={t('ruleform.title')}
 >
-	<h2>{t('ruleform.title')}</h2>
-	<p class="hint">{t('ruleform.hint')}</p>
+	{#if !sheet}<h2>{t('ruleform.title')}</h2>{/if}
 	<div class="fields">
 		<Field label={t('ruleform.name')} name="name" error={errors.name}>
 			{#snippet children(wiring)}
@@ -147,35 +148,6 @@
 				<input {...wiring} maxlength="200" bind:value={text} />
 			{/snippet}
 		</Field>
-		<Field label={t('ruleform.money')} name="direction" error={errors.direction}>
-			{#snippet children(wiring)}
-				<select {...wiring} bind:value={direction}>
-					<option value="">{t('ruleform.either')}</option>
-					<option value="out">{t('ruleform.out')}</option>
-					<option value="in">{t('ruleform.in')}</option>
-				</select>
-			{/snippet}
-		</Field>
-		<Field label={t('column.account')} name="account" error={errors.account}>
-			{#snippet children(wiring)}
-				<select {...wiring} bind:value={account}>
-					<option value="">{t('ruleform.any_account')}</option>
-					{#each accounts as option (option.id)}
-						<option value={option.id}>{option.name}</option>
-					{/each}
-				</select>
-			{/snippet}
-		</Field>
-		<Field label={t('ruleform.min')} name="min" error={errors.min}>
-			{#snippet children(wiring)}
-				<input {...wiring} inputmode="decimal" placeholder="0.00" bind:value={min} />
-			{/snippet}
-		</Field>
-		<Field label={t('ruleform.max')} name="max" error={errors.max}>
-			{#snippet children(wiring)}
-				<input {...wiring} inputmode="decimal" placeholder="0.00" bind:value={max} />
-			{/snippet}
-		</Field>
 		<Field label={t('ruleform.category')} name="category" error={errors.category}>
 			{#snippet children(wiring)}
 				<select {...wiring} bind:value={category}>
@@ -186,22 +158,76 @@
 				</select>
 			{/snippet}
 		</Field>
-		<Field label={t('ruleform.payee')} name="payee" error={errors.payee}>
-			{#snippet children(wiring)}
-				<select {...wiring} bind:value={payee}>
-					<option value="">{t('ruleform.no_payee')}</option>
-					<option value="text">{t('ruleform.payee_from_text')}</option>
-					{#each payees as option (option.id)}
-						<option value={option.id}>{option.name}</option>
-					{/each}
-				</select>
-			{/snippet}
-		</Field>
 	</div>
+	<details bind:open={more}>
+		<summary>{t('ruleform.more')}</summary>
+		<div class="fields folded">
+			<Field label={t('ruleform.money')} name="direction" error={errors.direction}>
+				{#snippet children(wiring)}
+					<select {...wiring} bind:value={direction}>
+						<option value="">{t('ruleform.either')}</option>
+						<option value="out">{t('ruleform.out')}</option>
+						<option value="in">{t('ruleform.in')}</option>
+					</select>
+				{/snippet}
+			</Field>
+			<Field label={t('column.account')} name="account" error={errors.account}>
+				{#snippet children(wiring)}
+					<select {...wiring} bind:value={account}>
+						<option value="">{t('ruleform.any_account')}</option>
+						{#each accounts as option (option.id)}
+							<option value={option.id}>{option.name}</option>
+						{/each}
+					</select>
+				{/snippet}
+			</Field>
+			<Field label={t('ruleform.min')} name="min" error={errors.min}>
+				{#snippet children(wiring)}
+					<input {...wiring} inputmode="decimal" placeholder="0.00" bind:value={min} />
+				{/snippet}
+			</Field>
+			<Field label={t('ruleform.max')} name="max" error={errors.max}>
+				{#snippet children(wiring)}
+					<input {...wiring} inputmode="decimal" placeholder="0.00" bind:value={max} />
+				{/snippet}
+			</Field>
+			<Field label={t('ruleform.payee')} name="payee" error={errors.payee}>
+				{#snippet children(wiring)}
+					<select {...wiring} bind:value={payee}>
+						<option value="">{t('ruleform.no_payee')}</option>
+						<option value="text">{t('ruleform.payee_from_text')}</option>
+						{#each payees as option (option.id)}
+							<option value={option.id}>{option.name}</option>
+						{/each}
+					</select>
+				{/snippet}
+			</Field>
+		</div>
+	</details>
+	<p class="hint">{t('ruleform.hint')}</p>
 	<FormError text={error} />
-	<div class="actions">
-		<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
-		     until the page landed (pass 17). -->
-		<button type="submit" aria-disabled={busy}>{t('ruleform.add')}</button>
-	</div>
+	{#if !sheet}
+		<div class="actions">
+			<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works, and it sat there
+			     until the page landed (pass 17). -->
+			<button type="submit" aria-disabled={busy}>{t('ruleform.add')}</button>
+			{#if oncancel}
+				<button type="button" class="secondary" onclick={oncancel}>{t('ruleform.cancel')}</button>
+			{/if}
+		</div>
+	{/if}
 </form>
+
+<style>
+	form {
+		display: grid;
+		gap: var(--space-lg);
+	}
+	.folded {
+		padding-top: var(--space-md);
+	}
+	/* Side by side, the two buttons stand as tall as each other (FD6). */
+	.actions {
+		align-items: stretch;
+	}
+</style>

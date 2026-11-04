@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fade, slide } from 'svelte/transition';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import Changes from '#lib/rules/Changes.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
 	import RuleForm from '#lib/rules/RuleForm.svelte';
@@ -9,11 +10,22 @@
 	import { LIST } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
-	import { focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
+	import { focusMade, focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
 	import { holdRoom } from '#lib/ui/hold-room.ts';
-	import { focusShown, showWhole } from '#lib/ui/landing.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
-	import { arrive, glide, grow, placeholder, pop, swapIn, vanish } from '#lib/motion.ts';
+	import Sheet from '#lib/ui/Sheet.svelte';
+	import {
+		arrive,
+		DURATION,
+		EASE,
+		glide,
+		grow,
+		placeholder,
+		pop,
+		swapIn,
+		vanish
+	} from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -23,6 +35,13 @@
 	let loaded = $state(false);
 	let busy = $state(false);
 	let title = $state<HTMLHeadingElement>();
+	let adding = $state(false);
+	let phone = $state(false);
+
+	const open = (node: Element) =>
+		prefersReducedMotion.current
+			? fade(node, { duration: DURATION.short })
+			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
 
 	const names = $derived(nameMaps(categories, payees, accounts));
 
@@ -97,46 +116,45 @@
 		}
 	}
 
-	// A new rule opens its room in the list above the form (`grow`) and the page follows it, so the form holds its
-	// place on the screen while the rule's card may stand cut at the screen's top: once it lands, the page settles
-	// where nothing is cut (pass 9).
-	/** The new rule's place in the list, once the list has it (RuleForm shows it above the form). */
+	// A new rule opens its room in the list (`grow`) as the form closes: once it lands, the page settles where nothing
+	// is cut (pass 9).
+	/** The form closes and the new rule, in its place in the list, takes the focus and shows whole. */
 	async function made(rule: Schemas['Rule']) {
 		changes?.forget();
 		await load();
+		adding = false;
 		await tick();
-		return document.querySelector<HTMLElement>(`[data-rule="${rule.id}"]`);
+		const row = focusMade(`[data-rule="${rule.id}"]`);
+		if (row) await showWhole(row);
 	}
 
-	// A link to the category form (from an uncategorized queue with no category to choose) lands in its name field:
-	// the form only exists once the page has loaded, too late for the browser's own jump to the anchor.
-	let fromQueue = $state(false);
-	onMount(async () => {
-		fromQueue = location.hash === '#new-category';
-		await load();
-		if (fromQueue) {
-			await tick();
-			// What stood in for the page leaves the flow as it fades, and the bar settles its height: measured before
-			// that, the landing aimed 32 px off and left a label across the bar (pass 12).
-			await Promise.all(
-				document
-					.getAnimations()
-					.filter((a) => a.effect?.getTiming().iterations !== Infinity)
-					.map((a) => a.finished.catch(() => undefined))
-			);
-			const form = document.getElementById('new-category');
-			const name = form?.querySelector('input');
-			// The form from its title, its name field focused and its button in view.
-			if (form && name) focusShown(name, form);
-		}
-	});
+	/** Opens the form: in place on a wide screen, as a full-screen dialog on a phone, on its first field. */
+	async function add() {
+		phone = matchMedia('(max-width: 899px)').matches;
+		adding = true;
+		await tick();
+		focusOn('#rule-form input');
+	}
+
+	async function close() {
+		adding = false;
+		await tick();
+		focusOn('#new-rule');
+	}
+
+	onMount(load);
 </script>
 
 <svelte:head>
 	<title>{t('app.title', { page: t('rules.title') })}</title>
 </svelte:head>
 
-<h1 tabindex="-1" bind:this={title}>{t('rules.title')}</h1>
+<div class="title-bar">
+	<h1 tabindex="-1" bind:this={title}>{t('rules.title')}</h1>
+	{#if loaded && rules.length && !adding}
+		<button id="new-rule" onclick={add} in:vanish out:vanish>+ {t('rules.add')}</button>
+	{/if}
+</div>
 <p class="hint">{t('rules.hint')}</p>
 
 {#if loadError}
@@ -203,8 +221,26 @@
 			{/if}
 		</div>
 
-		<RuleForm {categories} {payees} {accounts} oncreated={made} />
-		<CategoryForm oncreated={load} back={fromQueue} />
+		{#if adding && phone}
+			<Sheet
+				title={t('ruleform.title')}
+				form="rule-form"
+				action={t('ruleform.save')}
+				onclose={close}
+			>
+				<RuleForm {categories} {payees} {accounts} sheet oncreated={made} />
+			</Sheet>
+		{:else if adding || rules.length === 0}
+			<div transition:open>
+				<RuleForm
+					{categories}
+					{payees}
+					{accounts}
+					oncreated={made}
+					oncancel={rules.length ? close : undefined}
+				/>
+			</div>
+		{/if}
 		<Changes bind:this={changes} {names} onapplied={load} />
 	</div>
 {:else}

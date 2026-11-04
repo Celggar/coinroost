@@ -31,6 +31,16 @@
 	gap: var(--space-lg);
 }
 
+/* A page's title with the button that opens its form on demand. */
+.title-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-sm) var(--space-md);
+	min-height: var(--primary-height);
+}
+
 /* What a form ends with: its actions, in a row that wraps. */
 .actions {
 	display: flex;

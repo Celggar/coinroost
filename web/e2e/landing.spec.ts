@@ -18,8 +18,9 @@ test('an account sorted first lands with the column names whole', async ({ page 
 	await page.getByLabel(say('login.code')).fill(totp(secret));
 	await page.getByRole('button', { name: say('login.title') }).click();
 	await expect(page.getByRole('heading', { name: say('accounts.title') })).toBeVisible();
-	// A table and a form taller than the screen, so the landing has to choose where the page stands.
-	for (const name of ['Banco uno', 'Banco dos', 'Banco tres', 'Banco cuatro', 'Banco cinco']) {
+	// A table taller than the screen with the form under it, so the landing has to choose where the page stands.
+	const banks = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
+	for (const name of banks.map((bank) => `Banco ${bank}`)) {
 		const data = {
 			name,
 			kind: 'checking',
@@ -29,8 +30,8 @@ test('an account sorted first lands with the column names whole', async ({ page 
 		expect((await page.request.post('/api/v1/accounts', { data })).ok()).toBe(true);
 	}
 	await page.reload();
+	await page.locator('#new-account').click();
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Aaa primera');
-	await page.getByLabel(say('accounts.key')).fill('aaa-primera');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('cell', { name: 'Aaa primera' })).toBeVisible();
 	await still(page, 500);

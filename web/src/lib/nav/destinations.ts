@@ -51,12 +51,17 @@ const accounts: Destination = {
 	pages: ['/accounts', '/coverage'],
 	badge: 'accounts'
 };
-const rules: Destination = { href: '/rules', label: 'nav.rules', icon: 'rules', pages: ['/rules'] };
+const rules: Destination = {
+	href: '/rules',
+	label: 'nav.rules',
+	icon: 'rules',
+	pages: ['/rules', '/categories']
+};
 const more: Destination = {
 	href: '/more',
 	label: 'nav.more',
 	icon: 'more',
-	pages: ['/more', '/rules', '/security']
+	pages: ['/more', '/rules', '/categories', '/security']
 };
 
 /** The rail on a wide screen. */
@@ -64,7 +69,7 @@ export const wide = [summary, imports, review, accounts, rules];
 /** The bar on a phone. */
 export const narrow = [summary, imports, review, accounts, more];
 
-/** The two pages under Revisar and under Cuentas, shown as tabs at the top of each. */
+/** The two pages under Revisar, Cuentas and Reglas, shown as tabs at the top of each. */
 export type Tab = {
 	href: string;
 	label: Key;
@@ -86,13 +91,20 @@ export const groups: { label: Key; tabs: Tab[] }[] = [
 			{ href: '/accounts', label: 'nav.accounts' },
 			{ href: '/coverage', label: 'nav.coverage', badge: 'accounts' }
 		]
+	},
+	{
+		label: 'nav.rules',
+		tabs: [
+			{ href: '/rules', label: 'nav.rules' },
+			{ href: '/categories', label: 'categories.title' }
+		]
 	}
 ];
 
 /** The page's title for the phone's top bar: its destination's name. */
 export function titleOf(path: string): Key {
 	if (path === '/security') return 'nav.security';
-	if (path === '/rules') return 'nav.rules';
+	if (path === '/rules' || path === '/categories') return 'nav.rules';
 	return [...narrow].find((d) => d.pages.includes(path))?.label ?? 'app.name';
 }
 

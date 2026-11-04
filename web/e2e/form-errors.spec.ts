@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { watchDrops } from './focus.ts';
 import { say } from './messages.ts';
+import { unfold } from './forms.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -47,6 +48,8 @@ async function fieldSays(label: string, text: string) {
 }
 
 test('an empty form says what is missing under each field, in Spanish', async () => {
+	// With no account yet, the form is the page's first step: it stands open, no button to ask for it.
+	await expect(page.locator('#new-account')).toHaveCount(0);
 	const form = page.locator('form').first();
 	expect(await form.evaluate((f: HTMLFormElement) => f.noValidate)).toBe(true);
 	await page.getByRole('button', { name: say('accounts.create') }).click();
@@ -60,12 +63,13 @@ test('an empty form says what is missing under each field, in Spanish', async ()
 test('a key already taken is marked on «Clave», not as a loose English line', async () => {
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Corriente');
 	await page.getByLabel(say('accounts.bank_file')).selectOption({ value: 'bac-account' });
-	await page.getByLabel(say('accounts.key')).fill('corriente');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Corriente' }));
 
-	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Otra');
-	await page.getByLabel(say('accounts.key')).fill('corriente');
+	// The same name suggests the same key, folded away: the API's answer opens the fold to show it.
+	await page.locator('#new-account').click();
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Corriente');
+	await expect(page.getByLabel(say('accounts.key'))).toBeHidden();
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	const key = await fieldSays(say('accounts.key'), say('problem.already_exists.namespace'));
 	await expect(key).toBeFocused();
@@ -82,13 +86,35 @@ test('every wrong field is marked at once, in the words the API would use', asyn
 	await fieldSays(say('accounts.name'), say('form.required'));
 	await fieldSays(say('accounts.currency'), say('problem.currency_unknown'));
 	await fieldSays(say('accounts.key'), say('problem.namespace_format'));
+	// Side by side, an error under one field stretches none of the four.
+	const heights = await page
+		.locator('form .four')
+		.locator('input, select')
+		.evaluateAll((fields) => fields.map((f) => f.getBoundingClientRect().height));
+	expect(new Set(heights)).toEqual(new Set([44]));
+});
+
+test('«Cancelar» closes the form and gives the focus back to its button', async () => {
+	const name = page.getByLabel(say('accounts.name'), { exact: true });
+	await page.getByRole('button', { name: say('accounts.cancel') }).click();
+	await expect(name).toHaveCount(0);
+	await expect(page.locator('#new-account')).toBeFocused();
+	// What it held left with it.
+	await page.locator('#new-account').click();
+	await expect(name).toBeFocused();
+	await expect(name).toHaveValue('');
+	await expect(page.getByLabel(say('accounts.currency'), { exact: true })).toHaveValue('USD');
 });
 
 test('an amount that is not money is marked on its field before anything is sent', async () => {
 	await page.goto('/rules');
 	const form = page.getByRole('form', { name: say('ruleform.title') });
 	await form.getByLabel(say('ruleform.name')).fill('Prueba');
+	await unfold(page);
 	await form.getByLabel(say('ruleform.min')).fill('abc');
+	// Folded again, the field the error names comes back: it could not take the focus from inside a closed fold.
+	await form.locator('summary').click();
+	await expect(form.getByLabel(say('ruleform.min'))).toBeHidden();
 	await form.getByRole('button', { name: say('ruleform.add') }).click();
 	const min = await fieldSays(say('ruleform.min'), say('form.amount'));
 	await expect(min).toBeFocused();
@@ -173,7 +199,7 @@ test('an account that cannot read the file shrinks its card without moving the p
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
-test('on a phone, a new account shows whole above its form', async () => {
+test('on a phone, a new account shows whole and takes the focus as its form closes', async () => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	for (const [name, kind] of [
 		['Ahorro', 'savings'],
@@ -185,33 +211,33 @@ test('on a phone, a new account shows whole above its form', async () => {
 		expect(response.status()).toBe(201);
 	}
 	await page.goto('/accounts');
+	await page.locator('#new-account').click();
 	const name = page.getByLabel(say('accounts.name'), { exact: true });
+	await expect(name).toBeFocused();
 	await name.fill('Zeta');
 	await page.getByRole('button', { name: say('accounts.create') }).click();
-	await expect(name).toBeFocused();
+	await expect(name).toHaveCount(0);
 	const row = page.locator('tbody tr', { hasText: 'Zeta' });
+	await expect(row).toBeFocused();
 	await row.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished.catch(() => 0))));
 	await still(page, 500);
 	// Shown from the form's title, the new account, last in the list, stood above the screen (pass 15): it shows
-	// whole under the top bar, and the field under it, above the bottom one.
-	const [bar, top, bottom, field, end] = await row.evaluate((e) => {
+	// whole between the bars.
+	const [bar, top, bottom, end] = await row.evaluate((e) => {
 		const rect = e.getBoundingClientRect();
-		const input = document.querySelector('input[name="name"]')!.getBoundingClientRect();
 		return [
 			document.querySelector('header.appbar')!.getBoundingClientRect().bottom,
 			rect.top,
 			rect.bottom,
-			input.bottom,
 			document.querySelector('nav.bar')!.getBoundingClientRect().top
 		];
 	});
 	expect(top).toBeGreaterThanOrEqual(bar);
-	expect(bottom).toBeLessThan(field);
-	expect(field).toBeLessThanOrEqual(end);
+	expect(bottom).toBeLessThanOrEqual(end);
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
-test('on a phone, a new account sorted far above its form shows alone, with the focus', async () => {
+test('on a phone, a new account sorted first shows, and the focus never drops on the way', async () => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	for (const name of ['Moneda', 'Viajes']) {
 		const response = await page.request.post('/api/v1/accounts', {
@@ -220,6 +246,7 @@ test('on a phone, a new account sorted far above its form shows alone, with the 
 		expect(response.status()).toBe(201);
 	}
 	await page.goto('/accounts');
+	await page.locator('#new-account').click();
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Aaa');
 	// Down to the button first, as a person does: the field they filled scrolls away, and the press takes its focus.
 	const create = page.getByRole('button', { name: say('accounts.create') });
@@ -264,9 +291,9 @@ test('on a phone, a new account sorted far above its form shows alone, with the 
 		.toBe(150);
 	const focus = await page.evaluate(() => (window as unknown as { focus: string[] }).focus);
 	expect(focus.filter(Boolean)).toEqual([]);
-	// One Tab and the form is ready for the next.
-	await page.keyboard.press('Tab');
-	await expect(page.getByLabel(say('accounts.name'), { exact: true })).toBeFocused();
+	// One step back and the next account is a press away.
+	await page.keyboard.press('Shift+Tab');
+	await expect(page.locator('#new-account')).toBeFocused();
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
@@ -410,10 +437,11 @@ test('a split pair takes its place without the old line drawn over it', async ()
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
-test('a rule added above its form opens its room while the form stays still on the screen', async () => {
+test('a new rule opens its room as its form closes: nothing jumps, and the focus lands on it', async () => {
 	await page.setViewportSize({ width: 1280, height: 800 });
 	await makeRules(page, ['Slide A', 'Slide B']);
 	await page.goto('/rules');
+	await page.locator('#new-rule').click();
 	const form = page.getByRole('form', { name: say('ruleform.title') });
 	await form.getByLabel(say('ruleform.name')).fill('Slide C');
 	await form.getByLabel(say('ruleform.text')).fill('SLIDE C');
@@ -423,19 +451,18 @@ test('a rule added above its form opens its room while the form stays still on t
 	const add = form.getByRole('button', { name: say('ruleform.add') });
 	await add.focus();
 	await still(page);
-	// Every frame: the form's place in the page (the page's own scroll left out), its place on the screen while the
-	// rule grows, and where the focus is. The form jumped 238 px in one frame as the new rule came in above it at its
-	// whole height; the focus dropped to the page while the button was disabled, then went to the name field before
-	// it showed (pass 17).
+	// Every frame: where what follows the form stands in the page (the page's own scroll left out), how often the
+	// rule was still growing, and where the focus is. What stood under the new rule jumped 238 px in one frame as it
+	// came in at its whole height; the focus dropped to the page while the button was disabled (pass 17).
 	type Frames = { tops: number[]; growing: number[]; focus: string[] };
-	await form.evaluate((e) => {
+	await page.locator('section.follows').evaluate((e) => {
 		const w = window as unknown as Frames;
 		w.tops = [];
 		w.growing = [];
 		w.focus = [];
 		const step = () => {
 			w.tops.push(e.getBoundingClientRect().top + scrollY);
-			if (document.querySelector('[data-growing]')) w.growing.push(e.getBoundingClientRect().top);
+			if (document.querySelector('[data-growing]')) w.growing.push(scrollY);
 			const active = document.activeElement;
 			const box = active?.getBoundingClientRect();
 			w.focus.push(
@@ -455,15 +482,12 @@ test('a rule added above its form opens its room while the form stays still on t
 		const w = window as unknown as Frames;
 		return { tops: w.tops, growing: w.growing, focus: w.focus };
 	});
-	const moved = tops[tops.length - 1] - tops[0];
 	const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));
-	expect(moved).toBeGreaterThan(100);
-	expect(Math.max(...steps), `${moved} px in all`).toBeLessThan(moved / 2);
-	// The room opens over several frames, and the page follows it: the form, in use, holds its place on the screen.
+	expect(Math.max(...steps), tops.join(' ')).toBeLessThan(100);
+	// The room opens over several frames.
 	expect(growing.length).toBeGreaterThan(5);
-	expect(Math.max(...growing) - Math.min(...growing), growing.join(' ')).toBeLessThanOrEqual(2);
 	expect(focus.filter(Boolean)).toEqual([]);
-	await expect(form.getByLabel(say('ruleform.name'))).toBeFocused();
+	await expect(page.locator('ol.rules > li', { hasText: 'Slide C' })).toBeFocused();
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
