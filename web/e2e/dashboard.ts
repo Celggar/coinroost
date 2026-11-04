@@ -196,3 +196,22 @@ export async function checkPayroll(page: Page) {
 		say('payroll.no_deposits', { date: start })
 	);
 }
+
+/** On a phone each month of the open month table is a card of figures: they end on one line, so their decimals line
+ * up (pass 17: to the left they read ragged). The employers' history mixes words in, so only rows of figures count. */
+export async function checkMonthFigures(page: Page) {
+	const ends = await page
+		.locator('details[open] table.rows-on-phone tbody tr')
+		.evaluateAll((rows) =>
+			rows.map((row) =>
+				[...row.querySelectorAll('td.number')].map((cell) => {
+					const range = document.createRange();
+					range.selectNodeContents(cell);
+					return Math.round([...range.getClientRects()].at(-1)!.right);
+				})
+			)
+		);
+	const months = ends.filter((row) => row.length > 1);
+	expect(months.length).toBeGreaterThan(0);
+	for (const row of months) expect(new Set(row).size, String(row)).toBe(1);
+}
