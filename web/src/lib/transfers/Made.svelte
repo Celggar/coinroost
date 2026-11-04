@@ -110,9 +110,11 @@
 	.hint {
 		overflow-wrap: anywhere;
 	}
+	/* Its gap to the words is the row's 4 px and this: alone, the button nearly touched them (pass 25). */
 	.buttons {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-sm);
+		margin-top: var(--space-xs);
 	}
 </style>
