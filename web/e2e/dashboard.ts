@@ -1,7 +1,7 @@
 // The dashboard against the API: every number on screen is the report's, formatted by the browser itself.
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Browser, type Cookie, type Page } from '@playwright/test';
 import { say, type Key } from './messages.ts';
 
 const period = { from: '2026-05-01', to: '2026-05-31' };
@@ -214,4 +214,28 @@ export async function checkMonthFigures(page: Page) {
 	const months = ends.filter((row) => row.length > 1);
 	expect(months.length).toBeGreaterThan(0);
 	for (const row of months) expect(new Set(row).size, String(row)).toBe(1);
+}
+
+/**
+ * On a phone, a tap on the words of a waiting row opens its page. The row is one stretched link: a press that scaled
+ * the link made it the box of its tap area, which shrank to the chevron, and a tap on the words opened nothing.
+ */
+export async function checkRowTap(browser: Browser, cookies: Cookie[]) {
+	const phone = await browser.newContext({
+		viewport: { width: 390, height: 844 },
+		hasTouch: true,
+		isMobile: true,
+		locale: 'es-PA'
+	});
+	await phone.addCookies(cookies);
+	const page = await phone.newPage();
+	await page.goto('/');
+	const row = page.locator('.review .row:has(a)').first();
+	await expect(row).toBeVisible();
+	const href = await row.locator('a').getAttribute('href');
+	const box = await row.boundingBox();
+	if (!box || !href) throw new Error('no waiting row');
+	await page.touchscreen.tap(box.x + box.width * 0.4, box.y + box.height / 2);
+	await expect(page).toHaveURL(new URL(href, page.url()).href);
+	await phone.close();
 }

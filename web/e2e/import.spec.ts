@@ -4,7 +4,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { checkDashboard, checkMonthFigures, checkPayroll, loadEmployers } from './dashboard.ts';
+import {
+	checkDashboard,
+	checkMonthFigures,
+	checkPayroll,
+	checkRowTap,
+	loadEmployers
+} from './dashboard.ts';
 import { watchDrops } from './focus.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
@@ -358,25 +364,7 @@ test('the dashboard matches the API and words what employers owe', async ({ cont
 test('on a phone a row of «Por revisar» opens its page where the words are tapped', async ({
 	browser
 }) => {
-	// The row is one stretched link: a press that scaled the link made it the box of its tap area, which shrank to
-	// the chevron, and a tap on the words opened nothing.
-	const phone = await browser.newContext({
-		viewport: { width: 390, height: 844 },
-		hasTouch: true,
-		isMobile: true,
-		locale: 'es-PA'
-	});
-	await phone.addCookies(session.cookies);
-	const page = await phone.newPage();
-	await page.goto('/');
-	const row = page.locator('.review .row:has(a)').first();
-	await expect(row).toBeVisible();
-	const href = await row.locator('a').getAttribute('href');
-	const box = await row.boundingBox();
-	if (!box || !href) throw new Error('no waiting row');
-	await page.touchscreen.tap(box.x + box.width * 0.4, box.y + box.height / 2);
-	await expect(page).toHaveURL(new URL(href, page.url()).href);
-	await phone.close();
+	await checkRowTap(browser, session.cookies);
 });
 
 test('the payments card fades in when its answer comes after the summary', async ({ context }) => {

@@ -373,12 +373,7 @@ export function followContent(node: HTMLElement, held = false) {
 	const changes = new MutationObserver(fit);
 	node.addEventListener('transitionend', end);
 	observer.observe(content);
-	changes.observe(content, {
-		childList: true,
-		subtree: true,
-		attributes: true,
-		attributeFilter: ['class']
-	});
+	changes.observe(content, { childList: true, subtree: true, attributeFilter: ['class'] });
 	return {
 		update(next: boolean) {
 			hold = next;
