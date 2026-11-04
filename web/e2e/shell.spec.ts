@@ -63,3 +63,28 @@ for (const width of [1280, 390]) {
 		await context.close();
 	});
 }
+
+test('Tab through the bottom bar leaves the page where it stands', async ({ browser }) => {
+	const context = await browser.newContext({
+		storageState: session,
+		locale: 'es-PA',
+		viewport: { width: 390, height: 844 }
+	});
+	const page = await context.newPage();
+	await page.goto('/rules');
+	await expect(page.locator('main h1')).toBeVisible();
+	// A page long enough to move, at any height of this user's data.
+	await page.evaluate(() => {
+		(document.querySelector('main') as HTMLElement).style.minHeight = '3000px';
+		scrollTo({ top: 500, behavior: 'instant' });
+	});
+	const first = page.locator('nav a:visible').first();
+	await first.evaluate((a: HTMLElement) => a.focus({ preventScroll: true }));
+	for (let tab = 0; tab < 4; tab++) {
+		await page.keyboard.press('Tab');
+		expect(await page.evaluate(() => document.activeElement?.closest('nav') !== null)).toBe(true);
+		await page.waitForTimeout(100);
+		expect(await page.evaluate(() => scrollY)).toBe(500);
+	}
+	await context.close();
+});

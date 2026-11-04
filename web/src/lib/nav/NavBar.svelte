@@ -106,6 +106,11 @@
 			calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
 		border-top: 1px solid var(--card-edge);
 	}
+	/* The bar is always on screen, but it stands inside the page's scroll padding, so a browser that focuses one of its
+	   links takes it for hidden and moves the page to centre it: 395 px at each Tab on a phone (pass 35). */
+	.bar a {
+		scroll-margin-bottom: -100vh;
+	}
 	/* The narrowest phones: no side padding, so each of the five destinations keeps 64 px (N3). */
 	@media (max-width: 359px) {
 		.bar {
