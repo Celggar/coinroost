@@ -261,6 +261,17 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await expect(page).toHaveURL(/\/authenticator$/);
 });
 
+test('a password shown goes back to dots when the form refuses to send', async ({ page }) => {
+	await page.goto('/login');
+	const password = page.getByLabel(say('login.password'), { exact: true });
+	await password.fill('anything');
+	await page.getByRole('button', { name: say('password.show') }).click();
+	await expect(password).toHaveAttribute('type', 'text');
+	await page.getByRole('button', { name: say('login.title') }).click();
+	await expect(page.getByLabel(say('login.email'))).toHaveAttribute('aria-invalid', 'true');
+	await expect(password).toHaveAttribute('type', 'password');
+});
+
 test('the login swaps its second step by a fade through, the two never at once', async ({
 	page
 }) => {

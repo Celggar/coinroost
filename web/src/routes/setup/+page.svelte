@@ -100,8 +100,9 @@
 	async function toCode(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
-		if (refused(event)) return;
+		// Back to dots on any send, a refused one too (V7, pass 30).
 		passwordField?.hide();
+		if (refused(event)) return;
 		busy = true;
 		const {
 			data,
