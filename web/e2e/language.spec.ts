@@ -56,6 +56,18 @@ test('the language picked is saved on the account and wins on another browser', 
 	// Picked inside the app: the account takes it at once.
 	const picked = second.waitForResponse(saved);
 	await openAccount(second, 'en');
+	// One left edge for the panel's rows: their text, the control and the log-out icon's stroke, 4 px into its box.
+	// Three edges stood within 5 px of each other (pass 24).
+	const edges = await second.locator('.panel').evaluate((panel) => {
+		const text = (selector: string) => {
+			const range = document.createRange();
+			range.selectNodeContents(panel.querySelector(selector)!);
+			return range.getBoundingClientRect().left;
+		};
+		const box = (selector: string) => panel.querySelector(selector)!.getBoundingClientRect().left;
+		return [text('.who'), text('.label'), box('fieldset'), box('.leave svg') + 4];
+	});
+	expect(Math.max(...edges) - Math.min(...edges)).toBeLessThan(1);
 	await second.getByRole('radio', { name: 'Español' }).check();
 	await picked;
 

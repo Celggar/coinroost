@@ -209,12 +209,11 @@
 		top: 100%;
 		height: calc(var(--gap) + 1px);
 	}
-	/* The address on a line of its own, so it breaks only when it is longer than the panel. The panel's text starts
-	   4 px in, where the log-out icon's stroke starts. */
+	/* The address on a line of its own, so it breaks only when it is longer than the panel. The panel's text, the
+	   language control and the log-out icon's stroke share one left edge. */
 	.who {
 		display: grid;
 		gap: var(--space-2xs);
-		padding: 0 var(--space-xs);
 		font-size: var(--text-sm);
 		color: var(--muted);
 	}
@@ -244,7 +243,6 @@
 		border-top: 1px solid var(--border);
 	}
 	.label {
-		padding: 0 var(--space-xs);
 		font-size: var(--text-sm);
 		font-weight: 600;
 		color: var(--muted);
@@ -260,14 +258,14 @@
 		padding-top: var(--space-sm);
 		border-top: 1px solid var(--border);
 	}
-	/* Its padding puts the icon's stroke (4 px into its box) on the panel's text line above. */
+	/* Its padding puts the icon's stroke (4 px into its box) on the panel's left edge, under the text above. */
 	.leave {
 		--state-layer: color-mix(in oklab, var(--accent) 10%, transparent);
 		justify-content: flex-start;
 		gap: var(--space-md);
 		width: 100%;
 		min-height: 48px;
-		padding: 0 var(--space-sm);
+		padding: 0 calc(var(--space-sm) - var(--space-xs));
 		border: 0;
 		border-radius: calc(var(--radius-card) - var(--space-sm));
 		background: none;
