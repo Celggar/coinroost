@@ -29,6 +29,8 @@
 	// What the next load runs once the new lists are in hand, just before they replace the old ones; once.
 	let arriving: (() => void) | undefined;
 
+	let changes = $state<Changes>();
+
 	async function load() {
 		const before = arriving;
 		arriving = undefined;
@@ -62,7 +64,7 @@
 		busy = false;
 		if (!response.ok) {
 			notify(problem(error, response.status, t('rules.move_failed')), 'bad');
-		}
+		} else changes?.forget();
 		// The list holds the focus while its rows change places, so the row that moves takes none out with it.
 		arriving = () => holdFocus(document.querySelector('ol.rules'));
 		await load();
@@ -84,7 +86,7 @@
 		busy = false;
 		if (!response.ok) {
 			notify(problem(error, response.status, t('rules.delete_failed')), 'bad');
-		}
+		} else changes?.forget();
 		await holdRoom(document.querySelector('.rules-page > .in-place'), load);
 		// The rule and its buttons are gone: the focus goes to the page's title. Where the title shows (from 900 px) the
 		// page glides to it; on a phone the top bar holds the title and the page stays. Focused bare, the page jumped to
@@ -100,6 +102,7 @@
 	// where nothing is cut (pass 9).
 	/** The new rule's place in the list, once the list has it (RuleForm shows it above the form). */
 	async function made(rule: Schemas['Rule']) {
+		changes?.forget();
 		await load();
 		await tick();
 		return document.querySelector<HTMLElement>(`[data-rule="${rule.id}"]`);
@@ -202,7 +205,7 @@
 
 		<RuleForm {categories} {payees} {accounts} oncreated={made} />
 		<CategoryForm oncreated={load} back={fromQueue} />
-		<Changes {names} onapplied={load} />
+		<Changes bind:this={changes} {names} onapplied={load} />
 	</div>
 {:else}
 	<p class="hint loading" out:placeholder>{t('app.loading')}</p>

@@ -20,6 +20,11 @@
 	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole).
 	let holding = $state(false);
 
+	/** The rules changed: what the last check said no longer holds, so it leaves and «Ver cambios» asks again (pass 29). */
+	export function forget() {
+		preview = null;
+	}
+
 	/** Only what changes: the category, the payee, or both. */
 	function what(change: Schemas['RuleChange']): string[] {
 		const parts: string[] = [];
