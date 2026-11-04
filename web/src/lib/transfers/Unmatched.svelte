@@ -9,7 +9,7 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import Money from '#lib/ui/Money.svelte';
-	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
@@ -26,6 +26,8 @@
 	let error = $state('');
 	let errors = $state<Errors>({});
 	let busy = $state(false);
+	// What the API said of the two chosen: it stands under «Otro lado», but it is about both.
+	let refusal = '';
 
 	// Every leg still waiting, paired in the preview or not: by hand, any two can be tried.
 	const choices = $derived(
@@ -105,6 +107,7 @@
 		}
 		// A refusal is about the second choice next to the first: its message goes under «Otro lado», which takes
 		// the focus, as a check of one field does.
+		refusal = why.message;
 		errors = { second: why.message };
 		focusFirst(form, errors);
 	}
@@ -171,6 +174,8 @@
 				onsubmit={submit}
 				onchange={(event) => {
 					errors = without(errors, event);
+					// A new «Un lado» ends a refusal too: it denied what the two then showed (pass 27).
+					if (errors.second === refusal) errors = drop(errors, 'second');
 					error = '';
 					// The leg chosen on one side is not offered on the other (pass 19): one chosen there before goes.
 					if (second === first) second = '';

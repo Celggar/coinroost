@@ -323,6 +323,12 @@ test('pairs two legs and splits them', async ({ context }) => {
 	const ids = (await other.getAttribute('aria-describedby'))?.split(' ') ?? [];
 	const reason = form.locator(`[id="${ids.find((id) => id.endsWith('-error'))}"]`);
 	await expect(reason).toHaveText(say('problem.transfer_not_balanced'));
+	// It is about the two: a new «Un lado» ends it, or it denied what the two then showed (pass 27).
+	const one = form.getByLabel(say('unmatched.one_side'));
+	await one.selectOption({ label: inflow });
+	await expect(other).not.toHaveAttribute('aria-invalid', 'true');
+	await one.selectOption({ label: outflow });
+	await other.selectOption({ label: inflow });
 	await form.getByRole('button', { name: say('unmatched.pair_them') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('unmatched.paired'));
 	await expect(made.getByRole('listitem')).toHaveCount(1);
