@@ -171,6 +171,7 @@
 		gap: var(--space-xs) var(--space-md);
 	}
 	.owed strong {
+		font-variant-numeric: tabular-nums;
 		font-size: var(--text-xl);
 		font-weight: 700;
 	}

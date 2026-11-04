@@ -211,6 +211,9 @@
 							<FormAlert {...error} />
 							<div class="buttons" bind:this={buttons}>
 								<button type="submit" class="primary" aria-disabled={busy}>
+									<!-- The longer word, unseen: the button keeps its width while it works, so «Cancelar» stays where it
+									     was (pass 30: 27 px under the finger). -->
+									<span class="keep" aria-hidden="true">{t('security.confirm')}</span>
 									{#key busy}
 										<span in:pop={{ start: 0.9 }} out:vanish>
 											{busy ? t('security.busy') : t('security.confirm')}
@@ -318,5 +321,8 @@
 	}
 	.buttons button > :global(*) {
 		grid-area: 1 / 1;
+	}
+	.keep {
+		visibility: hidden;
 	}
 </style>

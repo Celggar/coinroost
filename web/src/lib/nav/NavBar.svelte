@@ -131,6 +131,11 @@
 		font-weight: 400;
 		text-decoration: none;
 	}
+	@media (hover: hover) {
+		a:hover {
+			color: var(--text);
+		}
+	}
 	/* The pill is a tint under 3:1 against the bar, so the weight and the icon say «you are here» too (N5, pass 29). */
 	a[aria-current='page'] {
 		color: var(--text);
