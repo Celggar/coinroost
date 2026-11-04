@@ -197,15 +197,12 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	await expect(
 		page.getByRole('link', { name: say('nav.uncategorized'), exact: true })
 	).toHaveAttribute('aria-current', 'page');
-	await expect(
-		page.getByText(say('uncategorized.count_other', { count: transactions }))
-	).toBeVisible();
+	const all = page.locator('label', { hasText: say('uncategorized.all') });
+	await expect(all).toContainText(String(transactions));
 	const market = page.getByRole('listitem').filter({ hasText: 'SUPERMERCADO' });
 	await expect(market).toHaveCount(2);
 	await market.first().getByLabel(say('column.category')).selectOption({ label: 'Other' });
-	await expect(
-		page.getByText(say('uncategorized.count_other', { count: transactions - 1 }))
-	).toBeVisible();
+	await expect(all).toContainText(String(transactions - 1));
 
 	await page.getByRole('link', { name: say('nav.rules'), exact: true }).click();
 	await page.getByRole('button', { name: say('changes.check') }).click();

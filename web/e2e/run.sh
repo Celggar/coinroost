@@ -25,7 +25,7 @@ secret=$(printf '%s\n' "$password" | "$server" user add "$email" | sed -n 's/^se
 [ -n "$secret" ] || { echo "user add printed no secret" >&2; exit 1; }
 # add_user <name>: one more user, in <name>_email, <name>_password and <name>_secret. A TOTP code is accepted once,
 # so a test that logs in on its own (the form errors, the forced colors, the rules, the landing, the empty pages,
-# the shell) takes its own user.
+# the shell, the queue) takes its own user.
 add_user() {
   local email password secret
   email="e2e-$1-$(date +%s)-$$@example.com"
@@ -42,6 +42,7 @@ add_user rules
 add_user landing
 add_user empty
 add_user shell
+add_user categorize
 # Setup links for the web enrollment, recovery-code and language tests, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -99,4 +100,5 @@ BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2
   E2E_LANDING_EMAIL="$landing_email" E2E_LANDING_PASSWORD="$landing_password" E2E_LANDING_SECRET="$landing_secret" \
   E2E_EMPTY_EMAIL="$empty_email" E2E_EMPTY_PASSWORD="$empty_password" E2E_EMPTY_SECRET="$empty_secret" \
   E2E_SHELL_EMAIL="$shell_email" E2E_SHELL_PASSWORD="$shell_password" E2E_SHELL_SECRET="$shell_secret" \
+  E2E_CATEGORIZE_EMAIL="$categorize_email" E2E_CATEGORIZE_PASSWORD="$categorize_password" E2E_CATEGORIZE_SECRET="$categorize_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" E2E_LANGUAGE_INVITE="$language_invite" npx playwright test "$@"

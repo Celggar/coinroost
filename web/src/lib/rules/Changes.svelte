@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
@@ -13,7 +13,12 @@
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
 
-	let { names, onapplied }: { names: Names; onapplied: () => void } = $props();
+	// `inline`: inside the offer that follows a choice, with no card of its own, the check already made.
+	let {
+		names,
+		onapplied,
+		inline = false
+	}: { names: Names; onapplied: () => void; inline?: boolean } = $props();
 
 	let preview = $state<Schemas['RulePreview'] | null>(null);
 	let busy = $state(false);
@@ -87,31 +92,39 @@
 		refreshCounts();
 		onapplied();
 		// The apply button is gone with the changes: the check puts the focus on what the list says now.
-		await check();
+		if (!inline) await check();
 	}
+
+	onMount(() => {
+		if (inline) check();
+	});
 </script>
 
 <!-- The card shrinks with what it holds instead of at once: at the page's end, the applied changes leaving pulled the
      page back 171 px in one frame (pass 14). -->
 <section
-	class="card follows"
-	aria-labelledby="changes-title"
+	class="follows"
+	class:card={!inline}
+	aria-labelledby={inline ? undefined : 'changes-title'}
+	aria-label={inline ? t('changes.title') : undefined}
 	bind:this={card}
 	use:followContent={holding}
 >
 	<div class="stack">
-		<h2 id="changes-title">{t('changes.title')}</h2>
-		<p class="hint">{t('changes.hint')}</p>
-		<div class="actions">
-			<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
-			<button
-				class="secondary"
-				onclick={() => {
-					check();
-				}}
-				aria-disabled={busy}>{t('changes.check')}</button
-			>
-		</div>
+		{#if !inline}
+			<h2 id="changes-title">{t('changes.title')}</h2>
+			<p class="hint">{t('changes.hint')}</p>
+			<div class="actions">
+				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
+				<button
+					class="secondary"
+					onclick={() => {
+						check();
+					}}
+					aria-disabled={busy}>{t('changes.check')}</button
+				>
+			</div>
+		{/if}
 		{#if preview}
 			<!-- `global`: these also enter when the first check opens the block around them, and leave when `forget` closes
 			     it: a local transition does not run with its parent block, so the answer went in one frame (pass 30). In one

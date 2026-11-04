@@ -44,7 +44,7 @@
 
 <div class="notices" aria-hidden="true" style:--bar="{offset}px">
 	{#key notices.current?.id}
-		{#if notices.current}
+		{#if notices.current && !notices.current.quiet}
 			<p class="note {notices.current.tone}" in:enter|global out:leave|global>
 				<span class="mark"></span>
 				<span class="text">{held(notices.current.text)}</span>

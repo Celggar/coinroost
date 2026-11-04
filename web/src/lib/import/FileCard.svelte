@@ -9,6 +9,7 @@
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
 	import { scrollable } from '#lib/ui/scrollable.ts';
+	import { confetti } from '#lib/ui/confetti.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -96,6 +97,7 @@
 		}
 		report = data;
 		notify(added(data.batch.added, data.batch.duplicates));
+		if (data.batch.added > 0) confetti('imported');
 		refreshCounts();
 		// The import button is gone: the focus goes to what it did, not to the page's start. The card stays the record
 		// of this import (its counts and rows say what it added), so the file is not read again.
@@ -103,9 +105,7 @@
 		resultLine?.focus();
 	}
 
-	onMount(() => {
-		read();
-	});
+	onMount(() => void read());
 	/** Why a row could not be read, in the page's language: the text of its code, else the API's English. */
 	function rowReason(failure: Schemas['RowFailure']): string {
 		const key = `row.${failure.code}`;

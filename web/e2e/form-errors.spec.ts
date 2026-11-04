@@ -515,65 +515,6 @@ test('the transfers summary grows and shrinks with its figures, never in one fra
 	await page.setViewportSize({ width: 1280, height: 720 });
 });
 
-test('a sorted card fades before the next moves up, and its count never shows twice', async () => {
-	const accounts: { id: string; name: string }[] = (
-		await (await page.request.get('/api/v1/accounts')).json()
-	).items;
-	const account = accounts.find((a) => a.name === 'Corriente')!.id;
-	for (const [day, text] of [
-		['2026-05-20', 'COFFEE SHOP'],
-		['2026-05-21', 'BOOK STORE'],
-		['2026-05-22', 'HARDWARE STORE'],
-		['2026-05-23', 'BAKERY']
-	]) {
-		const response = await page.request.post('/api/v1/transactions', {
-			data: { date: day, description: text, legs: [{ account_id: account, amount_minor: -1000 }] }
-		});
-		expect(response.status()).toBe(201);
-	}
-	type Frames = { frames: [number, number][] };
-	for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-		await page.emulateMedia({ reducedMotion });
-		await page.goto('/uncategorized');
-		const select = page.locator('.queue select').first();
-		await expect(select).toBeEnabled();
-		// Every frame: how many counts show, and how far the next card overlaps the leaving one while it shows. The
-		// count read double as the new one rose under the old; the next card sat under the fading one (pass 16).
-		await page.evaluate(() => {
-			const w = window as unknown as Frames;
-			w.frames = [];
-			const leaving = document.querySelector('.queue > li')!;
-			const next = leaving.nextElementSibling!;
-			const step = () => {
-				const counts = [...document.querySelectorAll('.tick > span')].filter(
-					(e) => Number(getComputedStyle(e).opacity) > 0.02
-				).length;
-				const a = leaving.getBoundingClientRect();
-				const b = next.getBoundingClientRect();
-				const shown = leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02;
-				w.frames.push([
-					counts,
-					shown ? Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) : 0
-				]);
-				if (w.frames.length < 90) requestAnimationFrame(step);
-			};
-			requestAnimationFrame(step);
-		});
-		await select.selectOption({ index: 1 });
-		await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 90);
-		const frames = await page.evaluate(() => (window as unknown as Frames).frames);
-		expect(
-			frames.filter(([counts]) => counts > 1),
-			reducedMotion
-		).toEqual([]);
-		expect(
-			frames.filter(([, overlap]) => overlap > 0),
-			reducedMotion
-		).toEqual([]);
-	}
-	await page.emulateMedia({ reducedMotion: null });
-});
-
 // Last: it imports into «Corriente», which the tests above read without imports.
 test('importing keeps the rows table still while each status changes', async () => {
 	const fixture = fileURLToPath(
