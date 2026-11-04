@@ -93,3 +93,22 @@ test('the language picked is saved on the account and wins on another browser', 
 	await third.context().close();
 	await fourth.context().close();
 });
+
+test('a refusal follows the language the person switches to', async ({ page }) => {
+	await page.goto('/login');
+	const alert = page.getByRole('alert');
+	// The form's own refusal names a field, by its label in the new language.
+	await page.getByRole('button', { name: say('login.title') }).click();
+	await expect(alert).toContainText(new RegExp(say('login.email'), 'i'));
+	await page.getByRole('radio', { name: 'English' }).check();
+	await expect(alert).toContainText(new RegExp(english('login.email'), 'i'));
+
+	// The server's refusal, and back.
+	await page.getByLabel(english('login.email')).fill('nobody@example.com');
+	await page.getByLabel(english('login.password'), { exact: true }).fill(password);
+	await page.getByLabel(english('login.code')).fill('000000');
+	await page.getByRole('button', { name: english('login.title') }).click();
+	await expect(alert).toHaveText(english('login.wrong'));
+	await page.getByRole('radio', { name: 'Español' }).check();
+	await expect(alert).toHaveText(say('login.wrong'));
+});

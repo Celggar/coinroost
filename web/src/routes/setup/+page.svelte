@@ -11,6 +11,7 @@
 	import AuthShell from '#lib/auth/AuthShell.svelte';
 	import Authenticator, { onPhone } from '#lib/auth/Authenticator.svelte';
 	import CodeField from '#lib/auth/CodeField.svelte';
+	import { Alert } from '#lib/auth/alert.svelte.ts';
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import RecoveryCodes from '#lib/auth/RecoveryCodes.svelte';
@@ -31,12 +32,12 @@
 	let enrollment = $state<Schemas['InviteEnrollment'] | null>(null);
 	let first = $state(false);
 	let recovery = $state<{ codes: string[]; createdAt: string }>({ codes: [], createdAt: '' });
-	let error = $state({ text: '', n: 0 });
+	const error = new Alert();
 
 	/** An edit answers the message: the field is unmarked and the message leaves (it was about what is now changed). */
 	function edited(event: Event) {
 		(event.target as Element).removeAttribute('aria-invalid');
-		if (error.text) error = { text: '', n: error.n + 1 };
+		if (error.text) error.clear();
 	}
 	let busy = $state(false);
 	let passwordField: PasswordField | undefined = $state();
@@ -67,14 +68,10 @@
 		step = next;
 	}
 
-	function fail(text: string) {
-		error = { text, n: error.n + 1 };
-	}
-
 	/** Back to an earlier step with a message: the step's alert region is on the page, empty, before the message
 	 * lands in it, so screen readers announce it. */
-	async function backWith(next: Step, text: string) {
-		error = { text: '', n: error.n + 1 };
+	async function backWith(next: Step, say: () => string) {
+		error.clear();
 		const arrived = new Promise<void>((resolve) => (introEnded = resolve));
 		go(next);
 		await tick();
@@ -83,7 +80,7 @@
 			new Promise((resolve) => setTimeout(resolve, DURATION.medium * 2))
 		]);
 		introEnded = undefined;
-		fail(text);
+		error.say(say);
 	}
 
 	onMount(async () => {
@@ -116,16 +113,16 @@
 			go('invalid');
 		} else if (data) {
 			enrollment = data;
-			error = { text: '', n: error.n + 1 };
+			error.clear();
 			go('code');
 		} else if (response.status === 409) {
 			// Said here, before the code step (pass 20): the email is marked and takes the focus, ready to change.
-			fail(t('setup.taken'));
+			error.say(() => t('setup.taken'));
 			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
 			field?.setAttribute('aria-invalid', 'true');
 			field?.focus();
 		} else {
-			fail(problem(failure, response.status, t('setup.failed')));
+			error.say(() => problem(failure, response.status, t('setup.failed')));
 		}
 	}
 
@@ -145,7 +142,7 @@
 		if (data) {
 			// The link is spent: a reload now shows it as used, and the codes can be made again in Security.
 			recovery = { codes: data.recovery_codes, createdAt: new Date().toISOString() };
-			error = { text: '', n: error.n + 1 };
+			error.clear();
 			go('codes');
 			return;
 		}
@@ -153,18 +150,18 @@
 		if (response.status === 404) {
 			go('invalid');
 		} else if (response.status === 409) {
-			await backWith('account', t('setup.taken'));
+			await backWith('account', () => t('setup.taken'));
 			// The email is what clashed: it is marked and takes the focus, ready to change.
 			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
 			field?.setAttribute('aria-invalid', 'true');
 			field?.focus();
 		} else if (response.status === 422) {
-			fail(t('setup.wrong_code'));
+			error.say(() => t('setup.wrong_code'));
 			codeField?.shake();
 			// The code is cleared, marked and focused, ready for the next one.
 			codeField?.mark();
 		} else {
-			fail(problem(failure, response.status, t('setup.failed')));
+			error.say(() => problem(failure, response.status, t('setup.failed')));
 		}
 	}
 
@@ -174,7 +171,7 @@
 	}
 
 	function back() {
-		error = { text: '', n: error.n + 1 };
+		error.clear();
 		go('account');
 	}
 
@@ -182,9 +179,8 @@
 	function refused(event: SubmitEvent): boolean {
 		const form = event.currentTarget as HTMLFormElement;
 		const errors = check(form);
-		const why = single(form, errors);
-		if (!why) return false;
-		error = { text: why, n: error.n + 1 };
+		if (!single(form, errors)) return false;
+		error.say(() => single(form, check(form)));
 		focusFirst(form, errors);
 		return true;
 	}
@@ -245,7 +241,7 @@
 								bind:value={password}
 							/>
 							<div class="actions">
-								<FormAlert {...error} />
+								<FormAlert text={error.text} n={error.n} />
 								<button type="submit" class="primary" aria-disabled={busy} data-flip
 									>{t('setup.continue')}</button
 								>
@@ -268,7 +264,7 @@
 								bind:value={code}
 							/>
 							<div class="actions">
-								<FormAlert {...error} />
+								<FormAlert text={error.text} n={error.n} />
 								<button type="submit" class="primary" aria-disabled={busy} data-flip>
 									{#key busy}
 										<span in:pop={{ start: 0.9 }} out:vanish>

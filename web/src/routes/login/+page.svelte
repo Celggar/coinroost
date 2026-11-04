@@ -7,6 +7,7 @@
 	import { api, problem } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
 	import CodeField from '#lib/auth/CodeField.svelte';
+	import { Alert } from '#lib/auth/alert.svelte.ts';
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
@@ -20,12 +21,12 @@
 	let recoveryCode = $state('');
 	let recovering = $state(false);
 	let recoveryField: HTMLInputElement | undefined = $state();
-	let error = $state({ text: '', n: 0 });
+	const error = new Alert();
 
 	/** An edit answers the message: the field is unmarked and the message leaves (it was about what is now changed). */
 	function edited(event: Event) {
 		(event.target as Element).removeAttribute('aria-invalid');
-		if (error.text) error = { text: '', n: error.n + 1 };
+		if (error.text) error.clear();
 	}
 	let busy = $state(false);
 	let passwordField: PasswordField | undefined = $state();
@@ -44,10 +45,10 @@
 		});
 		busy = false;
 		if (failure || !response.ok) {
-			const wrong = recovering ? t('login.recovery_wrong') : t('login.wrong');
-			const text =
-				response?.status === 401 ? wrong : problem(failure, response?.status, t('login.failed'));
-			error = { text, n: error.n + 1 };
+			const wrong = recovering ? 'login.recovery_wrong' : 'login.wrong';
+			error.say(() =>
+				response?.status === 401 ? t(wrong) : problem(failure, response?.status, t('login.failed'))
+			);
 			code = '';
 			codeField?.shake();
 			// The code is spent either way: the caret goes to the second step, ready for the next one.
@@ -73,7 +74,7 @@
 		for (const field of form?.querySelectorAll('[aria-invalid]') ?? [])
 			field.removeAttribute('aria-invalid');
 		recovering = !recovering;
-		error = { text: '', n: error.n + 1 };
+		error.clear();
 		await tick();
 		if (recovering) recoveryField?.focus();
 		else codeField?.focus();
@@ -83,9 +84,8 @@
 	function refused(event: SubmitEvent): boolean {
 		const form = event.currentTarget as HTMLFormElement;
 		const errors = check(form);
-		const why = single(form, errors);
-		if (!why) return false;
-		error = { text: why, n: error.n + 1 };
+		if (!single(form, errors)) return false;
+		error.say(() => single(form, check(form)));
 		focusFirst(form, errors);
 		return true;
 	}
@@ -148,7 +148,7 @@
 			{/key}
 		</div>
 		<div class="actions">
-			<FormAlert {...error} />
+			<FormAlert text={error.text} n={error.n} />
 			<button type="submit" class="primary" aria-disabled={busy} data-flip>
 				{#key busy}
 					<span in:pop={{ start: 0.9 }} out:vanish>{busy ? t('login.busy') : t('login.title')}</span
