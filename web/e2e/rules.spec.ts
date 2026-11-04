@@ -393,7 +393,8 @@ for (const [names, gone, reducedMotion] of [
 		expect(new Set(heights.map(Math.round)).size, heights.join(' ')).toBeLessThanOrEqual(1);
 		expect(moved.length).toBeGreaterThan(3);
 		expect(moved.filter((offset) => Math.abs(offset) > 0.5)).toEqual([]);
-		const travel = tops[0] - tops[tops.length - 1];
+		// Up as the list shrinks; with the last rule gone, down, as the form that takes its place opens.
+		const travel = Math.abs(tops[0] - tops[tops.length - 1]);
 		expect(travel).toBeGreaterThan(100);
 		if (reducedMotion === 'no-preference') {
 			const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));

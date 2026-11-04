@@ -19,6 +19,7 @@
 		arrive,
 		DURATION,
 		EASE,
+		FADED,
 		glide,
 		grow,
 		placeholder,
@@ -38,10 +39,12 @@
 	let adding = $state(false);
 	let phone = $state(false);
 
-	const open = (node: Element) =>
+	// With the last rule gone the form opens by itself: it waits for that rule to fade, or it pushed what follows the list
+	// down under it.
+	const open = (node: Element, { delay = 0 } = {}) =>
 		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
+			? fade(node, { delay, duration: DURATION.short })
+			: slide(node, { delay, duration: DURATION.medium, easing: EASE.enter });
 
 	const names = $derived(nameMaps(categories, payees, accounts));
 
@@ -231,7 +234,7 @@
 				<RuleForm {categories} {payees} {accounts} sheet oncreated={made} />
 			</Sheet>
 		{:else if adding || rules.length === 0}
-			<div transition:open>
+			<div transition:open={{ delay: rules.length ? 0 : FADED }}>
 				<RuleForm
 					{categories}
 					{payees}
