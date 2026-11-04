@@ -326,6 +326,8 @@ test('an answer about the rules leaves by a fade when they change', async ({ con
 		await page.getByRole('button', { name: say('rules.delete_it') }).click();
 	});
 	await leaves(async () => {
+		await page.locator('#new-rule').click();
+		await unfold(page);
 		await page.getByLabel(say('ruleform.name'), { exact: true }).fill('Stale C');
 		await page.getByLabel(say('ruleform.text'), { exact: true }).fill('STALE C');
 		await page.getByLabel(say('ruleform.payee'), { exact: true }).selectOption('text');
