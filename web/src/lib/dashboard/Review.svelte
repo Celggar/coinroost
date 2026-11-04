@@ -9,6 +9,8 @@
 	import { DURATION, followContent, pop, vanish } from '#lib/motion.ts';
 	import Icon from '#lib/nav/Icon.svelte';
 	import type { IconName } from '#lib/nav/destinations.ts';
+	import { focusOn } from '#lib/ui/focus.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import Tick from '#lib/ui/Tick.svelte';
 	import type { Schemas } from '#lib/api/client.ts';
 
@@ -73,6 +75,14 @@
 						detail: t('review.nobody_owes')
 					}
 	);
+
+	// The payments card lies further down: the page glides there and the focus goes along. Left to the browser, the
+	// link jumped there in one frame (pass 31).
+	async function reach(event: MouseEvent, target: string) {
+		event.preventDefault();
+		const title = focusOn(target);
+		if (title) await showWhole(title);
+	}
 
 	// The leaving row's place is held while it fades out (its height on the item), then given up.
 	function leave(event: Event) {
@@ -209,7 +219,13 @@
 								<span class="detail">{row.detail}</span>
 							</span>
 							{#if row.href && row.action}
-								<a class="button" class:secondary={!row.primary} href={row.href}
+								<a
+									class="button"
+									class:secondary={!row.primary}
+									href={row.href}
+									onclick={row.href.startsWith('#')
+										? (event) => reach(event, row.href as string)
+										: undefined}
 									><span class="action">{row.action}</span><span class="go" aria-hidden="true"
 										><Icon name="chev" size={20} /></span
 									></a

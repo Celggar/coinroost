@@ -145,10 +145,27 @@ export async function checkDashboard(page: Page) {
 }
 
 export async function checkPayroll(page: Page) {
-	// «Ver» on the summary's card goes to the payments card and takes the focus along: it stayed on the page (pass 29).
+	// «Ver» on the summary's card glides to the payments card and takes the focus along: it stayed on the page (pass
+	// 29), then got there in one frame, 1039 px at once (pass 31).
 	const review = page.getByRole('region', { name: say('review.title') });
+	type Frames = { ys: number[] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.ys = [];
+		const step = () => {
+			w.ys.push(scrollY);
+			if (w.ys.length < 90) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
 	await review.getByRole('link', { name: say('review.see') }).click();
 	await expect(page.locator('#payroll-title')).toBeFocused();
+	await page.waitForFunction(() => (window as unknown as Frames).ys.length >= 90);
+	const ys = await page.evaluate(() => (window as unknown as Frames).ys);
+	const travel = Math.max(...ys) - Math.min(...ys);
+	expect(travel).toBeGreaterThan(0);
+	const steps = ys.slice(1).map((y, i) => Math.abs(y - ys[i]));
+	expect(Math.max(...steps)).toBeLessThan(travel / 2);
 	const today = await page.evaluate(() => {
 		const now = new Date();
 		const pad = (n: number) => String(n).padStart(2, '0');
