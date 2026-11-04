@@ -114,14 +114,17 @@
 			>
 		</div>
 		{#if preview}
-			<!-- `global`: these also enter when the first check opens the block around them. -->
+			<!-- `global`: these also enter when the first check opens the block around them, and leave when `forget` closes
+			     it: a local transition does not run with its parent block, so the answer went in one frame (pass 30). -->
 			{#if preview.changes.length === 0}
-				<p id="changes-none" tabindex="-1" in:rise|global out:vanish>{t('changes.nothing')}</p>
+				<p id="changes-none" tabindex="-1" in:rise|global out:vanish|global>
+					{t('changes.nothing')}
+				</p>
 			{:else}
-				<p id="changes-some" tabindex="-1" in:rise|global out:vanish>
+				<p id="changes-some" tabindex="-1" in:rise|global out:vanish|global>
 					{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
 				</p>
-				<ul class="changes txn-rows" in:rise|global out:vanish>
+				<ul class="changes txn-rows" in:rise|global out:vanish|global>
 					{#each preview.changes as change (change.transaction_id)}
 						<li out:vanish animate:glide>
 							<div class="txn-line">
@@ -137,7 +140,7 @@
 						</li>
 					{/each}
 				</ul>
-				<div class="actions" in:rise|global out:vanish>
+				<div class="actions" in:rise|global out:vanish|global>
 					<button onclick={() => busy || apply()} aria-disabled={busy}>
 						{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
 					</button>

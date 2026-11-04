@@ -227,31 +227,48 @@ test('a rule under a deleted one waits in its place while that one fades', async
 
 // What «Ver cambios» answered was about the rules of that moment: with one added, moved or deleted it still said
 // «No cambiaría nada.», while a new check said 3 transactions would change (pass 29).
-test('an answer about the rules leaves when they change', async ({ context }) => {
+test('an answer about the rules leaves by a fade when they change', async ({ context }) => {
 	const page = await loggedIn(context);
 	const [first] = await makeRules(page, ['Stale A', 'Stale B']);
 	await page.goto('/rules');
 	const answer = page.locator('#changes-none');
-	const ask = async () => {
+	type Frames = { seen: number[] };
+	/** Asks, does what changes the rules, and reads the answer's opacity on every frame until it is gone. Inside the
+	 * block that goes with it a local transition never ran: opacity 1, then nothing (pass 30). */
+	const leaves = async (change: () => Promise<void>) => {
 		await page.getByRole('button', { name: say('changes.check') }).click();
-		await expect(answer).toBeVisible();
+		await expect(answer).toHaveCSS('opacity', '1');
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			const node = document.querySelector('#changes-none')!;
+			w.seen = [];
+			const step = () => {
+				if (!node.isConnected) return;
+				w.seen.push(Number(getComputedStyle(node).opacity));
+				requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await change();
+		await expect(answer).toHaveCount(0);
+		const seen = await page.evaluate(() => (window as unknown as Frames).seen);
+		expect(Math.min(...seen)).toBeLessThan(0.9);
 	};
-	await ask();
-	await page.locator(`[data-move="${first}-down"]`).click();
-	await expect(answer).toHaveCount(0);
 
-	await ask();
-	await page.getByRole('button', { name: say('rules.delete_named', { name: 'Stale A' }) }).click();
-	await page.getByRole('button', { name: say('rules.delete_it') }).click();
-	await expect(answer).toHaveCount(0);
-
-	await ask();
-	await page.getByLabel(say('ruleform.name'), { exact: true }).fill('Stale C');
-	await page.getByLabel(say('ruleform.text'), { exact: true }).fill('STALE C');
-	await page.getByLabel(say('ruleform.payee'), { exact: true }).selectOption('text');
-	await page.getByRole('button', { name: say('ruleform.add') }).click();
-	await expect(page.getByRole('heading', { name: 'Stale C' })).toBeVisible();
-	await expect(answer).toHaveCount(0);
+	await leaves(() => page.locator(`[data-move="${first}-down"]`).click());
+	await leaves(async () => {
+		await page
+			.getByRole('button', { name: say('rules.delete_named', { name: 'Stale A' }) })
+			.click();
+		await page.getByRole('button', { name: say('rules.delete_it') }).click();
+	});
+	await leaves(async () => {
+		await page.getByLabel(say('ruleform.name'), { exact: true }).fill('Stale C');
+		await page.getByLabel(say('ruleform.text'), { exact: true }).fill('STALE C');
+		await page.getByLabel(say('ruleform.payee'), { exact: true }).selectOption('text');
+		await page.getByRole('button', { name: say('ruleform.add') }).click();
+		await expect(page.getByRole('heading', { name: 'Stale C' })).toBeVisible();
+	});
 
 	for (const { id } of (await (await page.request.get('/api/v1/rules')).json()).items) {
 		expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
