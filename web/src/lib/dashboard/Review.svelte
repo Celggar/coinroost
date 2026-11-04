@@ -77,11 +77,12 @@
 	);
 
 	// The payments card lies further down: the page glides there and the focus goes along. Left to the browser, the
-	// link jumped there in one frame (pass 31).
+	// link jumped there in one frame (pass 31). It shows the card, not the title alone, which stopped at the screen's
+	// foot with nothing of the card under it (pass 32).
 	async function reach(event: MouseEvent, target: string) {
 		event.preventDefault();
-		const title = focusOn(target);
-		if (title) await showWhole(title);
+		const card = focusOn(target)?.closest('section');
+		if (card) await showWhole(card);
 	}
 
 	// The leaving row's place is held while it fades out (its height on the item), then given up.

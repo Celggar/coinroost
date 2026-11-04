@@ -166,6 +166,12 @@ export async function checkPayroll(page: Page) {
 	expect(travel).toBeGreaterThan(0);
 	const steps = ys.slice(1).map((y, i) => Math.abs(y - ys[i]));
 	expect(Math.max(...steps)).toBeLessThan(travel / 2);
+	// It lands on the card, not on a title at the screen's foot with the card under it.
+	const landed = await page.locator('#payroll').boundingBox();
+	const room = page.viewportSize()?.height ?? 0;
+	if (!landed) throw new Error('no payments card');
+	const shown = Math.min(landed.y + landed.height, room) - Math.max(landed.y, 0);
+	expect(shown).toBeGreaterThan(Math.min(landed.height, room) / 2);
 	const today = await page.evaluate(() => {
 		const now = new Date();
 		const pad = (n: number) => String(n).padStart(2, '0');
