@@ -237,3 +237,34 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await forget(page, made);
 	});
 }
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	for (const width of [390, 1280]) {
+		test(`a rule deleted near the page's end moves nothing at once (${reducedMotion}, ${width})`, async ({
+			context
+		}) => {
+			const page = await loggedIn(context);
+			await page.emulateMedia({ reducedMotion });
+			await page.setViewportSize({ width, height: 800 });
+			const names = ['Gone A', 'Gone B', 'Gone C'].map(
+				(name) => `${name} ${width} ${reducedMotion}`
+			);
+			const made = await makeRules(page, names);
+			await page.goto('/rules');
+			const ask = page.getByRole('button', { name: say('rules.delete_named', { name: names[1] }) });
+			await expect(ask).toBeVisible();
+			await still(page);
+			await ask.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' }));
+			await ask.dispatchEvent('click');
+			const yes = page.getByRole('button', { name: say('rules.delete_it') });
+			await expect(yes).toBeVisible();
+			await restTop(page, 'ol.rules');
+			await watchTop(page, 'ol.rules');
+			await yes.dispatchEvent('click');
+			await expect(page.getByRole('heading', { name: names[1] })).toHaveCount(0);
+			if (reducedMotion === 'reduce') await expectFadedTop(page);
+			else await expectGlidedTop(page, 60);
+			await forget(page, [made[0], made[2]]);
+		});
+	}
+}
