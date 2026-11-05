@@ -169,7 +169,7 @@ export async function watchTop(page: Page, selector: string) {
 }
 
 /** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. */
-export async function expectFadedTop(page: Page) {
+export async function expectFadedTop(page: Page, least = 1) {
 	await page.waitForFunction(
 		(frames) => (window as unknown as { tops: unknown[] }).tops.length >= frames,
 		FRAMES
@@ -179,6 +179,6 @@ export async function expectFadedTop(page: Page) {
 		const step = Math.abs(top - tops[i][0]);
 		return step >= 4 ? [{ step, shown: Math.min(shown, tops[i][1]) }] : [];
 	});
-	expect(moves.length).toBeGreaterThan(0);
+	expect(moves.length).toBeGreaterThanOrEqual(least);
 	expect(moves.filter(({ shown }) => shown > 0.4)).toEqual([]);
 }

@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test';
 import { expectFadedTop, watchTop } from './frames.ts';
 import { say } from './messages.ts';
 import { accountButton, logOut } from './account.ts';
+import { still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const invite = process.env.E2E_INVITE ?? '';
@@ -46,17 +47,28 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	// A right code with a password the API refuses says so, back where the password is typed (pass 36).
 	const early = (await page.getByTestId('setup-key').innerText()).replace(/\s/g, '');
 	await page.getByLabel(say('login.code')).fill(totp(early));
-	await page.getByRole('button', { name: say('setup.finish') }).click();
+	// With no glide, from here to the next step: the card takes each new height at once and, centred, what stands in it
+	// moves. 97 px in a frame on a new step (pass 44), 30 px when the first key typed ended the message (pass 45).
+	const finish = page.getByRole('button', { name: say('setup.finish') });
+	await finish.scrollIntoViewIfNeeded();
+	await still(page);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await watchTop(page, 'h1');
+	await finish.click();
 	await expect(page.getByRole('heading', { name: say('setup.step_account') })).toBeVisible();
 	await expect(page.getByRole('heading', { name: say('setup.step_code') })).toHaveCount(0);
 	await expect(page.getByRole('alert')).toHaveText(say('problem.password_too_short'));
 	await expect(typed).toHaveAttribute('aria-invalid', 'true');
 	await expect(typed).toBeFocused();
-	await typed.fill(password);
-	// With no glide the card takes its new height at once: centred, what stood in it moved 97 px in a frame (pass 44).
-	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await expectFadedTop(page);
+	const next = page.getByRole('button', { name: say('setup.continue') });
+	await next.scrollIntoViewIfNeeded();
+	await still(page);
 	await watchTop(page, 'h1');
-	await page.getByRole('button', { name: say('setup.continue') }).click();
+	await typed.fill(password);
+	await expectFadedTop(page, 0);
+	await watchTop(page, 'h1');
+	await next.click();
 	await expectFadedTop(page);
 	await page.emulateMedia({ reducedMotion: 'no-preference' });
 
