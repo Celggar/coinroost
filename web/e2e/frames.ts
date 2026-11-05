@@ -119,29 +119,25 @@ export async function expectPageFollows(page: Page, what: string, glides: boolea
 	}
 }
 
-/** Starts recording a new file's card, whatever it holds. */
+/** Starts counting the frames in which a new file's card goes through a height that started from `auto`. */
 export async function watchCard(page: Page) {
 	await page.evaluate((frames) => {
-		const w = window as unknown as { cards: number[] };
-		w.cards = [];
+		const w = window as unknown as { fromAuto: number; left: number };
+		w.fromAuto = 0;
+		w.left = frames;
 		const step = () => {
-			const card = document.querySelector<HTMLElement>('article.card');
-			if (card) w.cards.push(card.offsetHeight);
-			if (w.cards.length < frames) requestAnimationFrame(step);
+			const running = document.querySelector('article.card')?.getAnimations() ?? [];
+			const from = running.map((a) => (a.effect as KeyframeEffect).getKeyframes()[0]?.height);
+			if (from.some((height) => String(height).includes('auto'))) w.fromAuto += 1;
+			if (--w.left > 0) requestAnimationFrame(step);
 		};
 		requestAnimationFrame(step);
 	}, FRAMES);
 }
 
-/** A new card grows to what it reads gliding: it went 130 to 523 px in one frame as it came in (pass 42). */
+/** Such a height tracks the content while it runs: on a quick answer a card went 130 to 523 px in a frame, on a slower one
+ * less (pass 42), so this counts the cause, which every card has, not a step that depends on the server's time. */
 export async function expectCardGlides(page: Page) {
-	await page.waitForFunction(
-		(frames) => (window as unknown as { cards: number[] }).cards.length >= frames,
-		FRAMES
-	);
-	const cards = await page.evaluate(() => (window as unknown as { cards: number[] }).cards);
-	const whole = Math.max(...cards) - Math.min(...cards);
-	const biggest = Math.max(...cards.slice(1).map((height, i) => Math.abs(height - cards[i])));
-	expect(whole, cards.join(' ')).toBeGreaterThan(100);
-	expect(biggest, cards.join(' ')).toBeLessThan(whole * 0.6);
+	await page.waitForFunction(() => (window as unknown as { left: number }).left <= 0);
+	expect(await page.evaluate(() => (window as unknown as { fromAuto: number }).fromAuto)).toBe(0);
 }
