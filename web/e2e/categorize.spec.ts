@@ -68,6 +68,28 @@ const rows = (page: Page) =>
 const row = (page: Page, text: string) => rows(page).filter({ hasText: text });
 const choose = (page: Page, text: string, category: string) =>
 	row(page, text).getByLabel(say('column.category')).selectOption({ label: category });
+const filter = (page: Page, name: 'all' | 'spending' | 'income') =>
+	page.getByRole('radio', { name: new RegExp(say(`uncategorized.${name}`)) });
+
+/** Rows of its own: the queue is empty between tests. */
+async function fill(context: BrowserContext, lines: ReturnType<typeof spend>[]) {
+	await context.addCookies(session.cookies);
+	for (const line of lines) {
+		const made = await context.request.post('/api/v1/transactions', { data: line });
+		expect(made.ok()).toBe(true);
+	}
+}
+
+/** Sorts what a test left waiting, so the next finds the queue empty. */
+async function sortAll(page: Page) {
+	const list = await page.request.get('/api/v1/transactions?uncategorized=true&limit=1000');
+	for (const { id } of (await list.json()).items) {
+		const sorted = await page.request.patch(`/api/v1/transactions/${id}`, {
+			data: { category_id: food }
+		});
+		expect(sorted.ok()).toBe(true);
+	}
+}
 
 test('rows filter by kind and sort by amount, each a line of about 52 px', async ({ context }) => {
 	const page = await queue(context);
@@ -214,4 +236,304 @@ test('a sorted row fades before the next moves up, and a count never shows twice
 		).toEqual([]);
 	}
 	await page.emulateMedia({ reducedMotion: null });
+});
+
+test('the end card comes under the list after an empty filter', async ({ context }) => {
+	await fill(context, [spend('LAST ONE', -500)]);
+	const page = await queue(context);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await filter(page, 'income').check();
+	await expect(page.getByText(say('uncategorized.none_here'))).toBeVisible();
+	await filter(page, 'all').check();
+	await choose(page, 'LAST ONE', 'Food');
+	const end = page.locator('#all-done');
+	await expect(end).toBeVisible();
+	// The list's height stayed on the first list, gone with the empty filter: 0 px, and the card 178 px over the row.
+	await expect
+		.poll(async () => {
+			const list = await page.locator('.queue').boundingBox();
+			const card = await end.boundingBox();
+			return card!.y - (list!.y + list!.height);
+		})
+		.toBeGreaterThanOrEqual(0);
+	await page.close();
+});
+
+type Moves = { moves: { step: number; opacity: number }[]; frames: number };
+
+/** Every step of a row's place in the page beyond 2 px, frame by frame, with how much of the row showed then. */
+async function watchRows(page: Page) {
+	await page.evaluate(() => {
+		const w = window as unknown as Moves;
+		const last = new Map<Element, number>();
+		w.moves = [];
+		w.frames = 0;
+		const step = () => {
+			for (const li of document.querySelectorAll('.queue > li')) {
+				const top = li.getBoundingClientRect().top + scrollY;
+				const before = last.get(li);
+				if (before !== undefined && Math.abs(top - before) > 2)
+					w.moves.push({ step: top - before, opacity: Number(getComputedStyle(li).opacity) });
+				last.set(li, top);
+			}
+			if (++w.frames < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+}
+
+/** Rows moved, and none in plain sight. */
+async function expectFadedMoves(page: Page, what: string) {
+	await page.waitForFunction(() => (window as unknown as Moves).frames >= 60);
+	const moves = await page.evaluate(() => (window as unknown as Moves).moves);
+	expect(moves.length, what).toBeGreaterThan(0);
+	expect(
+		moves.filter(({ opacity }) => opacity > 0.3),
+		what
+	).toEqual([]);
+}
+
+test('under reduced motion a row changes place only through a fade', async ({ context }) => {
+	const names = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'];
+	await fill(
+		context,
+		names.map((name) => spend(`ROW ${name}`, -1000))
+	);
+	const page = await queue(context);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	for (const width of [1280, 390]) {
+		await page.setViewportSize({ width, height: 800 });
+		await page.goto('/uncategorized');
+		const first = page.locator('.queue select').first();
+		await expect(first).toBeEnabled();
+		await watchRows(page);
+		await first.selectOption({ index: 1 });
+		await expectFadedMoves(page, `${width}: the offer opens`);
+		await watchRows(page);
+		await page.locator('.queue > li:not(.sorted) select').first().selectOption({ index: 1 });
+		await expectFadedMoves(page, `${width}: the next choice`);
+		await watchRows(page);
+		await page
+			.locator('.queue > li.sorted')
+			.getByRole('button', { name: say('uncategorized.undo') })
+			.click();
+		await expectFadedMoves(page, `${width}: undone`);
+	}
+	await sortAll(page);
+	await page.close();
+});
+
+test('a leaving row keeps its line, at full width too', async ({ context }) => {
+	await fill(context, [spend('STAYS ONE', -700), spend('STAYS TWO', -800), spend('STAYS 3', -900)]);
+	const page = await queue(context);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.locator('.queue select').first().selectOption({ index: 1 });
+	const sorted = page.locator('.queue > li.sorted');
+	await expect(sorted).toHaveCount(1);
+	const next = page.locator('.queue > li:not(.sorted) select').first();
+	await expect(next).toBeFocused();
+	// Its tint first: a row still changing colour stays in the flow as it leaves, and nothing would be tested.
+	await sorted.evaluate((li) => Promise.all(li.getAnimations().map((tint) => tint.finished)));
+	type Line = { out: boolean; broken: number[] };
+	await sorted.evaluate((li) => {
+		const w = window as unknown as Line;
+		const parts = [...li.querySelectorAll('.date, .description, .amount, .control')];
+		const place = () => {
+			const row = li.getBoundingClientRect();
+			return parts.flatMap((part) => {
+				const box = part.getBoundingClientRect();
+				return [box.left - row.left, box.top - row.top];
+			});
+		};
+		const before = place();
+		w.out = false;
+		w.broken = [];
+		const step = () => {
+			if (!li.isConnected) return;
+			w.out ||= getComputedStyle(li).position === 'absolute';
+			w.broken.push(Math.max(...place().map((at, i) => Math.abs(at - before[i]))));
+			requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await next.selectOption({ index: 1 });
+	await expect(page.locator('.queue > li')).toHaveCount(2);
+	const { out, broken } = await page.evaluate(() => {
+		const w = window as unknown as Line;
+		return { out: w.out, broken: w.broken };
+	});
+	expect(out).toBe(true);
+	expect(Math.max(...broken)).toBeLessThan(2);
+	await sortAll(page);
+	await page.close();
+});
+
+type Swap = { frames: { rows: number; height: number; opacity: number }[] };
+
+async function watchSwap(page: Page) {
+	await page.evaluate(() => {
+		const w = window as unknown as Swap;
+		const box = document.querySelector<HTMLElement>('.follows')!;
+		w.frames = [];
+		const step = () => {
+			w.frames.push({
+				rows: document.querySelectorAll('.queue > li').length,
+				height: box.getBoundingClientRect().height,
+				opacity: Number(getComputedStyle(box).opacity)
+			});
+			if (w.frames.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+}
+
+test('a filter changes the list behind a fade, its room gliding', async ({ context }) => {
+	const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+	await fill(context, [
+		...names.map((name) => spend(`SPENT ${name}`, -1000)),
+		spend('EARNED A', 2000),
+		spend('EARNED B', 2000)
+	]);
+	const page = await queue(context);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+		await page.emulateMedia({ reducedMotion });
+		await page.goto('/uncategorized');
+		await expect(page.locator('.queue > li')).toHaveCount(10);
+		for (const [name, count] of [
+			['income', 2],
+			['all', 10]
+		] as const) {
+			await watchSwap(page);
+			await filter(page, name).check();
+			await expect(page.locator('.queue > li')).toHaveCount(count);
+			await page.waitForFunction(() => (window as unknown as Swap).frames.length >= 60);
+			const frames = await page.evaluate(() => (window as unknown as Swap).frames);
+			const way = `${name}, ${reducedMotion}`;
+			const steps = frames.slice(1).map((frame, i) => ({
+				...frame,
+				rowsChanged: frame.rows !== frames[i].rows,
+				step: Math.abs(frame.height - frames[i].height)
+			}));
+			expect(steps.filter((frame) => frame.rowsChanged).length, way).toBeGreaterThan(0);
+			expect(
+				steps.filter((frame) => frame.rowsChanged && frame.opacity > 0.4),
+				way
+			).toEqual([]);
+			const whole = Math.abs(frames[0].height - frames.at(-1)!.height);
+			expect(whole, way).toBeGreaterThan(200);
+			const biggest = steps.toSorted((a, b) => b.step - a.step)[0];
+			// With motion the room glides; without, it lands behind the fade.
+			if (reducedMotion === 'reduce') expect(biggest.opacity, way).toBeLessThan(0.4);
+			else expect(biggest.step, way).toBeLessThan(whole / 2);
+		}
+	}
+	// Quick keys: the list ends on the last one asked.
+	await filter(page, 'all').focus();
+	await page.keyboard.press('ArrowRight');
+	await page.keyboard.press('ArrowRight');
+	await expect(filter(page, 'income')).toBeChecked();
+	await expect(page.locator('.queue > li')).toHaveCount(2);
+	await sortAll(page);
+	await page.close();
+});
+
+test('Deshacer under another filter keeps the row, its select and the focus', async ({
+	context
+}) => {
+	await fill(context, [
+		spend('SPENT ROW', -1000),
+		spend('SPENT OTHER', -1100),
+		spend('EARNED ROW', 2000)
+	]);
+	const page = await queue(context);
+	await choose(page, 'SPENT ROW', 'Food');
+	await expect(row(page, 'SPENT ROW')).toContainText('Food');
+	await filter(page, 'income').check();
+	// The filter's answer has come: the other spending has gone, the sorted row stays.
+	await expect(rows(page)).toHaveCount(2);
+	await row(page, 'SPENT ROW')
+		.getByRole('button', { name: say('uncategorized.undo') })
+		.click();
+	await expect(row(page, 'SPENT ROW').getByLabel(say('column.category'))).toBeFocused();
+	// The next choice lets it go.
+	await choose(page, 'EARNED ROW', 'Pay');
+	await expect(row(page, 'SPENT ROW')).toHaveCount(0);
+	await sortAll(page);
+	await page.close();
+});
+
+test('a key on a closed select opens it and chooses nothing', async ({ context }) => {
+	await fill(context, [spend('KEY ONE', -1000), spend('KEY TWO', -1200)]);
+	const page = await queue(context);
+	const sent: string[] = [];
+	page.on('request', (r) => {
+		if (r.method() === 'PATCH') sent.push(r.url());
+	});
+	const select = row(page, 'KEY ONE').getByLabel(say('column.category'));
+	const open = () => select.evaluate((e) => e.matches(':open'));
+	for (const key of ['ArrowDown', 'f', 'End']) {
+		await select.focus();
+		await page.keyboard.press(key);
+		await expect.poll(open, key).toBe(true);
+		await page.keyboard.press('Escape');
+		await expect.poll(open, key).toBe(false);
+		await expect(select, key).toHaveValue('');
+		expect(sent, key).toEqual([]);
+	}
+	// Open, the keys move inside it and Enter chooses.
+	await select.focus();
+	await page.keyboard.press('ArrowDown');
+	await expect.poll(open).toBe(true);
+	await page.keyboard.press('ArrowDown');
+	expect(sent).toEqual([]);
+	await page.keyboard.press('Enter');
+	await expect.poll(() => sent.length).toBe(1);
+	await sortAll(page);
+	await page.close();
+});
+
+test('an answer in the offer keeps its whole focus ring, and Deshacer its whole button', async ({
+	context
+}) => {
+	for (const [width, text] of [
+		[1280, 'LONE MERCHANT'],
+		[390, 'LONE SHOP']
+	] as const) {
+		await fill(context, [spend(text, -1000)]);
+		const page = await queue(context);
+		await page.setViewportSize({ width, height: 800 });
+		await choose(page, text, 'Food');
+		const send = row(page, text).getByRole('button', { name: say('uncategorized.make_rule') });
+		await expect(send).toBeVisible();
+		await send.press('Enter');
+		const answer = page.locator('#changes-none');
+		await expect(answer).toBeFocused();
+		// The room around it once it has settled: it rises in as its box grows.
+		const room = () =>
+			answer.evaluate((p) => {
+				const box = p.closest('section')!.getBoundingClientRect();
+				const text = p.getBoundingClientRect();
+				const style = getComputedStyle(p);
+				const reach = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+				return reach > 0
+					? Math.min(
+							text.left - reach - box.left,
+							box.right - text.right - reach,
+							text.top - reach - box.top,
+							box.bottom - text.bottom - reach
+						)
+					: -1;
+			});
+		await expect.poll(room, `${width}`).toBeGreaterThanOrEqual(0);
+		const undo = row(page, text).getByRole('button', { name: say('uncategorized.undo') });
+		// Its lower edge too: the answer's box reaches up, and must stop at the row's padding.
+		const hit = () =>
+			undo.evaluate((button) => {
+				const box = button.getBoundingClientRect();
+				return document.elementFromPoint(box.left + box.width / 2, box.bottom - 1) === button;
+			});
+		await expect.poll(hit, `${width}`).toBe(true);
+		await page.close();
+	}
 });

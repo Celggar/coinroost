@@ -2,6 +2,7 @@ import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { TransitionConfig } from 'svelte/transition';
 import { DURATION, EASE_CSS, FADED, vanish } from '#lib/motion.ts';
+import { fadeAfter } from '#lib/ui/followers.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -37,8 +38,7 @@ export async function holdRoom(box: HTMLElement | null, change: () => unknown) {
  * faded out took a ranking's row with them, and the card under them went 67 px in one frame (pass 37). With reduced motion
  * it goes at once. The box must not stretch what it holds (`align-content: start`).
  */
-export function glideRoom(box: HTMLElement, before: number) {
-	const after = box.offsetHeight;
+export function glideRoom(box: HTMLElement, before: number, after = box.offsetHeight) {
 	if (prefersReducedMotion.current || Math.abs(after - before) < 1) return;
 	const room = (height: number) => ({ height: `${height}px`, overflow: 'clip' });
 	box.animate([room(before), room(after)], {
@@ -47,8 +47,14 @@ export function glideRoom(box: HTMLElement, before: number) {
 	});
 }
 
+/** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows
+ * it fades in at its new place. */
+export function follow(event: Event) {
+	if (prefersReducedMotion.current) fadeAfter(event.currentTarget as Element, DURATION.medium);
+}
+
 /**
- * Out of a list that lends its rows its columns (`.txn-rows`, subgrid): out of the flow a row has no columns to borrow, and
+ * Out of a list that lends its rows its columns (subgrid): out of the flow a row has no columns to borrow, and
  * its line broke in three at full opacity on every choice (pass 38). It keeps them, in numbers, as it fades.
  */
 export function vanishRow(node: HTMLElement): TransitionConfig {

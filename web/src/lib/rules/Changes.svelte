@@ -175,6 +175,12 @@
 		overflow: clip;
 		align-content: start;
 	}
+	/* Inline it has no padding to keep them in, and an answer's ring stood cut to its right bar (pass 40): it lends itself
+	   the room, up to the row above's padding so it never covers that row's button. */
+	.follows:not(.card) {
+		padding: var(--space-sm) var(--space-md);
+		margin: calc(-1 * var(--space-sm)) calc(-1 * var(--space-md));
+	}
 	@media (prefers-reduced-motion: no-preference) {
 		.follows {
 			transition: height var(--duration-medium) var(--ease-standard);

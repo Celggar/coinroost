@@ -3,14 +3,16 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
+	import { follow, glideRoom, vanishRow } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import {
 		arrive,
 		DURATION,
 		EASE,
+		fadeThrough,
 		followContent,
 		glide,
 		placeholder,
@@ -70,8 +72,14 @@
 	let sorted = $state<{ id: string; category: string; name: string; offering: boolean } | null>(
 		null
 	);
+	// A row undone under a filter it does not match: it stays with its select, the way to choose again, until the next
+	// choice or filter. It left at once, and the focus fell to the page (pass 40).
+	let kept = $state<string | null>(null);
 	let kind = $state<Kind>('all');
 	let byAmount = $state(false);
+	// What the list shows: the filters' answer, a fade behind them (`swap`).
+	let view = $state<{ kind: Kind; byAmount: boolean }>({ kind: 'all', byAmount: false });
+	let swapping = false;
 
 	const amount = (transaction: Schemas['Transaction']) => transaction.legs[0]?.amount_minor ?? 0;
 	const waiting = $derived(transactions.filter((x) => x.id !== sorted?.id));
@@ -83,10 +91,41 @@
 	// The sorted row stays under any filter: it is what the person is looking at.
 	const shown = $derived.by(() => {
 		const wanted = transactions.filter(
-			(x) => x.id === sorted?.id || kind === 'all' || amount(x) < 0 === (kind === 'out')
+			(x) =>
+				x.id === sorted?.id ||
+				x.id === kept ||
+				view.kind === 'all' ||
+				amount(x) < 0 === (view.kind === 'out')
 		);
-		return byAmount ? wanted.toSorted((a, b) => Math.abs(amount(b)) - Math.abs(amount(a))) : wanted;
+		return view.byAmount
+			? wanted.toSorted((a, b) => Math.abs(amount(b)) - Math.abs(amount(a)))
+			: wanted;
 	});
+
+	/** The filters' answer comes through a fade, its room gliding: the rows changed in one frame, the list 372 to 853 px
+	 * (pass 40). Asked again meanwhile, this run goes on to the last one asked. */
+	async function swap() {
+		if (swapping) return;
+		swapping = true;
+		while (view.kind !== kind || view.byAmount !== byAmount) {
+			await fadeThrough(queue, async () => {
+				const room = queue?.offsetHeight ?? 0;
+				kept = null;
+				view = { kind, byAmount };
+				await tick();
+				const list = queue?.firstElementChild;
+				if (queue && list instanceof HTMLElement) glideRoom(queue, room, list.offsetHeight);
+			});
+		}
+		swapping = false;
+	}
+	$effect(() => {
+		if (kind !== view.kind || byAmount !== view.byAmount) untrack(swap);
+	});
+	// Behind the fade the rows change places with no motion of their own.
+	const leave = (node: HTMLElement) => (swapping ? { duration: 0 } : vanishRow(node));
+	const move = (node: Element, places: { from: DOMRect; to: DOMRect }) =>
+		swapping ? { duration: 0 } : glide(node, places);
 
 	/** The next row shown that waits, after `id`, then before it. */
 	function nextWaiting(id: string) {
@@ -135,7 +174,10 @@
 		// The row before has had its time: it leaves, and this one takes its place as the last sorted.
 		const before = sorted?.id;
 		if (before) transactions = transactions.filter((x) => x.id !== before);
-		sorted = { id: transaction.id, category: categoryId, name, offering: false };
+		kept = null;
+		// Under reduced motion nothing grows: it opens at once and the rows below fade to their place under it.
+		const offering = prefersReducedMotion.current;
+		sorted = { id: transaction.id, category: categoryId, name, offering };
 		if (waiting.length === 0) confetti('sorted');
 		// The offer opens once the list has placed its rows: opened with them, the rows below measured their place with it
 		// whole, went back up over it and slid down as it grew.
@@ -162,6 +204,7 @@
 		}
 		announce(t('uncategorized.undone', { description: transaction.description }));
 		refreshCounts();
+		kept = transaction.id;
 		sorted = null;
 		await tick();
 		// Undone before its fade ended, the row gets the same select back, still on the choice.
@@ -179,6 +222,7 @@
 	/** The rule's changes went in: what they sorted leaves the list, and the sorted row with it. */
 	async function applied() {
 		sorted = null;
+		kept = null;
 		await load();
 		holding = true;
 		await tick();
@@ -238,38 +282,42 @@
 						action={t('uncategorized.create_categories')}
 					/>
 				{/if}
+				<!-- One box the height follows: on the list itself, it was gone with an empty filter and the end card came over
+				     the row (pass 40). -->
 				<div class="follows" bind:this={queue} use:followContent={holding}>
-					{#if shown.length > 0}
-						<ul class="queue card" aria-label={t('uncategorized.list')}>
-							{#each shown as transaction (transaction.id)}
-								<li class:sorted={sorted?.id === transaction.id} out:vanish animate:glide>
-									<Row
-										{transaction}
-										{categories}
-										took={sorted?.id === transaction.id ? sorted.name : null}
-										busy={busy === transaction.id}
-										locked={busy !== null && busy !== transaction.id}
-										onchoose={(id, select) => choose(transaction, id, select)}
-										onundo={() => undo(transaction)}
-									/>
-									{#if sorted?.id === transaction.id && sorted.offering}
-										<div class="more" transition:open>
-											<Offer
-												description={transaction.description}
-												category={sorted.category}
-												{categories}
-												{accounts}
-												onclose={() => close(transaction.id)}
-												onapplied={applied}
-											/>
-										</div>
-									{/if}
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="hint">{t('uncategorized.none_here')}</p>
-					{/if}
+					<div>
+						{#if shown.length > 0}
+							<ul class="queue card" aria-label={t('uncategorized.list')}>
+								{#each shown as transaction (transaction.id)}
+									<li class:sorted={sorted?.id === transaction.id} out:leave animate:move>
+										<Row
+											{transaction}
+											{categories}
+											took={sorted?.id === transaction.id ? sorted.name : null}
+											busy={busy === transaction.id}
+											locked={busy !== null && busy !== transaction.id}
+											onchoose={(id, select) => choose(transaction, id, select)}
+											onundo={() => undo(transaction)}
+										/>
+										{#if sorted?.id === transaction.id && sorted.offering}
+											<div class="more" transition:open onoutroend={follow}>
+												<Offer
+													description={transaction.description}
+													category={sorted.category}
+													{categories}
+													{accounts}
+													onclose={() => close(transaction.id)}
+													onapplied={applied}
+												/>
+											</div>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						{:else}
+							<p class="hint">{t('uncategorized.none_here')}</p>
+						{/if}
+					</div>
 				</div>
 				{#if waiting.length === 0}
 					<div id="all-done" in:rise|global>
@@ -307,6 +355,8 @@
 		display: grid;
 		grid-column: 1 / -1;
 		grid-template-columns: subgrid;
+		/* Leaving, it takes the columns in numbers (`vanishRow`), and the gaps must stay with them. */
+		column-gap: inherit;
 		transition: background-color var(--duration-short) var(--ease-standard);
 	}
 	.queue > li + li {

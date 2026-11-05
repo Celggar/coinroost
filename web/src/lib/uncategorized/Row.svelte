@@ -29,6 +29,21 @@
 	} = $props();
 
 	const leg = $derived(transaction.legs[0]);
+
+	// What moves the choice on a closed select: in Chromium each of these is a choice at once, and a choice moves on, so
+	// «Su» for Supermercado saved Salario and the «u» fell on the next row (pass 40, WCAG 3.2.2). They open it instead.
+	const MOVES = /^(.|Arrow(Up|Down|Left|Right)|Home|End|Page(Up|Down))$/u;
+
+	function open(event: KeyboardEvent) {
+		if (event.key === ' ' || event.ctrlKey || event.metaKey || event.altKey) return;
+		if (!MOVES.test(event.key)) return;
+		try {
+			(event.currentTarget as HTMLSelectElement).showPicker();
+			event.preventDefault();
+		} catch {
+			// Refused: the key does what the browser makes of it.
+		}
+	}
 </script>
 
 <div class="row" class:sorted={took}>
@@ -43,8 +58,9 @@
 	{#if categories.length > 0}
 		<div class="control in-place">
 			{#if took}
-				<!-- Global: it comes with the row's change, not with a block of its own opening. -->
-				<div in:swapIn|global out:vanish|global>
+				<!-- In, global: it comes with the row's change, not with a block of its own opening. Out, local: global, a row
+				     leaving behind a filter's fade waited for this one and stood in the list as it came back. -->
+				<div in:swapIn|global out:vanish>
 					<button
 						id="undo-{transaction.id}"
 						class="secondary"
@@ -53,7 +69,7 @@
 					>
 				</div>
 			{:else}
-				<div in:swapIn|global out:vanish|global>
+				<div in:swapIn|global out:vanish>
 					<label>
 						<span class="visually-hidden">{t('column.category')}</span>
 						<select
@@ -61,6 +77,7 @@
 							value=""
 							disabled={locked}
 							aria-disabled={busy}
+							onkeydown={open}
 							onchange={(event) => onchoose(event.currentTarget.value, event.currentTarget)}
 						>
 							<option value="" disabled>{t('uncategorized.choose')}</option>
@@ -102,9 +119,11 @@
 		justify-self: end;
 		white-space: nowrap;
 	}
+	/* As tall as the select it takes the place of: on a phone 4 px less, and every row below stepped up as the row turned. */
 	.control select,
 	.control button {
 		width: 100%;
+		min-height: var(--field-height);
 	}
 	@media (max-width: 899px) {
 		.row {

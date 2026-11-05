@@ -580,6 +580,8 @@ export async function checkRowLeaves(page: Page) {
 	// A chosen row stays until the next choice, and leaves then.
 	const undo = page.locator(`[id="undo-${id}"]`);
 	await expect(undo).toBeVisible();
+	// Its tint first: a row still changing colour stays in the flow as it leaves, and nothing would be tested.
+	await row.evaluate((li) => Promise.all(li.getAnimations().map((tint) => tint.finished)));
 	const next = page.locator('.queue > li').nth(1).getByRole('combobox');
 	const other = (await next.getAttribute('id'))!.replace('category-', '');
 	await next.selectOption({ index: 1 });
