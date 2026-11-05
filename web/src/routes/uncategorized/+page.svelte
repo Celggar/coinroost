@@ -3,7 +3,7 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { behindFade, follow, glideRoom } from '#lib/ui/hold-room.ts';
+	import { behindFade, follow } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -203,21 +203,25 @@
 	/** The rule's changes went in: what they sorted leaves the list behind a fade, and the sorted row with it, in the same
 	 * flush as the new list: let go first, its tint still changing, it stayed in the flow and the rows jumped after it. */
 	async function applied() {
+		const left = await api.GET('/api/v1/transactions', {
+			params: { query: { uncategorized: true, limit: 1 } }
+		});
 		let target = null as ReturnType<typeof focusOn>;
-		const cell = queue?.closest<HTMLElement>('.in-place');
-		const room = cell?.offsetHeight ?? 0;
-		await list.run(async () => {
+		const change = async () => {
 			await load(() => {
 				sorted = null;
 				kept = null;
 			});
 			await tick();
-			// The last rows sorted, the whole block goes: its room glides, or the page came back 1307 px in a frame (pass 43).
-			const end = document.getElementById('all-done');
-			if (cell && end && transactions.length === 0) glideRoom(cell, room, end.offsetHeight);
 			const first = shown[0];
 			target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
-		});
+		};
+		if (left.data?.items.length) await list.run(change);
+		else
+			await list.whole(async () => {
+				await change();
+				scrollTo({ top: 0, behavior: 'instant' });
+			});
 		if (target) await showWhole(target);
 	}
 
@@ -250,7 +254,7 @@
 					<FirstStep {accounts} />
 				</div>
 			{:else}
-				<div id="all-done" in:swapIn|global>
+				<div id="all-done" in:list.arrive|global>
 					<EmptyState
 						icon="check"
 						text={t('uncategorized.all_done')}

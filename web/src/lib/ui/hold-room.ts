@@ -1,8 +1,8 @@
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { TransitionConfig } from 'svelte/transition';
-import { DURATION, EASE_CSS, FADED, fadeThrough, glide, placeholder, vanish } from '#lib/motion.ts';
-import { fadeAfter } from '#lib/ui/followers.ts';
+import { DURATION, EASE_CSS, FADED, fadeThrough, glide, swapIn, vanish } from '#lib/motion.ts';
+import { fadeAfter, fadePage } from '#lib/ui/followers.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -50,8 +50,7 @@ export function glideRoom(box: HTMLElement, before: number, after = box.offsetHe
 /** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */
 function fadeIfPageMoves(box: HTMLElement, room: number) {
 	const end = document.documentElement.scrollHeight - innerHeight - room;
-	if (room > 0 && scrollY > end)
-		box.closest('main')?.animate({ opacity: [0, 1] }, { duration: DURATION.medium });
+	if (room > 0 && scrollY > end) fadePage(DURATION.medium);
 }
 
 /**
@@ -89,18 +88,21 @@ export function behindFade(box: () => HTMLElement | undefined) {
 			node.style.display = 'none';
 			return { duration: 1 };
 		},
-		/** The block around the list, going with it: out of the flow at once, so what comes finds the room gliding (`glideRoom`).
-		 * Its rows stay as they were in a leaving block: left to the list's fade back in, they showed at 0.34 opacity (pass 43). */
+		/** `change` takes the whole block away, behind a fade of the page. The last rows sorted took the page back 1307 px in a
+		 * frame (pass 43), and gliding there, the focus stood above the window until it landed (pass 44). */
+		async whole(change: () => unknown) {
+			going = true;
+			await fadeThrough(box()?.closest('main') ?? undefined, async () => {
+				await change();
+			});
+			going = false;
+		},
 		leaveAll(node: HTMLElement) {
 			if (!going) return vanish(node);
-			const list = box();
-			if (list) list.style.visibility = 'hidden';
-			// Clipped by the cell as it glides: placed by the page, it held the page's height until it left, and then the page fell.
-			if (node.parentElement) node.parentElement.style.position = 'relative';
-			if (!prefersReducedMotion.current) return placeholder(node);
 			node.style.display = 'none';
 			return { duration: 1 };
 		},
+		arrive: (node: Element) => (going ? { duration: 0 } : swapIn(node)),
 		move: (node: Element, places: { from: DOMRect; to: DOMRect }) =>
 			going ? { duration: 0 } : glide(node, places)
 	};

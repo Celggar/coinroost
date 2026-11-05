@@ -1,6 +1,7 @@
 // Where the page lands after an action that adds a row to a table, against a real server (see run.sh): no line of
 // the table is left cut by the window's top. Its own user.
 import { expect, test } from '@playwright/test';
+import { expectPageFollows, watchRows } from './frames.ts';
 import { say } from './messages.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -46,4 +47,16 @@ test('an account sorted first lands with the column names whole', async ({ page 
 				.filter((r) => r.height > 2 && r.top < 8 && r.bottom > 0).length
 	);
 	expect(cut).toBe(0);
+
+	// With no glide the page comes to what was made through a fade: it stood there in one frame (pass 44).
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Aab segunda');
+	await page.getByLabel(say('accounts.key')).fill('aab-segunda');
+	// In view before the watch starts: the tool's own scroll to the button would count as the page's step.
+	const create = page.getByRole('button', { name: say('accounts.create') });
+	await create.scrollIntoViewIfNeeded();
+	await still(page);
+	await watchRows(page);
+	await create.click();
+	await expectPageFollows(page, 'a new account', false);
 });

@@ -3,6 +3,7 @@
 // jumped in one frame and left titles across the bar (pass 13).
 import { prefersReducedMotion } from 'svelte/motion';
 import { DURATION, spare } from '#lib/motion.ts';
+import { fadePage } from '#lib/ui/followers.ts';
 
 /** Pinned to the window (a bar): it does not move with the page, so the page's edge never cuts it. */
 function pinned(element: Element): boolean {
@@ -117,6 +118,16 @@ function clean(selector: string, ways: Ways, y: number, hi: number, max: number)
 
 const behavior = (): ScrollBehavior => (prefersReducedMotion.current ? 'auto' : 'smooth');
 
+/** With no glide the page stands elsewhere in one frame: 1039 px at full opacity on «Ver» (pass 44). It comes through a fade. */
+function fadeIfFar(distance: number) {
+	if (prefersReducedMotion.current && Math.abs(distance) >= 4) fadePage(DURATION.medium);
+}
+
+function go(top: number) {
+	fadeIfFar(top - scrollY);
+	scrollTo({ top, behavior: behavior() });
+}
+
 /** The page's top and bottom edges for content, inside the bars' room (its scroll padding). */
 function edges() {
 	const page = getComputedStyle(document.documentElement);
@@ -177,10 +188,11 @@ export function focusShown(
 			const lo = Math.max(0, scrollY + end - bottom);
 			const hi = scrollY + labelTop(control) - top;
 			const loose = Math.max(0, scrollY + end - floor);
-			scrollTo({ top: uncut(y, lo, hi, loose), behavior: behavior() });
+			go(uncut(y, lo, hi, loose));
 			return true;
 		}
 	} else if (labelTop(control) < top || field.bottom > bottom) {
+		fadeIfFar(innerHeight);
 		control.scrollIntoView({ block: 'center', behavior: behavior() });
 		return true;
 	}
@@ -275,7 +287,7 @@ export async function showBelow(end: HTMLElement, keep: HTMLElement) {
 	// At a page's end the only uncut place may leave `end` in the breathing room above the bottom bar (pass 12:
 	// after «Ver cambios» a label stood across the top bar's edge).
 	const loose = Math.max(0, scrollY + end.getBoundingClientRect().bottom - floor);
-	scrollTo({ top: uncut(lo, lo, hi, loose), behavior: behavior() });
+	go(uncut(lo, lo, hi, loose));
 }
 
 /**
@@ -293,7 +305,7 @@ export async function keepWhole() {
 	const lo = focused ? scrollY + focused.bottom - bottom : 0;
 	const hi = focused ? scrollY + focused.top - top : Infinity;
 	const y = uncut(scrollY, lo, hi);
-	if (Math.abs(y - scrollY) >= 1) scrollTo({ top: y, behavior: behavior() });
+	if (Math.abs(y - scrollY) >= 1) go(y);
 }
 
 /** Resolves once the page's content stands still: its entrances, exits and glides done and no scroll on its way. */
@@ -344,10 +356,7 @@ export async function showWhole(box: HTMLElement, end: HTMLElement = box, held?:
 	const loose = Math.min(lo, Math.max(0, scrollY + head.bottom - floor));
 	const at = uncut(y, lo, hi, loose, max);
 	if (Math.abs(at - scrollY) >= 1) {
-		// With no glide, a list moving with its room would stand elsewhere at full opacity: 168 px in a frame (pass 42).
-		if (held && prefersReducedMotion.current && Math.abs(at - scrollY) >= 4)
-			box.closest('main')?.animate({ opacity: [0, 1] }, { duration: DURATION.medium });
-		scrollTo({ top: at, behavior: behavior() });
+		go(at);
 		if (held) await still();
 	}
 }

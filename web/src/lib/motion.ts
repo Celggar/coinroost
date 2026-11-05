@@ -6,7 +6,7 @@ import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { AnimationConfig } from 'svelte/animate';
 import { fade, fly, scale, type TransitionConfig } from 'svelte/transition';
-import { fadeToPlace, fadeWhatFollows } from '#lib/ui/followers.ts';
+import { fadeToPlace, fadeWhatFollows, goneBehindPage } from '#lib/ui/followers.ts';
 
 /** Milliseconds, as in app.css. */
 export const DURATION = { short: 150, exit: 200, medium: 300, long: 500 } as const;
@@ -222,9 +222,8 @@ export function stepIn(node: Element, { direction = 1 } = {}): TransitionConfig 
 
 /** Shuts an element on its way out of a `{#key}` block: no focus or clicks, and its fields drop out of the form, or an
  * empty required one left there for the length of the exit would block a quick submit of what replaced it. Svelte
- * brings a leaving block back when its key returns before the exit ends, and gives it back its `inert`: the controls
- * this shut come back with it. They stayed off: «Cancelar» and «Crear códigos nuevos» again within 70 ms left the
- * code field disabled (pass 23 sweep). */
+ * brings a leaving block back when its key returns before the exit ends, with its `inert`: what this shut comes back
+ * too. They stayed off: «Cancelar» and «Crear códigos nuevos» again within 70 ms left the code field disabled (pass 23). */
 function shut(node: Element) {
 	if (!(node instanceof HTMLElement)) return;
 	node.inert = true;
@@ -247,8 +246,9 @@ export function swapOut(node: Element): TransitionConfig {
 }
 
 /** Out of a step (a `{#key}` block), shut ([`shut`]): a quick fade, sliding to the side it leaves by. */
-export function stepOut(node: Element, { direction = 1 } = {}): TransitionConfig {
+export function stepOut(node: HTMLElement, { direction = 1 } = {}): TransitionConfig {
 	shut(node);
+	if (still()) return goneBehindPage(node, DURATION.medium);
 	return fly(node, {
 		x: still() ? 0 : -32 * direction,
 		duration: DURATION.short,

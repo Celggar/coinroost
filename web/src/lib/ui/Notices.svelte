@@ -93,6 +93,12 @@
 	.text {
 		flex: 1;
 	}
+	/* A shadow is all that sets it apart, and forced colors drop it: its edge cut the card under it (pass 44). */
+	@media (forced-colors: active) {
+		.note {
+			border: 1px solid CanvasText;
+		}
+	}
 	@media (max-width: 899px) {
 		.notices {
 			top: calc(var(--bar, 0px) + var(--space-sm));

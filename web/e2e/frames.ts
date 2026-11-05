@@ -11,6 +11,7 @@ type Frames = {
 	pages: number[];
 	heights: number[];
 	unseen: number;
+	away: number;
 	frames: number;
 };
 
@@ -32,6 +33,7 @@ export async function watchRows(page: Page) {
 		w.pages = [];
 		w.heights = [];
 		w.unseen = 0;
+		w.away = 0;
 		w.frames = 0;
 		const step = () => {
 			const rows = new Set(document.querySelectorAll('.queue > li'));
@@ -55,7 +57,10 @@ export async function watchRows(page: Page) {
 			// The focus on the answer while the answer does not show: nobody sees where it went.
 			let shows = 1;
 			const focused = document.activeElement;
-			if (focused?.matches('#changes-some, #changes-none'))
+			const box = focused?.getBoundingClientRect();
+			if (focused?.matches('#all-done a') && box && (box.bottom <= 0 || box.top >= innerHeight))
+				w.away += 1;
+			if (focused?.matches('#changes-some, #changes-none, #all-done a'))
 				for (let e: Element | null = focused; e; e = e.parentElement)
 					shows *= Number(getComputedStyle(e).opacity);
 			if (shows < 0.1) w.unseen += 1;
@@ -71,8 +76,9 @@ export async function watchRows(page: Page) {
 async function recorded(page: Page) {
 	await page.waitForFunction((frames) => (window as unknown as Frames).frames >= frames, FRAMES);
 	return page.evaluate(() => {
-		const { moves, gone, crossed, scrolls, pages, heights, unseen } = window as unknown as Frames;
-		return { moves, gone, crossed, scrolls, pages, heights, unseen };
+		const w = window as unknown as Frames;
+		const { moves, gone, crossed, scrolls, pages, heights, unseen, away } = w;
+		return { moves, gone, crossed, scrolls, pages, heights, unseen, away };
 	});
 }
 
@@ -106,16 +112,18 @@ export async function expectNoJump(page: Page, what: string, limit: number) {
 
 /** The page went to its new end with the list's room: gliding, or, where nothing may slide, at once behind a fade. */
 export async function expectPageFollows(page: Page, what: string, glides: boolean) {
-	const { scrolls, pages } = await recorded(page);
+	const { scrolls, pages, unseen, away } = await recorded(page);
+	// The focus on an end card reached it as it shows, where it shows: above the window for 82 ms, at first (pass 44).
+	expect(away, what).toBe(0);
+	expect(unseen, what).toBeLessThan(4);
 	const steps = scrolls.slice(1).map((y, i) => Math.abs(y - scrolls[i]));
-	const whole = Math.abs(scrolls[0] - scrolls.at(-1)!);
-	const biggest = Math.max(...steps);
+	const whole = Math.max(...scrolls) - Math.min(...scrolls);
 	const trail = [...new Set(scrolls)].join(' ');
 	expect(whole, `${what}: ${trail}`).toBeGreaterThan(50);
-	if (glides) expect(biggest, `${what}: ${trail}`).toBeLessThan(whole * 0.6);
+	if (glides) expect(Math.max(...steps), `${what}: ${trail}`).toBeLessThan(whole * 0.6);
 	else {
-		const at = steps.indexOf(biggest);
-		expect(Math.min(pages[at], pages[at + 1]), `${what}: ${trail}`).toBeLessThan(0.4);
+		const seen = steps.filter((step, i) => step >= 4 && Math.min(pages[i], pages[i + 1]) >= 0.4);
+		expect(seen, `${what}: ${trail}`).toEqual([]);
 	}
 }
 
@@ -140,4 +148,37 @@ export async function watchCard(page: Page) {
 export async function expectCardGlides(page: Page) {
 	await page.waitForFunction(() => (window as unknown as { left: number }).left <= 0);
 	expect(await page.evaluate(() => (window as unknown as { fromAuto: number }).fromAuto)).toBe(0);
+}
+
+/** Starts recording where `selector` stands in the window, and how much of the page shows. */
+export async function watchTop(page: Page, selector: string) {
+	await page.evaluate(
+		({ selector, frames }) => {
+			const w = window as unknown as { tops: [number, number][] };
+			const main = document.querySelector('main')!;
+			w.tops = [];
+			const step = () => {
+				const top = document.querySelector(selector)?.getBoundingClientRect().top ?? 0;
+				w.tops.push([top, Number(getComputedStyle(main).opacity)]);
+				if (w.tops.length < frames) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		},
+		{ selector, frames: FRAMES }
+	);
+}
+
+/** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. */
+export async function expectFadedTop(page: Page) {
+	await page.waitForFunction(
+		(frames) => (window as unknown as { tops: unknown[] }).tops.length >= frames,
+		FRAMES
+	);
+	const tops = await page.evaluate(() => (window as unknown as { tops: [number, number][] }).tops);
+	const moves = tops.slice(1).flatMap(([top, shown], i) => {
+		const step = Math.abs(top - tops[i][0]);
+		return step >= 4 ? [{ step, shown: Math.min(shown, tops[i][1]) }] : [];
+	});
+	expect(moves.length).toBeGreaterThan(0);
+	expect(moves.filter(({ shown }) => shown > 0.4)).toEqual([]);
 }

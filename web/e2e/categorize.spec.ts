@@ -528,7 +528,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			await watchRows(page);
 			await page.locator('.changes ~ .actions button').dispatchEvent('click');
 			await expect(page.locator('#all-done')).toBeVisible();
-			await expectPageFollows(page, `${width}`, reducedMotion === 'no-preference');
+			await expectPageFollows(page, `${width}`, false);
 			await page.close();
 		}
 	});

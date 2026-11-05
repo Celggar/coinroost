@@ -2,6 +2,18 @@
 // at their new place from one frame to the next; they fade in there instead.
 const widths = new WeakMap<HTMLElement, number>();
 
+/** The whole page comes back through a fade: what stands in it is about to be elsewhere, with no way to slide there. */
+export function fadePage(duration: number) {
+	document.querySelector('main')?.animate({ opacity: [0, 1] }, { duration });
+}
+
+/** Out where its box takes a new height at once and, centred, it would stand elsewhere: 97 px higher, at setup (pass 44). */
+export function goneBehindPage(node: HTMLElement, duration: number) {
+	node.style.display = 'none';
+	fadePage(duration);
+	return { duration: 1 };
+}
+
 /** Fades in what follows `box` inside the page, which has just taken its new place. */
 export function fadeAfter(box: Element, duration: number) {
 	const page = box.closest('main');
