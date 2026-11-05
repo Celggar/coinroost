@@ -111,7 +111,7 @@ export async function expectNoJump(page: Page, what: string, limit: number) {
 }
 
 /** The page went to its new end with the list's room: gliding, or, where nothing may slide, at once behind a fade. */
-export async function expectPageFollows(page: Page, what: string, glides: boolean) {
+export async function expectPageFollows(page: Page, what: string, glides: boolean, once = false) {
 	const { scrolls, pages, unseen, away } = await recorded(page);
 	// The focus on an end card reached it as it shows, where it shows: above the window for 82 ms, at first (pass 44).
 	expect(away, what).toBe(0);
@@ -124,6 +124,9 @@ export async function expectPageFollows(page: Page, what: string, glides: boolea
 	else {
 		const seen = steps.filter((step, i) => step >= 4 && Math.min(pages[i], pages[i + 1]) >= 0.4);
 		expect(seen, `${what}: ${trail}`).toEqual([]);
+		// One fade for one move: the page dimmed twice, 350 ms apart (pass 47).
+		const dims = pages.slice(1).filter((shown, i) => shown < 0.5 && pages[i] >= 0.5);
+		if (once) expect(dims.length, `${what}: the page's fades`).toBe(1);
 	}
 }
 

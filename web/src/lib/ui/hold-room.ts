@@ -145,16 +145,31 @@ export function openRoom(node: Element, { delay = 0 } = {}): TransitionConfig {
 		};
 	}
 	const room = slide(node, { delay, duration: DURATION.medium, easing: EASE.standard });
-	return { ...room, css: (t, u) => `${room.css?.(t, u)} margin-top: ${-u * gap}px;` };
+	return { ...room, css: (t, u) => `${room.css?.(t, u)}; margin-top: ${-u * gap}px` };
+}
+
+/** For the document's clicks. A fold opens as the click ends and its `toggle` comes a frame later, in plain sight. */
+export function foldOpens(event: MouseEvent) {
+	const summary = (event.target as Element).closest('main details:not([open]) > summary');
+	if (summary && prefersReducedMotion.current) fadeAfter(summary, DURATION.medium, true);
+}
+
+/** For the document's `transitionend`. A fold keeps its room while its body fades and gives it back as that ends: what
+ * follows fades in then, before the frame shows. Faded at the `toggle`, it stood 164 px higher at full opacity. */
+export function foldClosed(event: TransitionEvent) {
+	const fold = event.target;
+	if (event.propertyName !== '--fold' || !prefersReducedMotion.current) return;
+	if (fold instanceof HTMLDetailsElement && !fold.open) fadeAfter(fold, DURATION.medium, true);
 }
 
 /** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows
  * it fades in at its new place. At the page's end the page goes with it: 168 px in a frame as an offer closed (pass 45). */
-export function follow(event: Event) {
+export function follow(event: Event, held = false) {
 	if (!prefersReducedMotion.current) return;
 	const box = event.currentTarget as HTMLElement;
+	if (box instanceof HTMLDetailsElement && !box.open) return;
 	fadeAfter(box, DURATION.medium, true);
-	if (event.type === 'outroend') fadeIfPageMoves(box.offsetHeight);
+	if (event.type === 'outroend' && !held) fadeIfPageMoves(box.offsetHeight);
 }
 
 /**

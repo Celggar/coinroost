@@ -24,6 +24,7 @@
 	let busy = $state(false);
 	let title = $state<HTMLHeadingElement>();
 	let adding = $state(false);
+	let sheet = $state<Sheet>();
 	let phone = $state(false);
 
 	const names = $derived(nameMaps(categories, payees, accounts));
@@ -105,6 +106,7 @@
 	async function made(rule: Schemas['Rule']) {
 		changes?.forget();
 		await load();
+		sheet?.letGo();
 		adding = false;
 		await tick();
 		const row = focusMade(`[data-rule="${rule.id}"]`);
@@ -120,6 +122,7 @@
 	}
 
 	async function close() {
+		sheet?.letGo();
 		adding = false;
 		await tick();
 		focusOn('#new-rule');
@@ -213,6 +216,7 @@
 
 		{#if adding && phone}
 			<Sheet
+				bind:this={sheet}
 				title={t('ruleform.title')}
 				form="rule-form"
 				action={t('ruleform.save')}
@@ -248,6 +252,12 @@
 	   browser moving the page 218 px in one frame, its title left across the top bar; with only the list or the page's
 	   content left out, what followed it became the anchor and the page jumped 32 px when the list got shorter
 	   (pass 13). The rule glides and the page follows it. */
+	/* A column, not the stack's grid: a form that opens with its gap starts at a height of 0 and a margin of −16 px, and a grid
+	   row cannot be less than 0, so what follows stood 16 px lower before anything opened (pass 46's brief, P5). */
+	.rules-page {
+		display: flex;
+		flex-direction: column;
+	}
 	:global(html:has(.rules-page):not(:has([data-growing]))) {
 		overflow-anchor: none;
 	}

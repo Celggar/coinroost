@@ -51,8 +51,8 @@ test('an account sorted first lands with the column names whole', async ({ page 
 
 	// With no glide the page comes to what was made through a fade: it stood there in one frame (pass 44).
 	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.locator('#new-account').click();
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Aab segunda');
-	await page.getByLabel(say('accounts.key')).fill('aab-segunda');
 	// In view before the watch starts: the tool's own scroll to the button would count as the page's step.
 	const create = page.getByRole('button', { name: say('accounts.create') });
 	await create.scrollIntoViewIfNeeded();

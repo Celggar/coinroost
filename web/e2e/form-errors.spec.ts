@@ -453,6 +453,7 @@ test('a new rule opens its room as its form closes: nothing jumps, and the focus
 	await form.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 260));
 	const add = form.getByRole('button', { name: say('ruleform.add') });
 	await add.focus();
+	await add.scrollIntoViewIfNeeded();
 	await still(page);
 	// Every frame: where what follows the form stands in the page (the page's own scroll left out), how often the
 	// rule was still growing, and where the focus is. What stood under the new rule jumped 238 px in one frame as it

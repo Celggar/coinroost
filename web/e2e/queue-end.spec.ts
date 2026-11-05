@@ -52,7 +52,7 @@ for (const key of ['uncategorized.undo', 'uncategorized.only_this'] as const) {
 			await watchRows(page);
 			await press.dispatchEvent('click');
 			// It stood 168 px higher in a frame, the row with it (pass 45), after 24 px of its own (pass 46).
-			await expectPageFollows(page, `${width}`, false);
+			await expectPageFollows(page, `${width}`, false, true);
 			// The offer goes at once with the button in it: the focus moves on, never left on the page.
 			expect(await drops(), `${width}`).toEqual([]);
 			await sortAll(page);

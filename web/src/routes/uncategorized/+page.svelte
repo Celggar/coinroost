@@ -35,7 +35,7 @@
 	// Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in
 	// plain sight, then 168 (pass 46).
 	const shut = (node: HTMLElement) =>
-		prefersReducedMotion.current && endsPage(node.offsetHeight)
+		prefersReducedMotion.current && !holding && endsPage(node.offsetHeight)
 			? goneBehindPage(node, DURATION.medium)
 			: open(node);
 
@@ -205,8 +205,9 @@
 
 	/** «Solo esta vez»: the offer closes and the row keeps its Deshacer until the next choice. */
 	async function close(id: string) {
-		if (sorted) sorted.offering = false;
+		// Held first: the page stays until the next row's landing, and fades once, there (pass 47: twice, 350 ms apart).
 		holding = true;
+		if (sorted) sorted.offering = false;
 		await goOn(id);
 	}
 
@@ -304,7 +305,12 @@
 											onundo={() => undo(transaction)}
 										/>
 										{#if sorted?.id === transaction.id && sorted.offering}
-											<div class="more" in:open out:shut onoutroend={follow}>
+											<div
+												class="more"
+												in:open
+												out:shut
+												onoutroend={(event) => follow(event, holding)}
+											>
 												<Offer
 													description={transaction.description}
 													category={sorted.category}

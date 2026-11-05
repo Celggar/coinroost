@@ -328,6 +328,22 @@ details[open]::details-content {
 	opacity: 1;
 }
 
+/* The body's transition sends no events and `getAnimations` does not list it (measured): this one runs beside it on the
+   fold itself, so its `transitionend` says when the room goes. It changes nothing on screen. */
+@property --fold {
+	syntax: '<number>';
+	inherits: false;
+	initial-value: 0;
+}
+
+details {
+	transition: --fold var(--duration-medium) var(--ease-standard);
+}
+
+details[open] {
+	--fold: 1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
 	details > summary::before {
 		transition: transform var(--duration-short) var(--ease-standard);

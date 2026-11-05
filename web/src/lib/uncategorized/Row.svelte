@@ -49,9 +49,8 @@
 <div class="row" class:sorted={took}>
 	<span class="date" data-whole>{day(transaction.date)}</span>
 	<span class="description" data-whole>
-		<span class="name">{transaction.description}</span>{#if took}<Arrow /><span class="took"
-				>{took}</span
-			>{/if}
+		<span class="name">{transaction.description}</span>
+		{#if took}<Arrow /><span class="took">{took}</span>{/if}
 	</span>
 	{#if leg}<span class="amount" data-whole
 			><Money minor={leg.amount_minor} currency={leg.currency} /></span
@@ -115,6 +114,11 @@
 	}
 	.sorted .name {
 		font-weight: 600;
+	}
+	/* The space before it opens the gap on one line and goes at a wrap, so a line that starts with the arrow starts under the
+	   text above; the drawing's own margin in its box comes back here: it stood 5 px to the right (pass 47). */
+	.description :global(.arrow) {
+		margin-inline-start: -0.16em;
 	}
 	.amount {
 		justify-self: end;

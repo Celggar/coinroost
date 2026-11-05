@@ -26,9 +26,10 @@
 	let dialog = $state<HTMLDialogElement>();
 	onMount(() => dialog?.showModal());
 
-	// Modal to its last frame, it would keep the page inert while it slides away, so the focus could only go back once
-	// it had gone, dropping to the page meanwhile. Shown again as a plain dialog in the same task, nothing flickers.
-	function letGo() {
+	/** Before it closes. Modal to its last frame, it would keep the page inert while it slides away, so the focus could only
+	 * go back once it had gone, dropping to the page meanwhile; let go as it starts to leave, it was too late for a focus
+	 * given in the same tick. Shown again as a plain dialog in the same task, nothing flickers. */
+	export function letGo() {
 		dialog?.close();
 		dialog?.show();
 	}
@@ -53,7 +54,6 @@
 	}}
 	in:slide
 	out:slide={{ out: true }}
-	onoutrostart={letGo}
 >
 	<header>
 		<button class="close" type="button" aria-label={t('app.close')} onclick={onclose}>
