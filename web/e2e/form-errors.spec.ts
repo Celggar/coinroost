@@ -112,6 +112,8 @@ test('an amount that is not money is marked on its field before anything is sent
 	const form = page.getByRole('form', { name: say('ruleform.title') });
 	await form.getByLabel(say('ruleform.name')).fill('Prueba');
 	await unfold(page);
+	// What it sets: said first now that the fold follows it, the amount would not be the first field with an error.
+	await form.getByLabel(say('ruleform.payee')).selectOption('text');
 	await form.getByLabel(say('ruleform.min')).fill('abc');
 	// Folded again, the field the error names comes back: it could not take the focus from inside a closed fold.
 	await form.locator('summary').click();
