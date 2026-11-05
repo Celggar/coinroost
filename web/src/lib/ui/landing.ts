@@ -159,6 +159,20 @@ function labelTop(control: HTMLElement): number {
 	);
 }
 
+/** In a sheet the sheet scrolls, under its own header: the page's landing left a field there, its error unseen and the send
+ * seeming to do nothing (pass 49). With no glide its form comes back through a fade. */
+function showInSheet(sheet: Element, control: HTMLElement): boolean {
+	const room = parseFloat(getComputedStyle(control).fontSize);
+	const header = sheet.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+	const up = labelTop(control) - header - room;
+	const down = control.getBoundingClientRect().bottom + room - innerHeight;
+	const by = up < 0 ? up : Math.max(down, 0);
+	if (!by) return false;
+	if (prefersReducedMotion.current) fadePage(DURATION.medium, sheet.querySelector('form'));
+	sheet.scrollBy({ top: by, behavior: behavior() });
+	return true;
+}
+
 /**
  * Focuses a field and shows it in context: its form from the title, when the title down to the field fits on screen;
  * else the field with its label. Scrolled to by itself, a field landed on the screen's edge with its label and its
@@ -170,6 +184,8 @@ export function focusShown(
 	take = true
 ): boolean {
 	if (take) control.focus({ preventScroll: true });
+	const sheet = control.closest('dialog');
+	if (sheet) return showInSheet(sheet, control);
 	const { top, bottom, floor, bar } = edges();
 	const field = control.getBoundingClientRect();
 	const title = (form.querySelector('h2, h3, legend') ?? form).getBoundingClientRect();

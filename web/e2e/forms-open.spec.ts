@@ -201,3 +201,39 @@ test('at rest a fold cuts no ring of the fields at its edges', async ({ context 
 	await expect.poll(clip).toBe('visible');
 	await forget(page, made);
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`in the phone's dialog an error at the top comes into sight (${reducedMotion})`, async ({
+		context
+	}) => {
+		const page = await loggedIn(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.setViewportSize({ width: 390, height: 844 });
+		const made = await makeRules(page, ['Sheet error']);
+		await page.goto('/rules');
+		await page.locator('#new-rule').click();
+		const sheet = page.getByRole('dialog', { name: say('ruleform.title') });
+		const name = sheet.getByLabel(say('ruleform.name'));
+		await expect(name).toBeFocused();
+		await unfold(page);
+		await restTop(page, 'dialog form input');
+		await page.evaluate(() => {
+			const box = document.querySelector('dialog')!;
+			box.scrollTop = box.scrollHeight;
+		});
+		await watchTop(page, 'dialog form input', 'dialog form');
+		await sheet.getByRole('button', { name: say('ruleform.save') }).dispatchEvent('click');
+		await expect(name).toBeFocused();
+		if (reducedMotion === 'reduce') await expectFadedTop(page);
+		// The field itself at its centre, not the header that stood over it.
+		await expect
+			.poll(() =>
+				name.evaluate((e) => {
+					const { left, top, width, height } = e.getBoundingClientRect();
+					return document.elementFromPoint(left + width / 2, top + height / 2) === e;
+				})
+			)
+			.toBe(true);
+		await forget(page, made);
+	});
+}
