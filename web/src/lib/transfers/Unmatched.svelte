@@ -41,10 +41,23 @@
 
 	// A chosen side reads whole under its list: a list cuts what does not fit its width, and a long account name left
 	// the description out (pass 21).
+	const picked = (id: string) => choices.find((leg) => leg.transaction_id === id);
 	const whole = (id: string) => {
-		const leg = choices.find((l) => l.transaction_id === id);
+		const leg = picked(id);
 		return leg ? legText(leg, names) : '';
 	};
+
+	// What can go with «Un lado», by the API's own rule. Offered everything, «El otro lado» led straight to a refusal (audit D34).
+	const chosen = $derived(picked(first));
+	const fits = (leg: (typeof choices)[number]) =>
+		!chosen ||
+		(leg.account_id !== chosen.account_id &&
+			leg.currency === chosen.currency &&
+			leg.amount_minor + chosen.amount_minor === 0);
+	const nothingFits = $derived(Boolean(chosen) && !choices.some(fits));
+
+	// One reason for every leg is said once, over the list: it repeated on each of them (audit D35).
+	const oneReason = $derived(new Set(preview.unmatched.map((item) => item.reason)).size === 1);
 
 	/** Why a pair was not made, and whether the API refused the two chosen (422) rather than failing to answer. */
 	type Refusal = Failure & { refused: boolean };
@@ -122,46 +135,54 @@
 			{#if preview.unmatched.length === 0}
 				<p in:swapIn out:vanish>{t('unmatched.nothing')}</p>
 			{:else}
-				<ul class="legs txn-rows" aria-label={t('unmatched.title')} in:swapIn out:vanish>
-					{#each preview.unmatched as item (item.leg.transaction_id)}
-						<li in:rise out:vanish animate:glide>
-							<div class="txn-line">
-								<span>{day(item.leg.date)}</span>
-								<span class="description">{accountName(item.leg.account_id, names)}</span>
-								<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
-							</div>
-							<div class="hint">{item.leg.description}</div>
-							<div class="hint">{reasonLabel(item.reason)}</div>
-							<!-- Each possible other side reads like a leg, inset, with a short button beside it (under it on a
+				<div class="waiting" in:swapIn out:vanish>
+					{#if oneReason}
+						<p class="hint" in:rise out:vanish>{reasonLabel(preview.unmatched[0].reason)}</p>
+					{/if}
+					<ul class="legs txn-rows" aria-label={t('unmatched.title')}>
+						{#each preview.unmatched as item (item.leg.transaction_id)}
+							<li in:rise out:vanish animate:glide>
+								<div class="txn-line">
+									<span>{day(item.leg.date)}</span>
+									<span class="description">{accountName(item.leg.account_id, names)}</span>
+									<Money minor={item.leg.amount_minor} currency={item.leg.currency} />
+								</div>
+								<div class="hint">{item.leg.description}</div>
+								{#if !oneReason}
+									<div class="hint" in:rise out:vanish>{reasonLabel(item.reason)}</div>
+								{/if}
+								<!-- Each possible other side reads like a leg, inset, with a short button beside it (under it on a
 							     phone); the button's name says which leg it pairs with. -->
-							{#if item.candidates.length}
-								<ul class="candidates">
-									{#each item.candidates as candidate (candidate.transaction_id)}
-										<li>
-											<div class="candidate">
-												<div class="txn-line">
-													<span>{day(candidate.date)}</span>
-													<span class="description">{accountName(candidate.account_id, names)}</span
-													>
-													<Money minor={candidate.amount_minor} currency={candidate.currency} />
+								{#if item.candidates.length}
+									<ul class="candidates">
+										{#each item.candidates as candidate (candidate.transaction_id)}
+											<li>
+												<div class="candidate">
+													<div class="txn-line">
+														<span>{day(candidate.date)}</span>
+														<span class="description"
+															>{accountName(candidate.account_id, names)}</span
+														>
+														<Money minor={candidate.amount_minor} currency={candidate.currency} />
+													</div>
+													<div class="hint">{candidate.description}</div>
 												</div>
-												<div class="hint">{candidate.description}</div>
-											</div>
-											<button
-												class="secondary"
-												aria-disabled={busy}
-												aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
-												onclick={() =>
-													busy || suggested(item.leg.transaction_id, candidate.transaction_id)}
-												>{t('unmatched.pair')}</button
-											>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</li>
-					{/each}
-				</ul>
+												<button
+													class="secondary"
+													aria-disabled={busy}
+													aria-label={t('unmatched.pair_with', { leg: legText(candidate, names) })}
+													onclick={() =>
+														busy || suggested(item.leg.transaction_id, candidate.transaction_id)}
+													>{t('unmatched.pair')}</button
+												>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
 			{/if}
 		</div>
 
@@ -177,8 +198,9 @@
 					// A new «Un lado» ends a refusal too: it denied what the two then showed (pass 27).
 					if (errors.second === refusal) errors = drop(errors, 'second');
 					error = '';
-					// The leg chosen on one side is not offered on the other (pass 19): one chosen there before goes.
-					if (second === first) second = '';
+					// What cannot go with «Un lado» is not offered on the other (pass 19): one chosen there before goes.
+					const other = picked(second);
+					if (other && !fits(other)) second = '';
 				}}
 				aria-label={t('unmatched.by_hand')}
 			>
@@ -203,14 +225,14 @@
 					<Field
 						label={t('unmatched.other_side')}
 						name="second"
-						hint={whole(second)}
+						hint={whole(second) || (nothingFits ? t('unmatched.nothing_fits') : '')}
 						error={errors.second}
 					>
 						{#snippet children(wiring)}
 							<select {...wiring} bind:value={second} required>
 								<option value="" disabled>{t('unmatched.choose')}</option>
 								{#each choices as leg (leg.transaction_id)}
-									<option value={leg.transaction_id} disabled={leg.transaction_id === first}
+									<option value={leg.transaction_id} disabled={!fits(leg)}
 										>{legText(leg, names)}</option
 									>
 								{/each}
@@ -238,6 +260,10 @@
 		.follows {
 			transition: height var(--duration-medium) var(--ease-standard);
 		}
+	}
+	.waiting {
+		display: grid;
+		gap: var(--space-sm);
 	}
 	/* One choice per line: a leg's text is long, and a half-width select cut it mid-word (pass 1). */
 	.pick {

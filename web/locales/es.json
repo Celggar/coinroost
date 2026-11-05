@@ -299,6 +299,7 @@
 	"unmatched.one_side": "Un lado",
 	"unmatched.other_side": "El otro lado",
 	"unmatched.choose": "Escoge una parte",
+	"unmatched.nothing_fits": "Ninguna otra parte cancela este monto.",
 	"unmatched.pair_them": "Emparejarlas",
 	"made.failed": "No se pudo separar la transferencia",
 	"made.split_done": "Se separó «{description}» en sus dos transacciones.",

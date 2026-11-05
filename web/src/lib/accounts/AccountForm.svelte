@@ -39,14 +39,26 @@
 	// What the fold holds: an error there opens it, or the field it names could not take the focus.
 	const ADVANCED = ['namespace', 'detection.markers', 'detection.card_prefixes'];
 
+	// Whole words up to this length: the key goes into every transaction id, and a long name gave 58 characters that took
+	// three lines of the table (audit D10). One typed by hand can still take 64.
+	const SUGGESTED_KEY = 24;
+
+	function shortKey(slug: string) {
+		if (slug.length <= SUGGESTED_KEY) return slug;
+		const words = slug.slice(0, SUGGESTED_KEY + 1);
+		const end = words.lastIndexOf('-');
+		return words.slice(0, end >= SUGGESTED_KEY / 2 ? end : SUGGESTED_KEY);
+	}
+
 	const suggested = $derived(
-		name
-			.normalize('NFD')
-			.replace(/[̀-ͯ]/g, '')
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '')
-			.slice(0, 64)
+		shortKey(
+			name
+				.normalize('NFD')
+				.replace(/[̀-ͯ]/g, '')
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '')
+		)
 	);
 	const key = $derived(namespaceEdited ? namespace : suggested);
 

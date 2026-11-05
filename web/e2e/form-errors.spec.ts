@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { watchDrops } from './focus.ts';
 import { say } from './messages.ts';
-import { unfold } from './forms.ts';
+import { postLegs, unfold } from './forms.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -61,6 +61,10 @@ test('an empty form says what is missing under each field, in Spanish', async ()
 });
 
 test('a key already taken is marked on «Clave», not as a loose English line', async () => {
+	// A long name suggests a short key, in whole words: it goes into every transaction id (audit D10).
+	const long = 'Christmas savings for the whole family';
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill(long);
+	await expect(page.locator('form summary code')).toHaveText('christmas-savings-for');
 	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Corriente');
 	await page.getByLabel(say('accounts.bank_file')).selectOption({ value: 'bac-account' });
 	await page.getByRole('button', { name: say('accounts.create') }).click();
@@ -365,32 +369,12 @@ test('a file removed at the page end leaves the page gliding, never pulled back 
 });
 
 test('a pair confirmed at the page end leaves the page gliding as the pairing form goes', async () => {
-	const post = async (url: string, data: object) => {
-		const response = await page.request.post(url, { data });
-		expect(response.status(), url).toBe(201);
-		return response.json();
-	};
-	const accounts: { id: string; name: string }[] = (
-		await (await page.request.get('/api/v1/accounts')).json()
-	).items;
-	const own = await post('/api/v1/categories', { name: 'Propias', kind: 'transfer' });
-	for (const [name, amount] of [
-		['Corriente', -50000],
-		['Ahorro', 50000]
-	] as const) {
-		await post('/api/v1/transactions', {
-			date: '2026-05-15',
-			description: 'BETWEEN ACCOUNTS',
-			category_id: own.id,
-			legs: [
-				{
-					account_id: accounts.find((a) => a.name === name)!.id,
-					amount_minor: amount,
-					statement_text: 'BETWEEN ACCOUNTS'
-				}
-			]
-		});
-	}
+	const data = { name: 'Propias', kind: 'transfer' };
+	expect((await page.request.post('/api/v1/categories', { data })).status()).toBe(201);
+	await postLegs(page, 'Propias', 'BETWEEN ACCOUNTS', [
+		['Corriente', -50000, '2026-05-15'],
+		['Ahorro', 50000, '2026-05-15']
+	]);
 	await page.setViewportSize({ width: 1280, height: 800 });
 	await page.goto('/transfers');
 	const confirm = page.getByRole('button', { name: say('waiting.pair_one') });
@@ -592,4 +576,27 @@ test('importing keeps the rows table still while each status changes', async () 
 	await expect.poll(edges).toEqual(before);
 	await page.waitForTimeout(600);
 	expect(await edges()).toEqual(before);
+});
+
+test('by hand, only what cancels a leg is offered, and one reason is said once', async () => {
+	await postLegs(page, 'Propias', 'MANO', [
+		['Corriente', -70000, '2026-03-02'],
+		['Ahorro', 70000, '2026-03-20'],
+		['Ahorro', 90000, '2026-03-02']
+	]);
+	await page.goto('/transfers');
+	await expect(page.getByText(say('legs.no_counterpart'))).toHaveCount(1);
+	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
+	const one = form.getByLabel(say('unmatched.one_side'));
+	const other = form.getByLabel(say('unmatched.other_side'));
+	const odd = '2 mar 2026 · Ahorro · +$900.00 · MANO';
+	await other.selectOption({ label: odd });
+	await one.selectOption({ label: '2 mar 2026 · Corriente · −$700.00 · MANO' });
+	await expect(other).toHaveValue('');
+	await expect(other.getByRole('option', { name: odd })).toBeDisabled();
+	await expect(
+		other.getByRole('option', { name: '20 mar 2026 · Ahorro · +$700.00' })
+	).toBeEnabled();
+	await one.selectOption({ label: odd });
+	await expect(form.getByText(say('unmatched.nothing_fits'))).toBeVisible();
 });

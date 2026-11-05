@@ -299,6 +299,7 @@
 	"unmatched.one_side": "One side",
 	"unmatched.other_side": "The other side",
 	"unmatched.choose": "Choose a leg",
+	"unmatched.nothing_fits": "No other leg cancels this amount.",
 	"unmatched.pair_them": "Pair them",
 	"made.failed": "The transfer could not be split",
 	"made.split_done": "Split “{description}” into its two transactions.",
