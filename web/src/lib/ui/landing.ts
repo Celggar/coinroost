@@ -120,8 +120,11 @@ const behavior = (): ScrollBehavior => (prefersReducedMotion.current ? 'auto' : 
 /** The page's top and bottom edges for content, inside the bars' room (its scroll padding). */
 function edges() {
 	const page = getComputedStyle(document.documentElement);
+	const room = parseFloat(page.scrollPaddingTop) || 0;
+	// A notice pinned at the top, as on a phone, covers what lands under it: the focus stood under one (pass 43, WCAG 2.4.11).
+	const note = document.querySelector('.notices .note')?.getBoundingClientRect();
 	return {
-		top: parseFloat(page.scrollPaddingTop) || 0,
+		top: note && note.top < innerHeight / 2 ? Math.max(room, note.bottom + 8) : room,
 		bottom: innerHeight - (parseFloat(page.scrollPaddingBottom) || 0),
 		// Where the bottom bar starts: below `bottom` lies breathing room, not a cover.
 		floor: innerHeight - (parseFloat(page.getPropertyValue('--nav-height')) || 0),

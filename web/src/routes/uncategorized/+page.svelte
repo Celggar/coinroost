@@ -3,21 +3,12 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { behindFade, follow } from '#lib/ui/hold-room.ts';
+	import { behindFade, follow, glideRoom } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import {
-		arrive,
-		DURATION,
-		EASE,
-		followContent,
-		placeholder,
-		rise,
-		swapIn,
-		vanish
-	} from '#lib/motion.ts';
+	import { arrive, DURATION, EASE, followContent, placeholder, rise, swapIn } from '#lib/motion.ts';
 	import { confetti } from '#lib/ui/confetti.ts';
 	import { announce, notify } from '#lib/ui/notices.svelte.ts';
 	import Filters, { type Kind } from '#lib/uncategorized/Filters.svelte';
@@ -213,12 +204,17 @@
 	 * flush as the new list: let go first, its tint still changing, it stayed in the flow and the rows jumped after it. */
 	async function applied() {
 		let target = null as ReturnType<typeof focusOn>;
+		const cell = queue?.closest<HTMLElement>('.in-place');
+		const room = cell?.offsetHeight ?? 0;
 		await list.run(async () => {
 			await load(() => {
 				sorted = null;
 				kept = null;
 			});
 			await tick();
+			// The last rows sorted, the whole block goes: its room glides, or the page came back 1307 px in a frame (pass 43).
+			const end = document.getElementById('all-done');
+			if (cell && end && transactions.length === 0) glideRoom(cell, room, end.offsetHeight);
 			const first = shown[0];
 			target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
 		});
@@ -264,7 +260,7 @@
 				</div>
 			{/if}
 		{:else}
-			<div class="stack" out:vanish>
+			<div class="stack" out:list.leaveAll>
 				<Filters bind:kind bind:byAmount {counts} />
 				<!-- With no category to choose, the way on comes first and the cards hold no control that cannot work. -->
 				{#if categories.length === 0}

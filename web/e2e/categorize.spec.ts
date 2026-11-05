@@ -6,6 +6,7 @@ import { watchDrops } from './focus.ts';
 import { expectFadedMoves, expectNoJump, expectPageFollows, watchRows } from './frames.ts';
 import { say } from './messages.ts';
 import {
+	answered,
 	choose,
 	fill,
 	filter,
@@ -519,6 +520,19 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await page.close();
 	});
 
+	test(`«Aplicar» that empties the queue takes the page up calmly (${reducedMotion})`, async ({
+		context
+	}) => {
+		for (const width of [1280, 390]) {
+			const page = await answered(context, reducedMotion, width);
+			await watchRows(page);
+			await page.locator('.changes ~ .actions button').dispatchEvent('click');
+			await expect(page.locator('#all-done')).toBeVisible();
+			await expectPageFollows(page, `${width}`, reducedMotion === 'no-preference');
+			await page.close();
+		}
+	});
+
 	test(`a filter from a scrolled page takes it to its new end calmly (${reducedMotion})`, async ({
 		context
 	}) => {
@@ -551,11 +565,8 @@ test('under reduced motion the list goes up at the page end only through a fade'
 	context
 }) => {
 	for (const width of [1280, 390]) {
-		const names = 'ABCDEFGH'.split('').map((name) => `END ${width} ${name}`);
-		await fill(
-			context,
-			names.map((name) => spend(name, -1000))
-		);
+		const lines = 'ABCDEFGH'.split('').map((name) => spend(`LAST ${width} ${name}`, -1000));
+		await fill(context, lines);
 		const page = await queue(context);
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await page.setViewportSize({ width, height: 600 });

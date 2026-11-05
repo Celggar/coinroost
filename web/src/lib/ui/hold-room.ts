@@ -1,7 +1,7 @@
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { TransitionConfig } from 'svelte/transition';
-import { DURATION, EASE_CSS, FADED, fadeThrough, glide, vanish } from '#lib/motion.ts';
+import { DURATION, EASE_CSS, FADED, fadeThrough, glide, placeholder, vanish } from '#lib/motion.ts';
 import { fadeAfter } from '#lib/ui/followers.ts';
 
 /**
@@ -86,6 +86,18 @@ export function behindFade(box: () => HTMLElement | undefined) {
 		// waiting if another really waits (the chosen row's answer), and none of them ever left.
 		leave(node: HTMLElement) {
 			if (!going) return vanishRow(node);
+			node.style.display = 'none';
+			return { duration: 1 };
+		},
+		/** The block around the list, going with it: out of the flow at once, so what comes finds the room gliding (`glideRoom`).
+		 * Its rows stay as they were in a leaving block: left to the list's fade back in, they showed at 0.34 opacity (pass 43). */
+		leaveAll(node: HTMLElement) {
+			if (!going) return vanish(node);
+			const list = box();
+			if (list) list.style.visibility = 'hidden';
+			// Clipped by the cell as it glides: placed by the page, it held the page's height until it left, and then the page fell.
+			if (node.parentElement) node.parentElement.style.position = 'relative';
+			if (!prefersReducedMotion.current) return placeholder(node);
 			node.style.display = 'none';
 			return { duration: 1 };
 		},
