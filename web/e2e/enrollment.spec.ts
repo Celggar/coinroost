@@ -2,7 +2,7 @@
 // and password, the authenticator secret the server made, a wrong code and then a right one, and the person is in;
 // then out, in again with the next code, and the link no longer works.
 import { expect, test } from '@playwright/test';
-import { expectFadedTop, watchTop } from './frames.ts';
+import { expectFadedTop, restTop, watchTop } from './frames.ts';
 import { say } from './messages.ts';
 import { accountButton, logOut } from './account.ts';
 import { still } from './scroll.ts';
@@ -52,6 +52,7 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	const finish = page.getByRole('button', { name: say('setup.finish') });
 	await finish.scrollIntoViewIfNeeded();
 	await still(page);
+	await restTop(page, 'h1');
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await watchTop(page, 'h1');
 	await finish.click();

@@ -179,6 +179,18 @@ export async function expectFadedTop(page: Page, least = 1) {
 		const step = Math.abs(top - tops[i][0]);
 		return step >= 4 ? [{ step, shown: Math.min(shown, tops[i][1]) }] : [];
 	});
-	expect(moves.length).toBeGreaterThanOrEqual(least);
-	expect(moves.filter(({ shown }) => shown > 0.4)).toEqual([]);
+	const trail = tops.map(([top, shown]) => `${Math.round(top)}@${shown.toFixed(2)}`).join(' ');
+	expect(moves.length, trail).toBeGreaterThanOrEqual(least);
+	expect(
+		moves.filter(({ shown }) => shown > 0.4),
+		trail
+	).toEqual([]);
+}
+
+/** Waits for `selector` to stand still on screen: motion turned off in the middle of a glide ends it in one frame. */
+export async function restTop(page: Page, selector: string) {
+	const top = () =>
+		page.evaluate((s) => document.querySelector(s)?.getBoundingClientRect().top, selector);
+	let last: number | undefined = NaN;
+	await expect.poll(async () => last === (last = await top()), { intervals: [300] }).toBe(true);
 }
