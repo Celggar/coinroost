@@ -1,7 +1,7 @@
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { TransitionConfig } from 'svelte/transition';
-import { DURATION, EASE_CSS, FADED, vanish } from '#lib/motion.ts';
+import { DURATION, EASE_CSS, FADED, fadeThrough, glide, vanish } from '#lib/motion.ts';
 import { fadeAfter } from '#lib/ui/followers.ts';
 
 /**
@@ -45,6 +45,53 @@ export function glideRoom(box: HTMLElement, before: number, after = box.offsetHe
 		duration: DURATION.medium,
 		easing: EASE_CSS.standard
 	});
+}
+
+/** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */
+function fadeIfPageMoves(box: HTMLElement, room: number) {
+	const end = document.documentElement.scrollHeight - innerHeight - room;
+	if (room > 0 && scrollY > end)
+		box.closest('main')?.animate({ opacity: [0, 1] }, { duration: DURATION.medium });
+}
+
+/**
+ * A list that changes as a whole, behind a fade, its room gliding: a filter's rows changed in one frame, the list 372 to
+ * 853 px (pass 40), and rows sorted by a rule jumped 170 px at full opacity (pass 41). Meanwhile its rows change places with
+ * no motion of their own (`leave`, `move`). `box` follows its first child's height.
+ */
+export function behindFade(box: () => HTMLElement | undefined) {
+	let going = false;
+	return {
+		going: () => going,
+		async run(change: () => unknown) {
+			const list = box();
+			going = true;
+			await fadeThrough(list, async () => {
+				const room = list?.offsetHeight ?? 0;
+				// Held until the glide has it: reading the new height with the box already short took the page to its new
+				// end at once, 120 px in one frame, before the glide began (pass 41).
+				if (list) list.style.minHeight = `${room}px`;
+				await change();
+				await tick();
+				const content = list?.firstElementChild;
+				if (!list || !(content instanceof HTMLElement)) return;
+				const after = content.offsetHeight;
+				glideRoom(list, room, after);
+				if (prefersReducedMotion.current) fadeIfPageMoves(list, room - after);
+				list.style.minHeight = '';
+			});
+			going = false;
+		},
+		// Out of the page at once, gone a moment later: in a group of leaving rows Svelte 5.57 counts one that ends at once as still
+		// waiting if another really waits (the chosen row's answer), and none of them ever left.
+		leave(node: HTMLElement) {
+			if (!going) return vanishRow(node);
+			node.style.display = 'none';
+			return { duration: 1 };
+		},
+		move: (node: Element, places: { from: DOMRect; to: DOMRect }) =>
+			going ? { duration: 0 } : glide(node, places)
+	};
 }
 
 /** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows

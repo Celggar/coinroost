@@ -17,7 +17,7 @@ export function fadeAfter(box: Element, duration: number) {
 /** A list item's way to a new place where nothing may slide: it fades in where it stands, after fading out for `out` ms where
  * it stood, `up` px below. Landing at once, rows jumped 140 to 313 px at full opacity on each choice (pass 40). */
 export function fadeToPlace(up: number, out: number, duration: number) {
-	if (Math.abs(up) < 1) return { duration: 0 };
+	if (Math.abs(up) < 4) return { duration: 0 };
 	const turn = out / (out + duration);
 	return {
 		duration: out + duration,

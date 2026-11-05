@@ -2,6 +2,8 @@
 // filter and sort, a choice that stays with its Deshacer until the next one, and a choice turned into a rule on the
 // spot. Its own user and its own data, made through the API.
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { watchDrops } from './focus.ts';
+import { expectFadedMoves, expectNoJump, expectPageFollows, watchRows } from './frames.ts';
 import { say } from './messages.ts';
 import { totp } from './totp.ts';
 
@@ -259,40 +261,6 @@ test('the end card comes under the list after an empty filter', async ({ context
 	await page.close();
 });
 
-type Moves = { moves: { step: number; opacity: number }[]; frames: number };
-
-/** Every step of a row's place in the page beyond 2 px, frame by frame, with how much of the row showed then. */
-async function watchRows(page: Page) {
-	await page.evaluate(() => {
-		const w = window as unknown as Moves;
-		const last = new Map<Element, number>();
-		w.moves = [];
-		w.frames = 0;
-		const step = () => {
-			for (const li of document.querySelectorAll('.queue > li')) {
-				const top = li.getBoundingClientRect().top + scrollY;
-				const before = last.get(li);
-				if (before !== undefined && Math.abs(top - before) > 2)
-					w.moves.push({ step: top - before, opacity: Number(getComputedStyle(li).opacity) });
-				last.set(li, top);
-			}
-			if (++w.frames < 60) requestAnimationFrame(step);
-		};
-		requestAnimationFrame(step);
-	});
-}
-
-/** Rows moved, and none in plain sight. */
-async function expectFadedMoves(page: Page, what: string) {
-	await page.waitForFunction(() => (window as unknown as Moves).frames >= 60);
-	const moves = await page.evaluate(() => (window as unknown as Moves).moves);
-	expect(moves.length, what).toBeGreaterThan(0);
-	expect(
-		moves.filter(({ opacity }) => opacity > 0.3),
-		what
-	).toEqual([]);
-}
-
 test('under reduced motion a row changes place only through a fade', async ({ context }) => {
 	const names = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT'];
 	await fill(
@@ -377,7 +345,8 @@ async function watchSwap(page: Page) {
 		w.frames = [];
 		const step = () => {
 			w.frames.push({
-				rows: document.querySelectorAll('.queue > li').length,
+				rows: [...document.querySelectorAll('.queue > li')].filter((li) => li.checkVisibility())
+					.length,
 				height: box.getBoundingClientRect().height,
 				opacity: Number(getComputedStyle(box).opacity)
 			});
@@ -410,8 +379,10 @@ test('a filter changes the list behind a fade, its room gliding', async ({ conte
 			await page.waitForFunction(() => (window as unknown as Swap).frames.length >= 60);
 			const frames = await page.evaluate(() => (window as unknown as Swap).frames);
 			const way = `${name}, ${reducedMotion}`;
+			// A height set after this frame's read shows in the next one: the fade it landed in is the lower of the two.
 			const steps = frames.slice(1).map((frame, i) => ({
 				...frame,
+				opacity: Math.min(frame.opacity, frames[i].opacity),
 				rowsChanged: frame.rows !== frames[i].rows,
 				step: Math.abs(frame.height - frames[i].height)
 			}));
@@ -536,4 +507,91 @@ test('an answer in the offer keeps its whole focus ring, and Deshacer its whole 
 		await expect.poll(hit, `${width}`).toBe(true);
 		await page.close();
 	}
+});
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`a rule from the offer answers and applies with no jump (${reducedMotion})`, async ({
+		context
+	}) => {
+		// With motion a row may glide; with none it moves only behind a fade.
+		const limit = reducedMotion === 'reduce' ? 2 : 100;
+		for (const width of [1280, 390]) {
+			const tag = `T${width}${reducedMotion[0]}`;
+			await fill(context, [
+				spend(`${tag} SHOP 01`, -1000),
+				...['A', 'B', 'C', 'D', 'E'].map((name) => spend(`${tag} OTHER ${name}`, -1100)),
+				spend(`${tag} SHOP 02`, -1200),
+				spend(`${tag} SHOP 03`, -1300)
+			]);
+			const page = await queue(context);
+			await page.emulateMedia({ reducedMotion });
+			await page.setViewportSize({ width, height: 800 });
+			await choose(page, `${tag} SHOP 01`, 'Food');
+			const send = row(page, `${tag} SHOP 01`).getByRole('button', {
+				name: say('uncategorized.make_rule')
+			});
+			await expect(send).toBeVisible();
+			await page.waitForTimeout(500);
+
+			// «Crear regla»: the form went first and the row stood 197, 73 and 290 px tall in three frames (pass 41).
+			const drops = await watchDrops(page);
+			await watchRows(page);
+			await send.click();
+			await expect(page.locator('#changes-some')).toBeFocused();
+			await expectNoJump(page, `${width}: the answer`, limit);
+			expect(await drops(), `${width}: the answer`).toEqual([]);
+
+			// «Aplicar»: rows jumped 170 px at full opacity, and the page shrank 392 px in a frame (pass 41).
+			const apply = page.getByRole('button', {
+				name: new RegExp(say('changes.apply_other', { count: 2 }))
+			});
+			await watchRows(page);
+			await apply.click();
+			await expect(row(page, `${tag} SHOP`)).toHaveCount(0);
+			await expectNoJump(page, `${width}: applied`, limit);
+			expect(await drops(), `${width}: applied`).toEqual([]);
+			await expect(page.locator('.queue select').first()).toBeFocused();
+			await sortAll(page);
+			await page.close();
+		}
+	});
+
+	test(`a filter from a scrolled page takes it to its new end calmly (${reducedMotion})`, async ({
+		context
+	}) => {
+		// Half of each: the list shrinks past where the page stands, and the page has to go up with it.
+		const names = 'ABCDEFGHIJ'.split('');
+		await fill(
+			context,
+			names.flatMap((name) => [
+				spend(`LONG ${name} ${reducedMotion}`, -1000),
+				spend(`GOT ${name} ${reducedMotion}`, 2000)
+			])
+		);
+		const page = await queue(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await page.evaluate(() => scrollTo(0, 120));
+		await expect.poll(() => page.evaluate(() => scrollY)).toBe(120);
+		await watchRows(page);
+		// A real press where the pill stands: the tool's own click would scroll to it first.
+		const pill = (await filter(page, 'spending').boundingBox())!;
+		await page.mouse.click(pill.x + pill.width / 2, pill.y + pill.height / 2);
+		await expect(page.locator('.queue > li')).toHaveCount(names.length);
+		await expectPageFollows(page, reducedMotion, reducedMotion === 'no-preference');
+		await sortAll(page);
+		await page.close();
+	});
+}
+
+test('a filter with no row of its own says so beside the chosen row', async ({ context }) => {
+	await fill(context, [spend('ONLY ONE', -1000), spend('EARNED TOO', 2000)]);
+	const page = await queue(context);
+	await filter(page, 'income').check();
+	await expect(rows(page)).toHaveCount(1);
+	await choose(page, 'EARNED TOO', 'Pay');
+	await expect(page.getByText(say('uncategorized.none_here'))).toBeVisible();
+	await expect(rows(page)).toHaveCount(1);
+	await sortAll(page);
+	await page.close();
 });

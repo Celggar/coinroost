@@ -3,7 +3,7 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { follow, glideRoom, vanishRow } from '#lib/ui/hold-room.ts';
+	import { behindFade, follow } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -12,9 +12,7 @@
 		arrive,
 		DURATION,
 		EASE,
-		fadeThrough,
 		followContent,
-		glide,
 		placeholder,
 		rise,
 		swapIn,
@@ -41,9 +39,10 @@
 	const open = (node: Element) =>
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
+			: slide(node, { duration: DURATION.medium, easing: EASE.standard });
 
-	async function load() {
+	/** `arriving` runs as the new list comes, in the same flush. */
+	async function load(arriving?: () => void) {
 		loadError = '';
 		const [list, kinds, any, held] = await Promise.all([
 			api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
@@ -56,6 +55,7 @@
 			loadError = problem(failed.error, failed.response?.status, t('uncategorized.failed'));
 			return;
 		}
+		arriving?.();
 		transactions = list.data.items;
 		categories = kinds.data.items;
 		empty = any.data?.items.length === 0;
@@ -79,7 +79,6 @@
 	let byAmount = $state(false);
 	// What the list shows: the filters' answer, a fade behind them (`swap`).
 	let view = $state<{ kind: Kind; byAmount: boolean }>({ kind: 'all', byAmount: false });
-	let swapping = false;
 
 	const amount = (transaction: Schemas['Transaction']) => transaction.legs[0]?.amount_minor ?? 0;
 	const waiting = $derived(transactions.filter((x) => x.id !== sorted?.id));
@@ -102,30 +101,21 @@
 			: wanted;
 	});
 
-	/** The filters' answer comes through a fade, its room gliding: the rows changed in one frame, the list 372 to 853 px
-	 * (pass 40). Asked again meanwhile, this run goes on to the last one asked. */
+	const list = behindFade(() => queue);
+
+	/** The filters' answer comes behind a fade. Asked again meanwhile, this run goes on to the last one asked. */
 	async function swap() {
-		if (swapping) return;
-		swapping = true;
+		if (list.going()) return;
 		while (view.kind !== kind || view.byAmount !== byAmount) {
-			await fadeThrough(queue, async () => {
-				const room = queue?.offsetHeight ?? 0;
+			await list.run(() => {
 				kept = null;
 				view = { kind, byAmount };
-				await tick();
-				const list = queue?.firstElementChild;
-				if (queue && list instanceof HTMLElement) glideRoom(queue, room, list.offsetHeight);
 			});
 		}
-		swapping = false;
 	}
 	$effect(() => {
 		if (kind !== view.kind || byAmount !== view.byAmount) untrack(swap);
 	});
-	// Behind the fade the rows change places with no motion of their own.
-	const leave = (node: HTMLElement) => (swapping ? { duration: 0 } : vanishRow(node));
-	const move = (node: Element, places: { from: DOMRect; to: DOMRect }) =>
-		swapping ? { duration: 0 } : glide(node, places);
 
 	/** The next row shown that waits, after `id`, then before it. */
 	function nextWaiting(id: string) {
@@ -219,17 +209,20 @@
 		await goOn(id);
 	}
 
-	/** The rule's changes went in: what they sorted leaves the list, and the sorted row with it. */
+	/** The rule's changes went in: what they sorted leaves the list behind a fade, and the sorted row with it, in the same
+	 * flush as the new list: let go first, its tint still changing, it stayed in the flow and the rows jumped after it. */
 	async function applied() {
-		sorted = null;
-		kept = null;
-		await load();
-		holding = true;
-		await tick();
-		const first = shown[0];
-		const target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
+		let target = null as ReturnType<typeof focusOn>;
+		await list.run(async () => {
+			await load(() => {
+				sorted = null;
+				kept = null;
+			});
+			await tick();
+			const first = shown[0];
+			target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
+		});
 		if (target) await showWhole(target);
-		holding = false;
 	}
 
 	onMount(load);
@@ -285,11 +278,11 @@
 				<!-- One box the height follows: on the list itself, it was gone with an empty filter and the end card came over
 				     the row (pass 40). -->
 				<div class="follows" bind:this={queue} use:followContent={holding}>
-					<div>
+					<div class="stack">
 						{#if shown.length > 0}
 							<ul class="queue card" aria-label={t('uncategorized.list')}>
 								{#each shown as transaction (transaction.id)}
-									<li class:sorted={sorted?.id === transaction.id} out:leave animate:move>
+									<li class:sorted={sorted?.id === transaction.id} out:list.leave animate:list.move>
 										<Row
 											{transaction}
 											{categories}
@@ -314,8 +307,9 @@
 									</li>
 								{/each}
 							</ul>
-						{:else}
-							<p class="hint">{t('uncategorized.none_here')}</p>
+						{/if}
+						{#if view.kind !== 'all' && counts[view.kind] === 0}
+							<p class="hint" transition:open>{t('uncategorized.none_here')}</p>
 						{/if}
 					</div>
 				</div>

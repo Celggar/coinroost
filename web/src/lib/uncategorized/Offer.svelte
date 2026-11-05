@@ -5,6 +5,7 @@
 	import { tick, untrack } from 'svelte';
 	import { api, failure, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { followContent, swapOut } from '#lib/motion.ts';
 	import { names as namesOf } from '#lib/rules/describe.ts';
 	import Changes from '#lib/rules/Changes.svelte';
 	import Field from '#lib/ui/Field.svelte';
@@ -34,6 +35,7 @@
 	let errors = $state<Errors>({});
 	let busy = $state(false);
 	let made = $state<ReturnType<typeof namesOf> | null>(null);
+	let answered = $state(false);
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -73,43 +75,62 @@
 		// The changes are named as on Reglas, payees included: another rule may be what moves a transaction.
 		const payees = await api.GET('/api/v1/payees');
 		made = namesOf(categories, payees.data?.items ?? [], accounts);
-		busy = false;
 	}
 </script>
 
-{#if made}
-	<Changes names={made} inline {onapplied} />
-{:else}
-	<form
-		class="offer"
-		novalidate
-		onsubmit={submit}
-		oninput={(event) => {
-			errors = without(errors, event);
-			error = '';
-		}}
-		aria-label={t('uncategorized.offer')}
-	>
-		<Field
-			label={t('uncategorized.offer')}
-			name="when.description_contains"
-			error={errors['when.description_contains']}
-		>
-			{#snippet children(wiring)}
-				<input {...wiring} required maxlength="200" bind:value={text} />
-			{/snippet}
-		</Field>
-		<FormError text={error} />
-		<div class="actions">
-			<button type="submit" aria-disabled={busy}>{t('uncategorized.make_rule')}</button>
-			<button type="button" class="secondary" onclick={onclose}
-				>{t('uncategorized.only_this')}</button
+<!-- One cell: the form stays, busy and with the focus, until the changes have their answer. Gone first, the row went 197, 73
+     and 290 px tall in three frames and the focus fell to the page (pass 41). The room follows what the cell holds. -->
+<div class="fit" use:followContent>
+	<div class="in-place">
+		{#if !answered}
+			<form
+				class="offer"
+				out:swapOut
+				novalidate
+				onsubmit={submit}
+				oninput={(event) => {
+					errors = without(errors, event);
+					error = '';
+				}}
+				aria-label={t('uncategorized.offer')}
 			>
-		</div>
-	</form>
-{/if}
+				<Field
+					label={t('uncategorized.offer')}
+					name="when.description_contains"
+					error={errors['when.description_contains']}
+				>
+					{#snippet children(wiring)}
+						<input {...wiring} required maxlength="200" bind:value={text} />
+					{/snippet}
+				</Field>
+				<FormError text={error} />
+				<div class="actions">
+					<button type="submit" aria-disabled={busy}>{t('uncategorized.make_rule')}</button>
+					<button type="button" class="secondary" onclick={onclose}
+						>{t('uncategorized.only_this')}</button
+					>
+				</div>
+			</form>
+		{/if}
+		{#if made}
+			<Changes names={made} inline {onapplied} onanswer={() => (answered = true)} />
+		{/if}
+	</div>
+</div>
 
 <style>
+	/* Clipped only while it glides: at rest a focus ring reaches past the box. */
+	.fit {
+		position: relative;
+	}
+	.fit[data-moving] {
+		overflow: clip;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.fit {
+			transition: height var(--duration-medium) var(--ease-standard);
+		}
+	}
 	.offer {
 		display: grid;
 		gap: var(--space-sm);

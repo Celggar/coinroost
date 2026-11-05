@@ -13,12 +13,19 @@
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { categoryName, payeeName, type Names } from '#lib/rules/describe.ts';
 
-	// `inline`: inside the offer that follows a choice, with no card of its own, the check already made.
+	// `inline`: inside the offer that follows a choice, with no card of its own, the check already made; `onanswer` says
+	// when that check has answered and the focus has come to its answer.
 	let {
 		names,
 		onapplied,
+		onanswer,
 		inline = false
-	}: { names: Names; onapplied: () => void; inline?: boolean } = $props();
+	}: {
+		names: Names;
+		onapplied: () => void;
+		onanswer?: () => void;
+		inline?: boolean;
+	} = $props();
 
 	let preview = $state<Schemas['RulePreview'] | null>(null);
 	let busy = $state(false);
@@ -52,6 +59,7 @@
 		if (!data) {
 			preview = null;
 			notify(problem(failure, response?.status, t('changes.check_failed')), 'bad');
+			onanswer?.();
 			return;
 		}
 		holding = true;
@@ -59,6 +67,7 @@
 		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
 		const answer = focusOn(data.changes.length ? '#changes-some' : '#changes-none');
+		onanswer?.();
 		// The answer whole, down to the button that applies it: its first line alone left the changes below the screen.
 		const send = data.changes.length
 			? answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions')
@@ -131,11 +140,11 @@
 			     cell, the new answer waiting for the last: after «Aplicar» it stood under the list, then fell 355 px (pass 36). -->
 			<div class="in-place">
 				{#if preview.changes.length === 0}
-					<p id="changes-none" tabindex="-1" in:swapIn|global out:swapOut|global>
+					<p id="changes-none" tabindex="-1" in:swapIn|global={{ wait: inline }} out:swapOut|global>
 						{t('changes.nothing')}
 					</p>
 				{:else}
-					<div class="stack" in:swapIn|global out:swapOut|global>
+					<div class="stack" in:swapIn|global={{ wait: inline }} out:swapOut|global>
 						<p id="changes-some" tabindex="-1">
 							{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
 						</p>

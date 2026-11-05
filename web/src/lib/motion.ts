@@ -80,12 +80,12 @@ export function rise(node: Element, { delay = 0, y = 12 } = {}): TransitionConfi
 /**
  * In, to an `.in-place` cell another block is leaving: it rises once that one has faded (a fade through, the two never
  * at once). Rising while the other faded, «Nada por confirmar» was drawn over the new pairs (pass 16). With reduced
- * motion it only fades, after the same wait.
+ * motion it only fades, after the same wait. `wait`: what it replaces stands in a cell around this one.
  */
-export function swapIn(node: Element, { y = 12 } = {}): TransitionConfig {
+export function swapIn(node: Element, { y = 12, wait = false } = {}): TransitionConfig {
 	const leaving = [...(node.parentElement?.children ?? [])].some((e) => e !== node);
 	return fly(node, {
-		delay: leaving ? FADED : 0,
+		delay: leaving || wait ? FADED : 0,
 		y: still() ? 0 : y,
 		duration: DURATION.medium,
 		easing: EASE.enter
