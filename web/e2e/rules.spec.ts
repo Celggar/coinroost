@@ -225,6 +225,67 @@ test('a rule under a deleted one waits in its place while that one fades', async
 	expect((await page.request.delete(`/api/v1/rules/${under}`)).ok()).toBe(true);
 });
 
+// After «Aplicar» «No cambiaría nada.» came in under the list, stood there beside it, and fell 355 px in one frame as the
+// list went (pass 36). The answers come from the page's own routes here: what is judged is how one replaces the other.
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`an applied answer takes the last one's place (${reducedMotion})`, async ({ context }) => {
+		const page = await loggedIn(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.setViewportSize({ width: 1280, height: 1300 });
+		const row = (n: number) => ({
+			transaction_id: `00000000-0000-4000-8000-00000000000${n}`,
+			date: `2026-05-0${n}`,
+			description: `Row ${n}`,
+			amount_minor: -1000 * n,
+			currency: 'USD',
+			before: { category_id: null, payee_id: null },
+			after: { category_id: null, payee_id: null }
+		});
+		let changes = [1, 2, 3, 4].map(row);
+		await page.route('**/api/v1/rules/preview', (route) =>
+			route.fulfill({ json: { tag: 'tag', changes } })
+		);
+		await page.route('**/api/v1/rules/apply', (route) => {
+			changes = [];
+			return route.fulfill({ json: { applied: 4 } });
+		});
+		await page.goto('/rules');
+		await page.getByRole('button', { name: say('changes.check') }).click();
+		const apply = page.getByRole('button', { name: say('changes.apply_other', { count: 4 }) });
+		await expect(apply).toBeVisible();
+		await still(page);
+
+		// Every frame from here on: the new answer's place in the page and how much of it shows, and whether the last one
+		// is still there.
+		type Frame = { fresh: [number, number] | null; last: boolean };
+		type Frames = { frames: Frame[] };
+		await page.evaluate(() => {
+			const w = window as unknown as Frames;
+			w.frames = [];
+			const step = () => {
+				const fresh = document.querySelector('#changes-none');
+				w.frames.push({
+					fresh: fresh && [
+						fresh.getBoundingClientRect().top + scrollY,
+						Number(getComputedStyle(fresh).opacity)
+					],
+					last: document.querySelector('#changes-some') !== null
+				});
+				if (w.frames.length < 90) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+		await apply.click();
+		await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 90);
+		const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+		const arrived = frames.filter((frame) => frame.fresh);
+		expect(arrived.length).toBeGreaterThan(3);
+		expect(arrived.filter((frame) => frame.last && frame.fresh![1] > 0.01)).toEqual([]);
+		const places = arrived.map((frame) => frame.fresh![0]);
+		expect(Math.max(...places) - Math.min(...places)).toBeLessThan(16);
+	});
+}
+
 // What «Ver cambios» answered was about the rules of that moment: with one added, moved or deleted it still said
 // «No cambiaría nada.», while a new check said 3 transactions would change (pass 29).
 test('an answer about the rules leaves by a fade when they change', async ({ context }) => {

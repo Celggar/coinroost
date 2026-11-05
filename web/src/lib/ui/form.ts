@@ -8,6 +8,15 @@ export type Errors = Record<string, string>;
 
 type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
+/**
+ * Under `minlength`. The browser's own `tooShort` holds only for a value last changed by a person (HTML, «tooShort»), and
+ * «Mostrar» writes the value back: a short password went on to the code step (pass 36).
+ */
+function short(control: Control): boolean {
+	if (control instanceof HTMLSelectElement) return false;
+	return control.value !== '' && control.value.length < control.minLength;
+}
+
 function message(control: Control): string {
 	const validity = control.validity;
 	// Only spaces is empty too: the API trims and would refuse it.
@@ -16,7 +25,7 @@ function message(control: Control): string {
 	}
 	if (control instanceof HTMLSelectElement) return t('form.choose');
 	if (validity.tooLong) return t('form.too_long', { max: control.maxLength });
-	if (validity.tooShort) return t('form.too_short', { min: control.minLength });
+	if (short(control)) return t('form.too_short', { min: control.minLength });
 	if (validity.typeMismatch && control.type === 'email') return t('form.email');
 	if (validity.rangeUnderflow) return t('form.min', { min: (control as HTMLInputElement).min });
 	if (validity.rangeOverflow) return t('form.max', { max: (control as HTMLInputElement).max });
@@ -41,7 +50,7 @@ export function check(form: HTMLFormElement): Errors {
 	const errors: Errors = {};
 	for (const [key, control] of controls(form)) {
 		const blank = control.required && control.value.trim() === '';
-		if ((control.validity.valid && !blank) || errors[key]) continue;
+		if ((control.validity.valid && !blank && !short(control)) || errors[key]) continue;
 		errors[key] = message(control);
 	}
 	return errors;

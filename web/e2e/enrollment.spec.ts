@@ -19,13 +19,39 @@ test('a setup link makes a user who can log out and in again', async ({ page }) 
 	// An email another user has is said on this step, before the code (pass 20), marked and focused.
 	const field = page.getByLabel(say('login.email'));
 	await field.fill(process.env.E2E_EMAIL ?? '');
-	await page.getByLabel(say('login.password')).fill(password);
+	// «Mostrar» writes the value back, and the browser's own length check holds only for a typed value: a short password
+	// went on to the code step, where a right code then read as wrong (pass 36).
+	const typed = page.getByLabel(say('login.password'));
+	await typed.fill('short');
+	await page.getByRole('button', { name: say('password.show') }).click();
+	await page.getByRole('button', { name: say('setup.continue') }).click();
+	await expect(page.getByRole('alert')).toContainText(say('login.password'));
+	await expect(typed).toHaveAttribute('aria-invalid', 'true');
+	await expect(typed).toBeFocused();
+	await expect(page.getByRole('heading', { name: say('setup.step_account') })).toBeVisible();
+
+	// Eleven emoji: twelve or more for the browser, which counts UTF-16 units, and eleven for the API, which counts
+	// characters. So the page lets it by and only the API refuses it, on the code step.
+	await typed.fill('🪙'.repeat(11));
 	await page.getByRole('button', { name: say('setup.continue') }).click();
 	await expect(page.getByRole('alert')).toHaveText(say('setup.taken'));
 	await expect(field).toHaveAttribute('aria-invalid', 'true');
 	await expect(field).toBeFocused();
 	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toHaveCount(0);
 	await field.fill(email);
+	await page.getByRole('button', { name: say('setup.continue') }).click();
+	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toBeVisible();
+
+	// A right code with a password the API refuses says so, back where the password is typed (pass 36).
+	const early = (await page.getByTestId('setup-key').innerText()).replace(/\s/g, '');
+	await page.getByLabel(say('login.code')).fill(totp(early));
+	await page.getByRole('button', { name: say('setup.finish') }).click();
+	await expect(page.getByRole('heading', { name: say('setup.step_account') })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('setup.step_code') })).toHaveCount(0);
+	await expect(page.getByRole('alert')).toHaveText(say('problem.password_too_short'));
+	await expect(typed).toHaveAttribute('aria-invalid', 'true');
+	await expect(typed).toBeFocused();
+	await typed.fill(password);
 	await page.getByRole('button', { name: say('setup.continue') }).click();
 
 	await expect(page.getByRole('img', { name: say('setup.qr_alt') })).toBeVisible();

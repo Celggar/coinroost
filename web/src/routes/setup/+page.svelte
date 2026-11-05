@@ -7,7 +7,7 @@
 	// fresh install that allows it hands out one for its first account.
 	import { goto, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
-	import { api, problem, type Schemas } from '#lib/api/client.ts';
+	import { api, failure, problem, type Schemas } from '#lib/api/client.ts';
 	import AuthShell from '#lib/auth/AuthShell.svelte';
 	import Authenticator, { onPhone } from '#lib/auth/Authenticator.svelte';
 	import CodeField from '#lib/auth/CodeField.svelte';
@@ -22,6 +22,8 @@
 
 	type Step = 'checking' | 'invalid' | 'account' | 'code' | 'codes';
 	const order: Step[] = ['checking', 'invalid', 'account', 'code', 'codes'];
+	const EMAIL = 'input[name="email"]';
+	const PASSWORD = 'input[autocomplete="new-password"]';
 
 	let step = $state<Step>('checking');
 	let direction = $state(1);
@@ -60,6 +62,13 @@
 		if (!data) return '';
 		replaceState(`#${encodeURIComponent(data.token)}`, {});
 		return data.token;
+	}
+
+	/** What clashed or was refused: the field is marked and takes the focus, ready to change. */
+	function mark(selector: string) {
+		const field = document.querySelector<HTMLInputElement>(selector);
+		field?.setAttribute('aria-invalid', 'true');
+		field?.focus();
 	}
 
 	function go(next: Step) {
@@ -103,7 +112,7 @@
 		busy = true;
 		const {
 			data,
-			error: failure,
+			error: refusal,
 			response
 		} = await api.POST('/api/v1/invites/enrollment', {
 			body: { token, email }
@@ -118,11 +127,9 @@
 		} else if (response.status === 409) {
 			// Said here, before the code step (pass 20): the email is marked and takes the focus, ready to change.
 			error.say(() => t('setup.taken'));
-			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
-			field?.setAttribute('aria-invalid', 'true');
-			field?.focus();
+			mark(EMAIL);
 		} else {
-			error.say(() => problem(failure, response.status, t('setup.failed')));
+			error.say(() => problem(refusal, response.status, t('setup.failed')));
 		}
 	}
 
@@ -133,7 +140,7 @@
 		busy = true;
 		const {
 			data,
-			error: failure,
+			error: refusal,
 			response
 		} = await api.POST('/api/v1/invites/accept', {
 			body: { token, email, password, code }
@@ -147,21 +154,25 @@
 			return;
 		}
 		code = '';
+		const said = () => problem(refusal, response.status, t('setup.failed'));
+		const field = failure(refusal, response.status, '').field;
 		if (response.status === 404) {
 			go('invalid');
 		} else if (response.status === 409) {
 			await backWith('account', () => t('setup.taken'));
-			// The email is what clashed: it is marked and takes the focus, ready to change.
-			const field = document.querySelector<HTMLInputElement>('input[name="email"]');
-			field?.setAttribute('aria-invalid', 'true');
-			field?.focus();
-		} else if (response.status === 422) {
+			mark(EMAIL);
+		} else if (field === 'code') {
 			error.say(() => t('setup.wrong_code'));
 			codeField?.shake();
 			// The code is cleared, marked and focused, ready for the next one.
 			codeField?.mark();
+		} else if (field === 'password' || field === 'email') {
+			// What the first step asked for, refused only here: a right code read «El código no coincide» with no way out,
+			// so the person goes back to what to change (pass 36).
+			await backWith('account', said);
+			mark(field === 'email' ? EMAIL : PASSWORD);
 		} else {
-			error.say(() => problem(failure, response.status, t('setup.failed')));
+			error.say(said);
 		}
 	}
 

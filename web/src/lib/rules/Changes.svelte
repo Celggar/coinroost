@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, glide, rise, vanish } from '#lib/motion.ts';
+	import { followContent, glide, swapIn, swapOut, vanish } from '#lib/motion.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
@@ -54,8 +54,6 @@
 		await tick();
 		const answer = focusOn(data.changes.length ? '#changes-some' : '#changes-none');
 		// The answer whole, down to the button that applies it: its first line alone left the changes below the screen.
-		// Only this answer's own button: the last answer's, still leaving, read as the end and let the answer go under the
-		// bottom bar (pass 14).
 		const send = data.changes.length
 			? answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions')
 			: null;
@@ -115,37 +113,42 @@
 		</div>
 		{#if preview}
 			<!-- `global`: these also enter when the first check opens the block around them, and leave when `forget` closes
-			     it: a local transition does not run with its parent block, so the answer went in one frame (pass 30). -->
-			{#if preview.changes.length === 0}
-				<p id="changes-none" tabindex="-1" in:rise|global out:vanish|global>
-					{t('changes.nothing')}
-				</p>
-			{:else}
-				<p id="changes-some" tabindex="-1" in:rise|global out:vanish|global>
-					{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
-				</p>
-				<ul class="changes txn-rows" in:rise|global out:vanish|global>
-					{#each preview.changes as change (change.transaction_id)}
-						<li out:vanish animate:glide>
-							<div class="txn-line">
-								<span>{day(change.date)}</span>
-								<span class="description">{change.description}</span>
-								<Money minor={change.amount_minor} currency={change.currency} />
-							</div>
-							<!-- «De → a» with the drawn arrow: the font's «→» sat tiny and under the baseline (pass 23). -->
-							<div class="hint">
-								{#each what(change) as part, i (i)}{#if i}{LIST}{/if}{#each part.split(' → ') as side, j (j)}{#if j}<Arrow
-											/>{/if}{side}{/each}{/each}
-							</div>
-						</li>
-					{/each}
-				</ul>
-				<div class="actions" in:rise|global out:vanish|global>
-					<button onclick={() => busy || apply()} aria-disabled={busy}>
-						{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
-					</button>
-				</div>
-			{/if}
+			     it: a local transition does not run with its parent block, so the answer went in one frame (pass 30). In one
+			     cell, the new answer waiting for the last: after «Aplicar» it stood under the list, then fell 355 px (pass 36). -->
+			<div class="in-place">
+				{#if preview.changes.length === 0}
+					<p id="changes-none" tabindex="-1" in:swapIn|global out:swapOut|global>
+						{t('changes.nothing')}
+					</p>
+				{:else}
+					<div class="stack" in:swapIn|global out:swapOut|global>
+						<p id="changes-some" tabindex="-1">
+							{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
+						</p>
+						<ul class="changes txn-rows">
+							{#each preview.changes as change (change.transaction_id)}
+								<li out:vanish animate:glide>
+									<div class="txn-line">
+										<span>{day(change.date)}</span>
+										<span class="description">{change.description}</span>
+										<Money minor={change.amount_minor} currency={change.currency} />
+									</div>
+									<!-- «De → a» with the drawn arrow: the font's «→» sat tiny and under the baseline (pass 23). -->
+									<div class="hint">
+										{#each what(change) as part, i (i)}{#if i}{LIST}{/if}{#each part.split(' → ') as side, j (j)}{#if j}<Arrow
+													/>{/if}{side}{/each}{/each}
+									</div>
+								</li>
+							{/each}
+						</ul>
+						<div class="actions">
+							<button onclick={() => busy || apply()} aria-disabled={busy}>
+								{plural(preview.changes.length, 'changes.apply_one', 'changes.apply_other')}
+							</button>
+						</div>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </section>

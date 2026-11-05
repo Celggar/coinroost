@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { expect, type Browser, type Cookie, type Page } from '@playwright/test';
 import { say, type Key } from './messages.ts';
+import { still } from './scroll.ts';
 
 const period = { from: '2026-05-01', to: '2026-05-31' };
 
@@ -265,4 +266,56 @@ export async function checkRowTap(browser: Browser, cookies: Cookie[]) {
 	await page.touchscreen.tap(box.x + box.width * 0.4, box.y + box.height / 2);
 	await expect(page).toHaveURL(new URL(href, page.url()).href);
 	await phone.close();
+}
+
+/** The card's opacity in the first frame it is on the page. It came whole and opaque in one frame: its fade sat inside
+ * the block that made it, where a local transition does not play (pass 21). */
+export async function checkLatePayroll(page: Page) {
+	await page.route('**/api/v1/payroll*', async (route) => {
+		await new Promise((done) => setTimeout(done, 1500));
+		await route.continue();
+	});
+	type First = { opacity: number | null };
+	await page.addInitScript(() => {
+		const w = window as unknown as First;
+		w.opacity = null;
+		const step = () => {
+			const card = document.querySelector('[aria-labelledby="payroll-title"]');
+			if (card) w.opacity = Number(getComputedStyle(card).opacity);
+			else requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await page.goto('/');
+	await page.waitForFunction(() => (window as unknown as First).opacity !== null);
+	expect(await page.evaluate(() => (window as unknown as First).opacity)).toBeLessThan(0.5);
+}
+
+/** Where the card stands in the first frame it is on the page. With a slow answer it stood alone under «Cargando…», and
+ * the top coming in dropped it 1211 px in one frame (pass 36). */
+export async function checkPayrollWithTop(page: Page) {
+	await page.route('**/api/v1/coverage*', async (route) => {
+		await new Promise((done) => setTimeout(done, 800));
+		await route.continue();
+	});
+	type First = { at: number | null };
+	await page.addInitScript(() => {
+		const w = window as unknown as First;
+		w.at = null;
+		const step = () => {
+			const card = document.querySelector('[aria-labelledby="payroll-title"]');
+			if (card) w.at = card.getBoundingClientRect().top + scrollY;
+			else requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await page.goto('/');
+	await page.waitForFunction(() => (window as unknown as First).at !== null);
+	await expect(page.locator('.reports')).toBeVisible();
+	await still(page);
+	const first = await page.evaluate(() => (window as unknown as First).at!);
+	const settled = await page
+		.locator('[aria-labelledby="payroll-title"]')
+		.evaluate((card) => card.getBoundingClientRect().top + scrollY);
+	expect(Math.abs(settled - first)).toBeLessThan(2);
 }

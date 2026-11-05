@@ -11,8 +11,9 @@
 
 	let {
 		payroll = $bindable(null),
-		settled = $bindable(false)
-	}: { payroll?: Schemas['Payroll'] | null; settled?: boolean } = $props();
+		settled = $bindable(false),
+		ready
+	}: { payroll?: Schemas['Payroll'] | null; settled?: boolean; ready: boolean } = $props();
 	let error = $state('');
 
 	// A failed load keeps its alert until the next answer: cleared at the start, it took the whole card away, and the
@@ -36,7 +37,9 @@
 	onMount(load);
 </script>
 
-{#if error || payroll?.employers.length}
+<!-- Asked at once, shown with the page's top (`ready`): alone under «Cargando…», it fell 1200 px in one frame as the top
+     came (pass 36). -->
+{#if ready && (error || payroll?.employers.length)}
 	<section class="card" id="payroll" aria-labelledby="payroll-title" in:arrive>
 		<!-- `tabindex`: «Ver» on the summary's card lands here, and the browser gives the focus only to what can hold it. -->
 		<h2 id="payroll-title" tabindex="-1">{t('payroll.title')}</h2>

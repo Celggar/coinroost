@@ -235,7 +235,7 @@
 		<p class="hint loading" out:placeholder>{t('app.loading')}</p>
 	{/if}
 	<!-- What is owed to the person, after the period's figures: «Por revisar» above says who owes and leads here. -->
-	<Payroll bind:payroll bind:settled={payrollSettled} />
+	<Payroll bind:payroll bind:settled={payrollSettled} {ready} />
 </div>
 
 <style>
