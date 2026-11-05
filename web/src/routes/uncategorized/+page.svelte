@@ -225,6 +225,7 @@
 				await change();
 				scrollTo({ top: 0, behavior: 'instant' });
 			});
+		if (left.data?.items.length === 0) confetti('sorted');
 		if (target) await showWhole(target);
 	}
 

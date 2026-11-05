@@ -109,9 +109,12 @@ export function behindFade(box: () => HTMLElement | undefined) {
 }
 
 /** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows
- * it fades in at its new place. */
+ * it fades in at its new place. At the page's end the page goes with it: 168 px in a frame as an offer closed (pass 45). */
 export function follow(event: Event) {
-	if (prefersReducedMotion.current) fadeAfter(event.currentTarget as Element, DURATION.medium);
+	if (!prefersReducedMotion.current) return;
+	const box = event.currentTarget as HTMLElement;
+	fadeAfter(box, DURATION.medium);
+	if (event.type === 'outroend') fadeIfPageMoves(box, box.offsetHeight);
 }
 
 /**

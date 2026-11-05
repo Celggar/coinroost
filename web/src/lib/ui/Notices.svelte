@@ -7,6 +7,7 @@
 	// in either), or a page change; the action that made it is over by the time it shows.
 	import { afterNavigate } from '$app/navigation';
 	import { lift, swapIn } from '#lib/motion.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 	import { dismiss, notices } from './notices.svelte.ts';
 
 	let { offset = 0 }: { offset?: number } = $props();
@@ -30,6 +31,16 @@
 	// «PAGO TARJETA EJEMPLO: / Supermercado.» (pass 12), and `balance` picks the same break for those widths.
 	const held = (text: string) => text.replace(/ (\S+)$/, '\u00a0$1');
 
+	// Under the top bar it can land on the focus, on a field a finger scrolled up there: it covered a select whole (pass 45).
+	function clearFocus(event: Event) {
+		const focused = document.activeElement;
+		if (!(focused instanceof HTMLElement) || !focused.closest('main')) return;
+		const note = (event.currentTarget as Element).getBoundingClientRect();
+		const box = focused.getBoundingClientRect();
+		const covers = box.top < note.bottom && box.bottom > note.top;
+		if (covers && box.left < note.right && box.right > note.left) showWhole(focused);
+	}
+
 	afterNavigate(dismiss);
 </script>
 
@@ -45,7 +56,12 @@
 <div class="notices" aria-hidden="true" style:--bar="{offset}px">
 	{#key notices.current?.id}
 		{#if notices.current && !notices.current.quiet}
-			<p class="note {notices.current.tone}" in:enter|global out:leave|global>
+			<p
+				class="note {notices.current.tone}"
+				in:enter|global
+				out:leave|global
+				onintroend={clearFocus}
+			>
 				<span class="mark"></span>
 				<span class="text">{held(notices.current.text)}</span>
 			</p>

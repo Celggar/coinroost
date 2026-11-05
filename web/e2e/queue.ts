@@ -23,13 +23,13 @@ export const spend = (description: string, amount_minor: number) => ({
 	legs: [{ account_id: account, amount_minor, statement_text: description }]
 });
 
-export async function logIn(browser: Browser) {
-	const secret = process.env.E2E_CATEGORIZE_SECRET ?? '';
+export async function logIn(browser: Browser, user = 'CATEGORIZE') {
+	const secret = process.env[`E2E_${user}_SECRET`] ?? '';
 	expect(secret, 'run through e2e/run.sh').not.toBe('');
 	const page = await browser.newPage({ locale: 'es-PA' });
 	await page.goto('/uncategorized');
-	await page.getByLabel(say('login.email')).fill(process.env.E2E_CATEGORIZE_EMAIL ?? '');
-	await page.getByLabel(say('login.password')).fill(process.env.E2E_CATEGORIZE_PASSWORD ?? '');
+	await page.getByLabel(say('login.email')).fill(process.env[`E2E_${user}_EMAIL`] ?? '');
+	await page.getByLabel(say('login.password')).fill(process.env[`E2E_${user}_PASSWORD`] ?? '');
 	await page.getByLabel(say('login.code')).fill(totp(secret));
 	await page.getByRole('button', { name: say('login.title') }).click();
 	await expect(page.getByRole('heading', { name: say('uncategorized.title') })).toBeVisible();
