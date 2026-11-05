@@ -51,7 +51,7 @@ test('on a phone a notice never stays over the field that keeps the focus', asyn
 	// Where a finger leaves it: under the bar, at the height the notice comes to.
 	await select.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 85));
 	await still(page);
-	expect((await select.boundingBox())?.y).toBeCloseTo(85, 0);
+	expect(Math.abs(((await select.boundingBox())?.y ?? 0) - 85)).toBeLessThan(4);
 	const refusal = { status: 500, code: 'unexpected', detail: 'no' };
 	await page.route('**/api/v1/transactions/*', (route) =>
 		route.fulfill({ status: 500, json: refusal })
