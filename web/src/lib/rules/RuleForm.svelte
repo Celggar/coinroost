@@ -6,6 +6,7 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -159,7 +160,7 @@
 			{/snippet}
 		</Field>
 	</div>
-	<details bind:open={more}>
+	<details bind:open={more} ontoggle={follow}>
 		<summary>{t('ruleform.more')}</summary>
 		<div class="fields folded">
 			<Field label={t('ruleform.money')} name="direction" error={errors.direction}>

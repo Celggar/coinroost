@@ -18,13 +18,16 @@ export function goneBehindPage(node: HTMLElement, duration: number) {
 	return { duration: 1 };
 }
 
-/** Fades in what follows `box` inside the page, which has just taken its new place. */
-export function fadeAfter(box: Element, duration: number) {
+/** Fades in what follows `box` inside the page, which has just taken its new place. `again`: it moved again, so a fade on its
+ * way starts over, or the second place would land in plain sight. */
+export function fadeAfter(box: Element, duration: number, again = false) {
 	const page = box.closest('main');
 	if (!page) return;
 	for (let at: Element | null = box; at && at !== page; at = at.parentElement) {
 		for (let next = at.nextElementSibling; next; next = next.nextElementSibling) {
-			if (next.getAnimations().some((animation) => animation.id === 'follow')) continue;
+			const fading = next.getAnimations().filter((animation) => animation.id === 'follow');
+			if (fading.length && !again) continue;
+			for (const animation of fading) animation.cancel();
 			next.animate({ opacity: [0, 1] }, { id: 'follow', duration });
 		}
 	}

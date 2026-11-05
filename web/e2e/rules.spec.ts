@@ -349,7 +349,8 @@ test('an answer about the rules leaves by a fade when they change', async ({ con
 for (const [names, gone, reducedMotion] of [
 	[['Foot A', 'Foot B'], 'Foot B', 'no-preference'],
 	[['Foot A', 'Foot B'], 'Foot B', 'reduce'],
-	[['Alone'], 'Alone', 'no-preference']
+	[['Alone'], 'Alone', 'no-preference'],
+	[['Alone R'], 'Alone R', 'reduce']
 ] as const) {
 	test(`what follows the list waits while «${gone}» fades (${reducedMotion})`, async ({
 		context
@@ -367,7 +368,7 @@ for (const [names, gone, reducedMotion] of [
 		// the first rule stands. A row that leaves goes out of the flow at once, and what follows the list went up 238 px
 		// in one frame, under the rule still fading (pass 25); held by the list's box, the rules left stretched into its
 		// room, over the one leaving (pass 26).
-		type Frames = { moved: number[]; tops: number[]; heights: number[] };
+		type Frames = { moved: number[]; tops: number[]; heights: number[]; shown: number[] };
 		await page.evaluate(
 			(id) => {
 				const w = window as unknown as Frames;
@@ -378,9 +379,11 @@ for (const [names, gone, reducedMotion] of [
 				w.moved = [];
 				w.tops = [];
 				w.heights = [];
+				w.shown = [];
 				const first = document.querySelector('ol.rules > li')!;
 				const step = () => {
 					w.tops.push(top());
+					w.shown.push(Number(getComputedStyle(after).opacity));
 					if (first !== leaving) w.heights.push(first.getBoundingClientRect().height);
 					if (leaving.isConnected && Number(getComputedStyle(leaving).opacity) > 0.02) {
 						w.moved.push(top() - start);
@@ -393,9 +396,9 @@ for (const [names, gone, reducedMotion] of [
 		);
 		await yes.click();
 		await page.waitForFunction(() => (window as unknown as Frames).tops.length >= 90);
-		const { moved, tops, heights } = await page.evaluate(() => {
+		const { moved, tops, heights, shown } = await page.evaluate(() => {
 			const w = window as unknown as Frames;
-			return { moved: w.moved, tops: w.tops, heights: w.heights };
+			return { moved: w.moved, tops: w.tops, heights: w.heights, shown: w.shown };
 		});
 		expect(new Set(heights.map(Math.round)).size, heights.join(' ')).toBeLessThanOrEqual(1);
 		expect(moved.length).toBeGreaterThan(3);
@@ -403,9 +406,13 @@ for (const [names, gone, reducedMotion] of [
 		// Up as the list shrinks; with the last rule gone, down, as the form that takes its place opens.
 		const travel = Math.abs(tops[0] - tops[tops.length - 1]);
 		expect(travel).toBeGreaterThan(100);
+		const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));
+		const biggest = Math.max(...steps);
 		if (reducedMotion === 'no-preference') {
-			const steps = tops.slice(1).map((top, i) => Math.abs(top - tops[i]));
-			expect(Math.max(...steps), tops.map(Math.round).join(' ')).toBeLessThan(travel / 2);
+			expect(biggest, tops.map(Math.round).join(' ')).toBeLessThan(travel / 2);
+		} else {
+			// With no motion it lands at once, and only through a fade.
+			expect(shown[steps.indexOf(biggest) + 1], tops.map(Math.round).join(' ')).toBeLessThan(0.4);
 		}
 		for (const id of made.slice(0, -1)) {
 			expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
@@ -495,4 +502,71 @@ test('on a phone a new rule is a full-screen dialog, sent from its top', async (
 	made.push((await row.getAttribute('data-rule'))!);
 	for (const id of made) expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
 	await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test('under reduced motion what follows the form moves only through a fade', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.setViewportSize({ width: 1280, height: 800 });
+	const made = await makeRules(page, ['Calm A']);
+	await page.goto('/rules');
+	const add = page.locator('#new-rule');
+	await expect(add).toBeVisible();
+	await still(page);
+	type Frames = { steps: { step: number; opacity: number }[]; frames: number };
+	const watch = () =>
+		page.evaluate(() => {
+			const w = window as unknown as Frames;
+			const after = document.querySelector('section.follows')!;
+			const top = () => after.getBoundingClientRect().top + scrollY;
+			let last = top();
+			w.steps = [];
+			w.frames = 0;
+			const step = () => {
+				const now = top();
+				if (Math.abs(now - last) > 2)
+					w.steps.push({ step: now - last, opacity: Number(getComputedStyle(after).opacity) });
+				last = now;
+				if (++w.frames < 45) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+	const faded = async (what: string) => {
+		await page.waitForFunction(() => (window as unknown as Frames).frames >= 45);
+		const steps = await page.evaluate(() => (window as unknown as Frames).steps);
+		expect(steps.length, what).toBeGreaterThan(0);
+		expect(
+			steps.filter(({ opacity }) => opacity > 0.3),
+			what
+		).toEqual([]);
+	};
+	await watch();
+	await add.click();
+	await faded('the form opens');
+	const form = page.getByRole('form', { name: say('ruleform.title') });
+	await watch();
+	await unfold(page);
+	await faded('its fold opens');
+	await watch();
+	await form.locator('summary').click();
+	await faded('its fold closes');
+	await watch();
+	await form.getByRole('button', { name: say('ruleform.cancel') }).click();
+	await faded('it closes');
+	await add.click();
+	await form.getByLabel(say('ruleform.name')).fill('Calm B');
+	await form.getByLabel(say('ruleform.text')).fill('CALM B');
+	await unfold(page);
+	await form.getByLabel(say('ruleform.payee')).selectOption('text');
+	await still(page);
+	await watch();
+	await form.getByRole('button', { name: say('ruleform.add') }).click();
+	await faded('a new rule comes as it closes');
+	const list = await (await page.request.get('/api/v1/rules')).json();
+	for (const { id } of list.items)
+		expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+	expect(made.length).toBe(1);
+	await page.emulateMedia({ reducedMotion: null });
 });

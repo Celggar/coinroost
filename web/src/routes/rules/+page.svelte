@@ -153,7 +153,14 @@
 			{#if rules.length}
 				<ol class="rules" aria-label={t('rules.list')} in:swapIn out:vanish>
 					{#each rules as rule, index (rule.id)}
-						<li class="card rule" data-rule={rule.id} in:grow out:vanish animate:glide>
+						<li
+							class="card rule"
+							data-rule={rule.id}
+							in:grow
+							out:vanish
+							animate:glide
+							onintrostart={follow}
+						>
 							<div class="head">
 								<span class="position" aria-hidden="true"
 									><Tick value={rule.position}>{rule.position}</Tick></span
@@ -218,7 +225,7 @@
 			     down under it. -->
 			<div
 				transition:openRoom={{ delay: rules.length ? 0 : FADED }}
-				onintrostart={follow}
+				onintrostart={rules.length ? follow : undefined}
 				onoutroend={follow}
 			>
 				<RuleForm

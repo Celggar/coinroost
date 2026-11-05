@@ -6,6 +6,7 @@
 	import type { Schemas } from '#lib/api/client.ts';
 	import { compact, money, month, monthShort } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 
 	let {
 		rows,
@@ -188,7 +189,7 @@
 			</div>
 		{/if}
 	</div>
-	<details>
+	<details ontoggle={follow}>
 		<summary>{t('chart.table')}</summary>
 		<div class="table-wrap" use:scrollable={title}>
 			<table class="rows-on-phone">

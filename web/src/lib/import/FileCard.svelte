@@ -5,6 +5,7 @@
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
 	import { followContent, lift, placeholder, rise, swapIn, swapOut, vanish } from '#lib/motion.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -220,7 +221,7 @@
 				{/if}
 
 				{#if reading.rows.length}
-					<details>
+					<details ontoggle={follow}>
 						<summary>{plural(reading.rows.length, 'file.show_one', 'file.show_other')}</summary>
 						<div class="table-wrap" use:scrollable={t('file.rows')}>
 							<table class="rows-on-phone">

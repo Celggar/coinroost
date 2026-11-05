@@ -2,6 +2,7 @@
 	// Spending per category or payee, most first, as bars on one scale.
 	import { money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 
 	export type Ranked = { key: string; name: string; spending: number; count: number };
 
@@ -42,7 +43,7 @@
 			{#each first as item (item.key)}{@render row(item)}{/each}
 		</ol>
 		{#if rest.length}
-			<details>
+			<details ontoggle={follow}>
 				<summary>{t('ranking.more', { count: rest.length })}</summary>
 				<ol class="ranking" start={shown + 1}>
 					{#each rest as item (item.key)}{@render row(item)}{/each}

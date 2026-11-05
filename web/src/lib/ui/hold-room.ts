@@ -8,7 +8,6 @@ import {
 	FADED,
 	fadeThrough,
 	glide,
-	placeholder,
 	swapIn,
 	vanish
 } from '#lib/motion.ts';
@@ -40,7 +39,11 @@ export async function holdRoom(box: HTMLElement | null, change: () => unknown) {
 		easing: EASE_CSS.standard,
 		fill: 'backwards'
 	});
-	room.onfinish = room.oncancel = letGo;
+	room.oncancel = letGo;
+	room.onfinish = () => {
+		letGo();
+		if (prefersReducedMotion.current) fadeAfter(box, DURATION.medium);
+	};
 }
 
 /**
@@ -127,10 +130,21 @@ export function behindFade(box: () => HTMLElement | undefined) {
  * follows stood 16 px lower before anything had begun to open. With reduced motion it only fades (`follow` for what follows).
  */
 export function openRoom(node: Element, { delay = 0 } = {}): TransitionConfig {
-	if (prefersReducedMotion.current) return fade(node, { delay, duration: DURATION.short });
-	const room = slide(node, { delay, duration: DURATION.medium, easing: EASE.standard });
 	const page = node.parentElement;
 	const gap = page ? parseFloat(getComputedStyle(page).rowGap) || 0 : 0;
+	if (prefersReducedMotion.current) {
+		if (!delay) return fade(node, { duration: DURATION.short });
+		// Waiting, it takes no room: the room comes in one go, when what it waits for has gone.
+		const height = node.getBoundingClientRect().height;
+		const room = (t: number) =>
+			t > 0 ? `height: ${height}px; margin-top: 0px;` : `height: 0px; margin-top: ${-gap}px;`;
+		return {
+			delay,
+			duration: DURATION.short,
+			css: (t) => `overflow: hidden; opacity: ${t}; ${room(t)}`
+		};
+	}
+	const room = slide(node, { delay, duration: DURATION.medium, easing: EASE.standard });
 	return { ...room, css: (t, u) => `${room.css?.(t, u)} margin-top: ${-u * gap}px;` };
 }
 
@@ -139,7 +153,7 @@ export function openRoom(node: Element, { delay = 0 } = {}): TransitionConfig {
 export function follow(event: Event) {
 	if (!prefersReducedMotion.current) return;
 	const box = event.currentTarget as HTMLElement;
-	fadeAfter(box, DURATION.medium);
+	fadeAfter(box, DURATION.medium, true);
 	if (event.type === 'outroend') fadeIfPageMoves(box.offsetHeight);
 }
 

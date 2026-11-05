@@ -5,6 +5,7 @@
 	import type { Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money, wholeDay } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 	import {
 		daysText,
 		fortnightList,
@@ -72,7 +73,7 @@
 				.join(LIST)}
 		</p>
 		{#if employer.history.length}
-			<details>
+			<details ontoggle={follow}>
 				<summary>{t('payroll.history')}</summary>
 				<div class="table-wrap" use:scrollable={t('payroll.history')}>
 					<table class="rows-on-phone">

@@ -9,6 +9,7 @@
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, drop, focusFirst, without, type Errors } from '#lib/ui/form.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
 	let {
@@ -163,7 +164,7 @@
 		</Field>
 	</div>
 	<p class="hint" id="{id}-file-hint">{t('accounts.bank_file_hint')}</p>
-	<details bind:open={advanced}>
+	<details bind:open={advanced} ontoggle={follow}>
 		<summary>
 			{t('accounts.advanced')} · {t('accounts.key').toLowerCase()}
 			<code>{key || '…'}</code>
