@@ -294,6 +294,7 @@
 										<Row
 											{transaction}
 											{categories}
+											{accounts}
 											took={sorted?.id === transaction.id ? sorted.name : null}
 											busy={busy === transaction.id}
 											locked={busy !== null && busy !== transaction.id}

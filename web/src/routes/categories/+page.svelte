@@ -3,9 +3,10 @@
 	// deleting need endpoints of their own and are not here yet.
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
-	import { t, type Key } from '#lib/i18n.svelte.ts';
+	import { t } from '#lib/i18n.svelte.ts';
 	import { arrive, grow, placeholder, swapIn, vanish } from '#lib/motion.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
+	import { holds } from '#lib/ui/CategoryOptions.svelte';
 	import { retry } from '#lib/ui/focus.ts';
 	import { firstRoom, follow } from '#lib/ui/hold-room.ts';
 	import { focusShown } from '#lib/ui/landing.ts';
@@ -14,12 +15,6 @@
 	let loadError = $state('');
 	let loaded = $state(false);
 	let list = $state<HTMLElement>();
-
-	const holds = {
-		expense: 'categoryform.expense',
-		income: 'categoryform.income',
-		transfer: 'categoryform.transfer'
-	} satisfies Record<Schemas['CategoryKind'], Key>;
 
 	async function load() {
 		loadError = '';

@@ -8,6 +8,7 @@
 	import { fade } from 'svelte/transition';
 	import { DURATION, swapIn, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
+	import CategoryOptions from '#lib/ui/CategoryOptions.svelte';
 	import { fadeAfter } from '#lib/ui/followers.ts';
 	import { glideRoom } from '#lib/ui/hold-room.ts';
 	import Money from '#lib/ui/Money.svelte';
@@ -15,6 +16,7 @@
 	let {
 		transaction,
 		categories,
+		accounts,
 		took,
 		busy,
 		locked,
@@ -23,6 +25,7 @@
 	}: {
 		transaction: Schemas['Transaction'];
 		categories: Schemas['Category'][];
+		accounts: Schemas['Account'][];
 		/** The name of the category it took, once sorted. */
 		took: string | null;
 		busy: boolean;
@@ -33,6 +36,10 @@
 	} = $props();
 
 	const leg = $derived(transaction.legs[0]);
+	// With one account there is nothing to tell apart. With three, «TRANSF A CUENTA PROPIA» did not say whose it was.
+	const account = $derived(
+		accounts.length > 1 ? accounts.find(({ id }) => id === leg?.account_id)?.name : undefined
+	);
 
 	// What it took may give its words a second line: where nothing may slide, what follows them fades in at its new place. It
 	// stood 24 px lower from one frame to the next at 390 (pass 58).
@@ -91,7 +98,10 @@
 </script>
 
 <div class="row" class:sorted={took}>
-	<span class="date" data-whole>{day(transaction.date)}</span>
+	<span class="where">
+		<span class="date" data-whole>{day(transaction.date)}</span>
+		{#if account}<span class="account" data-whole>{account}</span>{/if}
+	</span>
 	<span class="description" data-whole bind:this={words}>
 		<span class="name">{transaction.description}</span>
 		{#if took}<span in:fade={{ duration: DURATION.medium }} out:goes
@@ -127,9 +137,7 @@
 							onchange={(event) => onchoose(event.currentTarget.value, event.currentTarget)}
 						>
 							<option value="" disabled>{t('uncategorized.choose')}</option>
-							{#each categories as category (category.id)}
-								<option value={category.id}>{category.name}</option>
-							{/each}
+							<CategoryOptions {categories} />
 						</select>
 					</label>
 				</div>
@@ -149,12 +157,31 @@
 		padding: var(--space-xs) var(--space-md);
 		transition: background-color var(--duration-short) var(--ease-standard);
 	}
-	.date {
+	/* Its two parts stand in the row's own columns here, and on one line under the description on a phone. */
+	.where {
+		display: contents;
+	}
+	.date,
+	.account {
 		font-size: var(--text-sm);
 		color: var(--muted);
+	}
+	.date {
 		white-space: nowrap;
 	}
+	.account {
+		grid-column: 2;
+		grid-row: 2;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.date,
+	.amount,
+	.control {
+		grid-row: span 2;
+	}
 	.description {
+		grid-column: 2;
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
@@ -188,9 +215,15 @@
 			grid-row: 1;
 			align-self: start;
 		}
-		.date {
+		.where {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--space-xs);
 			grid-column: 1 / -1;
 			grid-row: 2;
+		}
+		.account::before {
+			content: '· ';
 		}
 		.control {
 			grid-column: 1 / -1;

@@ -3,6 +3,7 @@
 	import { api, failure, type Schemas } from '#lib/api/client.ts';
 	import { toMinor } from '#lib/rules/describe.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import CategoryOptions from '#lib/ui/CategoryOptions.svelte';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
@@ -153,9 +154,7 @@
 			{#snippet children(wiring)}
 				<select {...wiring} bind:value={category}>
 					<option value="">{t('ruleform.no_category')}</option>
-					{#each categories as option (option.id)}
-						<option value={option.id}>{option.name}</option>
-					{/each}
+					<CategoryOptions {categories} />
 				</select>
 			{/snippet}
 		</Field>
