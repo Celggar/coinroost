@@ -5,7 +5,7 @@
 	import NavBar from '#lib/nav/NavBar.svelte';
 	import NavRail from '#lib/nav/NavRail.svelte';
 	import Tabs from '#lib/nav/Tabs.svelte';
-	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
+	import { cameBack, refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import Notices from '#lib/ui/Notices.svelte';
 	import { arrive, placeholder } from '#lib/motion.ts';
 	import { crossFade } from '#lib/ui/cross-fade.ts';
@@ -71,6 +71,8 @@
 		await goto('/login');
 	}
 </script>
+
+<svelte:document onvisibilitychange={() => inApp && cameBack()} />
 
 <svelte:head>
 	<title>{t('app.name')}</title>

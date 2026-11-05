@@ -8,6 +8,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Employer from './Employer.svelte';
 	import { arrive, placeholder } from '#lib/motion.ts';
+	import { onMoved } from '#lib/nav/counts.svelte.ts';
 
 	let {
 		payroll = $bindable(null),
@@ -35,6 +36,7 @@
 	}
 
 	onMount(load);
+	onMoved(load);
 </script>
 
 <!-- Asked at once, shown with the page's top (`ready`): alone under «Cargando…», it fell 1200 px in one frame as the top

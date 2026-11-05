@@ -1,6 +1,7 @@
 // The badges' counts (P1, N6): what waits for the person under Revisar (transactions without a category, pairs to
 // confirm, legs without a pair) and under Cuentas (accounts whose statements are late, as the P1 board and N6 say; one only due to check is not). They come from the
 // same endpoints the pages use, refreshed on every page change and right after anything that changes them.
+import { untrack } from 'svelte';
 import { api } from '#lib/api/client.ts';
 import { today } from '#lib/format.ts';
 
@@ -30,15 +31,23 @@ export const pending = $state({
 });
 
 let asked = 0;
+// The last answers, whole, to tell that something moved.
+let said = '';
+const away = $state({ moved: 0 });
 
-export async function refreshCounts() {
+/** Asks again; true when all answered and what they say moved since the last time. */
+export async function refreshCounts(): Promise<boolean> {
 	const mine = ++asked;
 	const [open, pairing, coverage] = await Promise.all([
 		api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
 		api.POST('/api/v1/transfers/preview'),
 		api.GET('/api/v1/coverage', { params: { query: { today: today() } } })
 	]);
-	if (mine !== asked) return;
+	if (mine !== asked) return false;
+	// The same answers write nothing: a tab coming back to no news moves nothing, not even a row's text.
+	const now = JSON.stringify([open.data, pairing.data, coverage.data]);
+	if (now === said) return false;
+	said = now;
 	// Each count on its own: a failed transfer check left Revisar without a badge while 16 transactions waited
 	// (pass 7). One that fails keeps its last answer.
 	if (open.data) {
@@ -64,6 +73,28 @@ export async function refreshCounts() {
 		pending.started = pending.unread.length < coverage.data.items.length;
 	}
 	// Once all three answered, the card shows; a later failed refresh keeps the last numbers.
-	if (open.data && pairing.data && coverage.data) pending.ready = true;
-	else if (!pending.ready) pending.failed = true;
+	if (open.data && pairing.data && coverage.data) {
+		pending.ready = true;
+		return true;
+	}
+	if (!pending.ready) pending.failed = true;
+	return false;
+}
+
+/**
+ * Back on a tab left open: the counts are asked again, and a page that shows what they read loads again if it moved
+ * ([`onMoved`]). Sorted in another tab, the summary went on saying «16 transacciones sin categoría» (pass 37).
+ */
+export async function cameBack() {
+	if (document.visibilityState === 'visible' && (await refreshCounts())) away.moved += 1;
+}
+
+/** For a page that shows what the counts read: loads again when it moved while the person was away. */
+export function onMoved(load: () => void) {
+	let seen = away.moved;
+	$effect(() => {
+		if (away.moved === seen) return;
+		seen = away.moved;
+		untrack(load);
+	});
 }

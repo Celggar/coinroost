@@ -1,12 +1,14 @@
 <script lang="ts">
 	// The dashboard: what waits for the person («Por revisar», P3), what is owed to them, then the period's money per
 	// currency. Every number comes from one report of the API, never summed across currencies.
+	import { tick } from 'svelte';
 	import { retry } from '#lib/ui/focus.ts';
+	import { glideRoom } from '#lib/ui/hold-room.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import MonthlyChart from '#lib/dashboard/MonthlyChart.svelte';
 	import Payroll from '#lib/dashboard/Payroll.svelte';
 	import Review from '#lib/dashboard/Review.svelte';
-	import { pending } from '#lib/nav/counts.svelte.ts';
+	import { onMoved, pending } from '#lib/nav/counts.svelte.ts';
 	import Ranking, { type Ranked } from '#lib/dashboard/Ranking.svelte';
 	import Tiles from '#lib/dashboard/Tiles.svelte';
 	import { months, preset, type Period } from '#lib/dashboard/period.ts';
@@ -90,9 +92,12 @@
 			// A newer answer is on its way: it is the one to show.
 			if (ticket !== latest) return;
 			// The figures stay dimmed until they fade out: lit up first, they flashed before the fade (P3 round 2).
-			return fadeThrough(reports ? shown : undefined, () => {
+			return fadeThrough(reports ? shown : undefined, async () => {
+				const room = shown?.offsetHeight;
 				reports = next;
 				busy = false;
+				await tick();
+				if (shown && room) glideRoom(shown, room);
 			});
 		});
 	}
@@ -100,6 +105,7 @@
 	$effect(() => {
 		load({ from, to });
 	});
+	onMoved(() => load({ from, to }));
 
 	function ranked(
 		items: { id: string | null | undefined; spending: number; count: number }[],
@@ -251,6 +257,7 @@
 	/* While another period loads, the last one stays in place, dimmed, so nothing jumps. The transition lives on the
 	   block, not on the dimmed state: there, taking the class away put the figures back to full in one frame. */
 	.reports {
+		align-content: start;
 		transition: opacity var(--duration-exit) var(--ease-standard);
 	}
 	.stale {

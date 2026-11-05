@@ -319,3 +319,137 @@ export async function checkPayrollWithTop(page: Page) {
 		.evaluate((card) => card.getBoundingClientRect().top + scrollY);
 	expect(Math.abs(settled - first)).toBeLessThan(2);
 }
+
+/** On a phone, changes applied at the page's end leave the page still as it shortens. */
+export async function checkAppliedAtEnd(page: Page) {
+	await page.setViewportSize({ width: 390, height: 844 });
+	const categories: { id: string; kind: string }[] = (
+		await (await page.request.get('/api/v1/categories')).json()
+	).items;
+	const response = await page.request.post('/api/v1/rules', {
+		data: {
+			name: 'Landing C',
+			when: { description_contains: 'INTERESES' },
+			then: { category_id: categories.find((c) => c.kind !== 'transfer')!.id }
+		}
+	});
+	expect(response.ok()).toBe(true);
+	const id = (await response.json()).id;
+	await page.goto('/rules');
+	await page.getByRole('button', { name: say('changes.check') }).click();
+	const apply = page.getByRole('button', { name: say('changes.apply_one') });
+	await apply.scrollIntoViewIfNeeded();
+	// Every frame from the click on: the applied change left at the page's end, the page shrank, and the browser pulled
+	// it back 171 px in that same frame (pass 14).
+	type Frames = { frames: [number, number][] };
+	await page.evaluate(() => {
+		const w = window as unknown as Frames;
+		w.frames = [];
+		const step = () => {
+			w.frames.push([scrollY, document.documentElement.scrollHeight]);
+			if (w.frames.length < 150) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await apply.click();
+	await page.waitForFunction(() => (window as unknown as Frames).frames.length >= 150);
+	const frames = await page.evaluate(() => (window as unknown as Frames).frames);
+	const pulled = frames
+		.slice(1)
+		.filter(([y, height], i) => height < frames[i][1] && y !== frames[i][0]);
+	expect(pulled).toEqual([]);
+	await expect(page.getByText(say('changes.nothing'))).toBeInViewport();
+	expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
+}
+
+/** The tab as the browser reports it: Playwright has no way to hide one, so the two properties stand in for it. */
+const showTab = (page: Page, shown: boolean) =>
+	page.evaluate((visible) => {
+		const state = { configurable: true };
+		Object.defineProperty(document, 'hidden', { ...state, get: () => !visible });
+		Object.defineProperty(document, 'visibilityState', {
+			...state,
+			get: () => (visible ? 'visible' : 'hidden')
+		});
+		document.dispatchEvent(new Event('visibilitychange'));
+	}, shown);
+
+/** Sorted in another tab, the summary went on saying «16 transacciones sin categoría» (pass 37). */
+export async function checkBackOnTab(page: Page) {
+	const waiting: { id: string }[] = (
+		await (await page.request.get('/api/v1/transactions?uncategorized=true&limit=1000')).json()
+	).items;
+	expect(waiting.length).toBeGreaterThan(2);
+	const row = (count: number) => page.getByText(say('review.uncategorized_other', { count }));
+	let asked = 0;
+	page.on('request', (request) => {
+		if (new URL(request.url()).pathname === '/api/v1/summary') asked += 1;
+	});
+	await page.goto('/');
+	await expect(row(waiting.length)).toBeVisible();
+	await still(page);
+
+	// Back with no news: nothing is asked for the page, nothing dims, nothing plays.
+	asked = 0;
+	type Frames = { frames: number; moved: number; drops: number[] };
+	const watch = () =>
+		page.evaluate(() => {
+			const w = window as unknown as Frames;
+			Object.assign(w, { frames: 0, moved: 0, drops: [] });
+			let last: number | null = null;
+			const step = () => {
+				const running = document
+					.getAnimations()
+					.filter(
+						(a) => a.effect?.getTiming().iterations !== Infinity && a.playState === 'running'
+					);
+				if (running.length || document.querySelector('.stale')) w.moved += 1;
+				const top = document.querySelector('#payroll')?.getBoundingClientRect().top ?? 0;
+				if (last !== null) w.drops.push(Math.abs(top + scrollY - last));
+				last = top + scrollY;
+				if (++w.frames < 60) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		});
+	await showTab(page, false);
+	await watch();
+	await showTab(page, true);
+	await page.waitForFunction(() => (window as unknown as Frames).frames >= 60);
+	expect(await page.evaluate(() => (window as unknown as Frames).moved)).toBe(0);
+	expect(asked).toBe(0);
+
+	// Something moved while away: the row, the badge and the reports follow, the reports asked again.
+	const categories: { id: string; kind: string }[] = (
+		await (await page.request.get('/api/v1/categories')).json()
+	).items;
+	const category = categories.find((c) => c.kind !== 'transfer')!.id;
+	const sort = (id: string) =>
+		page.request.patch(`/api/v1/transactions/${id}`, { data: { category_id: category } });
+	expect((await sort(waiting[0].id)).ok()).toBe(true);
+	await showTab(page, false);
+	await watch();
+	await showTab(page, true);
+	await expect(row(waiting.length - 1)).toBeVisible();
+	await expect.poll(() => asked).toBeGreaterThan(0);
+	await page.waitForFunction(() => (window as unknown as Frames).frames >= 60);
+	const drop = () => page.evaluate(() => Math.max(...(window as unknown as Frames).drops));
+
+	// All sorted: the row turns «al día», on a phone where it shrinks most, and what follows glides.
+	await page.setViewportSize({ width: 390, height: 844 });
+	await still(page);
+	for (const { id } of waiting.slice(1)) {
+		expect((await sort(id)).ok()).toBe(true);
+	}
+	await showTab(page, false);
+	await watch();
+	await showTab(page, true);
+	await expect(page.getByText(say('review.all_categorized'))).toBeVisible();
+	await page.waitForFunction(() => (window as unknown as Frames).frames >= 60);
+	expect(await drop()).toBeLessThan(50);
+	for (const { id } of waiting) {
+		const sent = await page.request.patch(`/api/v1/transactions/${id}`, {
+			data: { category_id: null }
+		});
+		expect(sent.ok()).toBe(true);
+	}
+}

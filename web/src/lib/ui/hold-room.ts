@@ -30,3 +30,18 @@ export async function holdRoom(box: HTMLElement | null, change: () => unknown) {
 	});
 	room.onfinish = room.oncancel = letGo;
 }
+
+/**
+ * From the height `before` to the one the box has now, in a glide, so what follows moves with it: figures swapped while
+ * faded out took a ranking's row with them, and the card under them went 67 px in one frame (pass 37). With reduced motion
+ * it goes at once. The box must not stretch what it holds (`align-content: start`).
+ */
+export function glideRoom(box: HTMLElement, before: number) {
+	const after = box.offsetHeight;
+	if (prefersReducedMotion.current || Math.abs(after - before) < 1) return;
+	const room = (height: number) => ({ height: `${height}px`, overflow: 'clip' });
+	box.animate([room(before), room(after)], {
+		duration: DURATION.medium,
+		easing: EASE_CSS.standard
+	});
+}

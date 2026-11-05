@@ -3,7 +3,7 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
+	import { onMoved, refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
@@ -81,6 +81,7 @@
 	}
 
 	onMount(load);
+	onMoved(load);
 </script>
 
 <svelte:head>
