@@ -33,14 +33,17 @@
 			: slide(node, { duration: DURATION.medium, easing: EASE.standard });
 
 	/** `arriving` runs as the new list comes, in the same flush. */
-	async function load(arriving?: () => void) {
-		loadError = '';
-		const [list, kinds, any, held] = await Promise.all([
+	const fetched = () =>
+		Promise.all([
 			api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
 			api.GET('/api/v1/categories'),
 			api.GET('/api/v1/transactions', { params: { query: { limit: 1 } } }),
 			api.GET('/api/v1/accounts')
 		]);
+
+	async function load(arriving?: () => void, answers = fetched()) {
+		loadError = '';
+		const [list, kinds, any, held] = await answers;
 		if (!list.data || !kinds.data) {
 			const failed = list.data ? kinds : list;
 			loadError = problem(failed.error, failed.response?.status, t('uncategorized.failed'));
@@ -203,15 +206,15 @@
 	/** The rule's changes went in: what they sorted leaves the list behind a fade, and the sorted row with it, in the same
 	 * flush as the new list: let go first, its tint still changing, it stayed in the flow and the rows jumped after it. */
 	async function applied() {
-		const left = await api.GET('/api/v1/transactions', {
-			params: { query: { uncategorized: true, limit: 1 } }
-		});
+		// Asked before the fade: asked behind it, the page stood blank for as long as the answer took (pass 45).
+		const answers = fetched();
+		const [left] = await answers;
 		let target = null as ReturnType<typeof focusOn>;
 		const change = async () => {
 			await load(() => {
 				sorted = null;
 				kept = null;
-			});
+			}, answers);
 			await tick();
 			const first = shown[0];
 			target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
