@@ -119,6 +119,7 @@
 <section
 	class="follows"
 	class:card={!inline && preview}
+	class:inline
 	aria-labelledby={inline ? undefined : 'changes-title'}
 	aria-label={inline ? t('changes.title') : undefined}
 	bind:this={card}
@@ -194,9 +195,13 @@
 	}
 	/* Inline it has no padding to keep them in, and an answer's ring stood cut to its right bar (pass 40): it lends itself
 	   the room, up to the row above's padding so it never covers that row's button. */
-	.follows:not(.card) {
+	.follows.inline {
 		padding: var(--space-sm) var(--space-md);
 		margin: calc(-1 * var(--space-sm)) calc(-1 * var(--space-md));
+	}
+	/* Closed it is one button, whose ring reaches past the box: it clips only while it moves. */
+	.follows:not(.card, .inline, [data-moving]) {
+		overflow: visible;
 	}
 	@media (prefers-reduced-motion: no-preference) {
 		.follows {
