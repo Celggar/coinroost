@@ -282,6 +282,10 @@ test('a file removed at the page end leaves the page gliding, never pulled back 
 	]);
 	await expect(page.getByText(say('file.rows_read'))).toBeVisible();
 	await expect(page.getByText(say('file.not_found'))).toBeVisible();
+	// The cards glide to their height: scrolled while they grow, the page stands short of its end.
+	await page.waitForFunction(
+		() => !document.querySelector('main')?.getAnimations({ subtree: true }).length
+	);
 	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
 	await still(page);
 	// Every frame from the click on: the card left at the page's end, the page shrank and the browser pulled it back
