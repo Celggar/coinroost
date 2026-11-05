@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { retry } from '#lib/ui/focus.ts';
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -84,7 +85,12 @@
 </div>
 
 {#if error}
-	<p class="alert" role="alert" in:arrive out:placeholder>{error}</p>
+	<p class="alert" role="alert" in:arrive out:placeholder>
+		{error}
+		<button class="secondary" onclick={(event) => retry(event.currentTarget, load)}
+			>{t('app.try_again')}</button
+		>
+	</p>
 {:else if coverage}
 	<!-- One block for either shape, so the content fades in as one when it loads. -->
 	<div in:arrive>

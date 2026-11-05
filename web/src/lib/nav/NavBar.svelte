@@ -135,6 +135,8 @@
 		font-size: var(--text-xs);
 		font-weight: 400;
 		text-decoration: none;
+		/* Its focus ring's corners, round as the rail's: square, it read as another control (pass 35). */
+		border-radius: var(--radius-button);
 	}
 	@media (hover: hover) {
 		a:hover {

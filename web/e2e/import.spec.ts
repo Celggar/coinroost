@@ -380,6 +380,16 @@ test('coverage shows what was imported', async ({ context }) => {
 	await expect(row).toContainText('2 may 2026 – 31 may 2026');
 	// Months behind any real today: shown as late, in words.
 	await expect(row.locator('.chip')).toHaveText(say('delay.late'));
+
+	// A failed read offers its way back, as the other pages do, and the focus does not fall with the alert.
+	await page.route('**/api/v1/coverage*', (route) => route.fulfill({ status: 503 }));
+	await page.reload();
+	const again = page.getByRole('button', { name: say('app.try_again') });
+	await expect(again).toBeVisible();
+	await page.unroute('**/api/v1/coverage*');
+	await again.click();
+	await expect(row).toBeVisible();
+	await expect(page.locator('main h1')).toBeFocused();
 });
 
 test('the dashboard matches the API and words what employers owe', async ({ context }) => {
