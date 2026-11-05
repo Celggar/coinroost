@@ -1,7 +1,17 @@
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
-import type { TransitionConfig } from 'svelte/transition';
-import { DURATION, EASE_CSS, FADED, fadeThrough, glide, swapIn, vanish } from '#lib/motion.ts';
+import { fade, slide, type TransitionConfig } from 'svelte/transition';
+import {
+	DURATION,
+	EASE,
+	EASE_CSS,
+	FADED,
+	fadeThrough,
+	glide,
+	placeholder,
+	swapIn,
+	vanish
+} from '#lib/motion.ts';
 import { fadeAfter, fadePage } from '#lib/ui/followers.ts';
 
 /**
@@ -110,6 +120,18 @@ export function behindFade(box: () => HTMLElement | undefined) {
 		move: (node: Element, places: { from: DOMRect; to: DOMRect }) =>
 			going ? { duration: 0 } : glide(node, places)
 	};
+}
+
+/**
+ * A form opening or closing in place among a page's blocks, the gap above it with it: the gap came at once, and what
+ * follows stood 16 px lower before anything had begun to open. With reduced motion it only fades (`follow` for what follows).
+ */
+export function openRoom(node: Element, { delay = 0 } = {}): TransitionConfig {
+	if (prefersReducedMotion.current) return fade(node, { delay, duration: DURATION.short });
+	const room = slide(node, { delay, duration: DURATION.medium, easing: EASE.standard });
+	const page = node.parentElement;
+	const gap = page ? parseFloat(getComputedStyle(page).rowGap) || 0 : 0;
+	return { ...room, css: (t, u) => `${room.css?.(t, u)} margin-top: ${-u * gap}px;` };
 }
 
 /** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows

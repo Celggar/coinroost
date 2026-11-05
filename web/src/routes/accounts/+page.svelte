@@ -2,13 +2,12 @@
 	import { focusMade, focusOn, retry } from '#lib/ui/focus.ts';
 	import { scrollable } from '#lib/ui/scrollable.ts';
 	import { onMount, tick } from 'svelte';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import { fade, slide } from 'svelte/transition';
 	import AccountForm from '#lib/accounts/AccountForm.svelte';
 	import { formatName, kindName } from '#lib/accounts/names.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { arrive, DURATION, EASE, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { follow, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -17,11 +16,6 @@
 	let loaded = $state(false);
 
 	let adding = $state(false);
-
-	const open = (node: Element) =>
-		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.medium, easing: EASE.enter });
 
 	async function load() {
 		loadError = '';
@@ -121,7 +115,7 @@
 		{/if}
 
 		{#if adding || accounts.length === 0}
-			<div transition:open>
+			<div transition:openRoom onintrostart={follow} onoutroend={follow}>
 				<AccountForm
 					{profiles}
 					oncreated={created}

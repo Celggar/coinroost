@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import { fade, slide } from 'svelte/transition';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import Changes from '#lib/rules/Changes.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -11,22 +9,11 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusMade, focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
-	import { holdRoom } from '#lib/ui/hold-room.ts';
+	import { follow, holdRoom, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import Sheet from '#lib/ui/Sheet.svelte';
-	import {
-		arrive,
-		DURATION,
-		EASE,
-		FADED,
-		glide,
-		grow,
-		placeholder,
-		pop,
-		swapIn,
-		vanish
-	} from '#lib/motion.ts';
+	import { arrive, FADED, glide, grow, placeholder, pop, swapIn, vanish } from '#lib/motion.ts';
 
 	let rules = $state<Schemas['Rule'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -38,13 +25,6 @@
 	let title = $state<HTMLHeadingElement>();
 	let adding = $state(false);
 	let phone = $state(false);
-
-	// With the last rule gone the form opens by itself: it waits for that rule to fade, or it pushed what follows the list
-	// down under it.
-	const open = (node: Element, { delay = 0 } = {}) =>
-		prefersReducedMotion.current
-			? fade(node, { delay, duration: DURATION.short })
-			: slide(node, { delay, duration: DURATION.medium, easing: EASE.enter });
 
 	const names = $derived(nameMaps(categories, payees, accounts));
 
@@ -234,7 +214,13 @@
 				<RuleForm {categories} {payees} {accounts} sheet oncreated={made} />
 			</Sheet>
 		{:else if adding || rules.length === 0}
-			<div transition:open={{ delay: rules.length ? 0 : FADED }}>
+			<!-- With the last rule gone it opens by itself: it waits for that rule to fade, or it pushed what follows the list
+			     down under it. -->
+			<div
+				transition:openRoom={{ delay: rules.length ? 0 : FADED }}
+				onintrostart={follow}
+				onoutroend={follow}
+			>
 				<RuleForm
 					{categories}
 					{payees}
