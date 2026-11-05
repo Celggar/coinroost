@@ -36,7 +36,6 @@
 	let errors = $state<Errors>({});
 	let busy = $state(false);
 	let advanced = $state(false);
-	const id = $props.id();
 	// What the fold holds: an error there opens it, or the field it names could not take the focus.
 	const ADVANCED = ['namespace', 'detection.markers', 'detection.card_prefixes'];
 
@@ -133,14 +132,14 @@
 				</select>
 			{/snippet}
 		</Field>
-		<Field label={t('accounts.bank_file')} name="profile" error={errors.profile}>
+		<Field
+			label={t('accounts.bank_file')}
+			name="profile"
+			hint={t('accounts.bank_file_hint')}
+			error={errors.profile}
+		>
 			{#snippet children(wiring)}
-				<select
-					{...wiring}
-					aria-describedby="{id}-file-hint"
-					bind:value={profile}
-					onchange={pickProfile}
-				>
+				<select {...wiring} bind:value={profile} onchange={pickProfile}>
 					<option value="">{t('accounts.no_profile')}</option>
 					{#each profiles as option (option.id)}
 						<option value={option.id}>{formatName(option)}</option>
@@ -163,7 +162,6 @@
 			{/snippet}
 		</Field>
 	</div>
-	<p class="hint" id="{id}-file-hint">{t('accounts.bank_file_hint')}</p>
 	<details bind:open={advanced} ontoggle={follow}>
 		<summary>
 			{t('accounts.advanced')} · {t('accounts.key').toLowerCase()}

@@ -227,6 +227,12 @@
 	.folded {
 		padding-top: var(--space-md);
 	}
+	/* Two to a row at most: at three, the lowest amount ended a row and the highest began the next (pass 48). */
+	@media (min-width: 900px) {
+		.folded {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
 	/* Side by side, the two buttons stand as tall as each other (FD6). */
 	.actions {
 		align-items: stretch;

@@ -60,9 +60,17 @@ export function glideRoom(box: HTMLElement, before: number, after = box.offsetHe
 	});
 }
 
-/** Whether a box giving back `room` takes the page to a new end from where it stands. */
-export function endsPage(room: number) {
-	return room > 0 && scrollY > document.documentElement.scrollHeight - innerHeight - room;
+/** Whether a box giving back `room` takes the page, or the sheet that scrolls it, to a new end from where it stands. */
+export function endsPage(room: number, page: Element = document.documentElement) {
+	return room > 0 && page.scrollTop > page.scrollHeight - page.clientHeight - room;
+}
+
+/** A list's first row takes the list's whole room, from the `before` of what stood there: it came in a frame, 198 px with
+ * the form under it at full opacity (pass 48). */
+export function firstRoom(box: HTMLElement | null | undefined, before: number) {
+	if (!box) return;
+	glideRoom(box, before);
+	if (prefersReducedMotion.current) fadePage(DURATION.medium);
 }
 
 /** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */
@@ -154,12 +162,33 @@ export function foldOpens(event: MouseEvent) {
 	if (summary && prefersReducedMotion.current) fadeAfter(summary, DURATION.medium, true);
 }
 
+/** The fold a marker transition (`--fold`) says is closing, where nothing may slide. */
+function closing({ propertyName, target: fold }: TransitionEvent) {
+	if (propertyName !== '--fold' || !prefersReducedMotion.current) return null;
+	return fold instanceof HTMLDetailsElement && !fold.open ? fold : null;
+}
+
+// Closing folds whose room holds up the end of what scrolls them.
+const holdingEnd = new WeakSet<HTMLDetailsElement>();
+
+/** For the document's `transitionrun`: the room is still there to measure, and gone by the time `foldClosed` could ask. */
+export function foldCloses(event: TransitionEvent) {
+	const fold = closing(event);
+	if (!fold) return;
+	const room = fold.offsetHeight - (fold.querySelector('summary')?.offsetHeight ?? 0);
+	if (endsPage(room, fold.closest('dialog') ?? undefined)) holdingEnd.add(fold);
+	else holdingEnd.delete(fold);
+}
+
 /** For the document's `transitionend`. A fold keeps its room while its body fades and gives it back as that ends: what
- * follows fades in then, before the frame shows. Faded at the `toggle`, it stood 164 px higher at full opacity. */
+ * follows fades in then, before the frame shows; faded at the `toggle`, it stood 164 px higher at full opacity. At the end
+ * of what scrolls it all of that moves, 389 px on a phone (pass 48), and comes back through a fade: a sheet stands over the
+ * page, so its own form does. */
 export function foldClosed(event: TransitionEvent) {
-	const fold = event.target;
-	if (event.propertyName !== '--fold' || !prefersReducedMotion.current) return;
-	if (fold instanceof HTMLDetailsElement && !fold.open) fadeAfter(fold, DURATION.medium, true);
+	const fold = closing(event);
+	if (!fold) return;
+	if (holdingEnd.delete(fold)) fadePage(DURATION.medium, fold.closest('dialog form, main'));
+	else fadeAfter(fold, DURATION.medium, true);
 }
 
 /** For a block's `onintrostart` and `onoutroend`: under reduced motion its room comes and goes at once, so what follows

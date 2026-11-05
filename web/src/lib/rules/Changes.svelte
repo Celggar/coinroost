@@ -32,6 +32,9 @@
 	} = $props();
 
 	let preview = $state<Schemas['RulePreview'] | null>(null);
+	// Once answered, the block stays: the answer can leave by a rule that changed, and with it a title and a card went in
+	// one frame, the line under them 100 px up (pass 48).
+	let opened = $state(false);
 	let busy = $state(false);
 	let card = $state<HTMLElement>();
 	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole).
@@ -69,6 +72,7 @@
 		holding = true;
 		await onanswering?.();
 		preview = data;
+		opened = true;
 		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
 		const answer = focusOn(data.changes.length ? '#changes-some' : '#changes-none');
@@ -118,7 +122,7 @@
      page back 171 px in one frame (pass 14). -->
 <section
 	class="follows"
-	class:card={!inline && preview}
+	class:card={!inline && opened}
 	class:inline
 	aria-labelledby={inline ? undefined : 'changes-title'}
 	aria-label={inline ? t('changes.title') : undefined}
@@ -127,14 +131,14 @@
 >
 	<div class="stack">
 		{#if !inline}
-			{#if preview}
+			{#if opened}
 				<h2 id="changes-title" in:rise|global>{t('changes.title')}</h2>
 				<p class="hint" in:rise|global>{t('changes.hint')}</p>
 			{/if}
 			<div class="actions">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
 				<button
-					id={preview ? undefined : 'changes-title'}
+					id={opened ? undefined : 'changes-title'}
 					class="secondary"
 					onclick={() => {
 						check();

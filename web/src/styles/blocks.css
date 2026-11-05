@@ -39,6 +39,12 @@
 	justify-content: space-between;
 	gap: var(--space-sm) var(--space-md);
 	min-height: var(--primary-height);
+	margin-block-end: var(--space-lg);
+}
+
+/* The title on the button's middle: its own margins, 8 px over and 16 under, stood it 4 px above (pass 48). */
+.title-bar h1 {
+	margin-block: 0;
 }
 
 /* What a form ends with: its actions, in a row that wraps. */
@@ -356,8 +362,15 @@ details[open] {
 			block-size var(--duration-medium) var(--ease-standard),
 			content-visibility var(--duration-medium) var(--ease-standard) allow-discrete;
 	}
+	/* It clips only as it opens: at rest the rings of the fields at its edges show whole (pass 48). */
 	details[open]::details-content {
 		block-size: auto;
+		overflow: visible;
+		transition:
+			opacity var(--duration-medium) var(--ease-standard),
+			block-size var(--duration-medium) var(--ease-standard),
+			content-visibility var(--duration-medium) var(--ease-standard) allow-discrete,
+			overflow 0s linear var(--duration-medium) allow-discrete;
 	}
 }
 

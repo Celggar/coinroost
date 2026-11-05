@@ -5,10 +5,8 @@ const widths = new WeakMap<HTMLElement, number>();
 /** The whole page comes back through a fade: what stands in it is about to be elsewhere, with no way to slide there. From dim,
  * not blank: a landing just after an answer blanked the page under the focus (pass 45). It stays dim for two frames: what
  * moves a frame after the fade began moved at 0.34 (pass 46). */
-export function fadePage(duration: number) {
-	document
-		.querySelector('main')
-		?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { duration });
+export function fadePage(duration: number, page = document.querySelector('main')) {
+	page?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { duration });
 }
 
 /** Out where its box takes a new height at once and, centred, it would stand elsewhere: 97 px higher, at setup (pass 44). */

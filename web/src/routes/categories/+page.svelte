@@ -97,7 +97,7 @@
 	li {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-2xs) var(--space-md);
 		min-height: 48px;

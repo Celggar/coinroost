@@ -9,7 +9,7 @@
 	import Notices from '#lib/ui/Notices.svelte';
 	import { arrive, placeholder } from '#lib/motion.ts';
 	import { crossFade } from '#lib/ui/cross-fade.ts';
-	import { foldClosed, foldOpens } from '#lib/ui/hold-room.ts';
+	import { foldClosed, foldCloses, foldOpens } from '#lib/ui/hold-room.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
 	import type { LayoutProps } from './$types';
@@ -76,6 +76,7 @@
 <svelte:document
 	onvisibilitychange={() => inApp && cameBack()}
 	onclick={foldOpens}
+	ontransitionrun={foldCloses}
 	ontransitionend={foldClosed}
 />
 

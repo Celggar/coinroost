@@ -7,7 +7,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
-	import { follow, openRoom } from '#lib/ui/hold-room.ts';
+	import { firstRoom, follow, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -16,6 +16,7 @@
 	let loaded = $state(false);
 
 	let adding = $state(false);
+	let list = $state<HTMLElement>();
 
 	async function load() {
 		loadError = '';
@@ -37,20 +38,26 @@
 	async function add() {
 		adding = true;
 		await tick();
-		focusOn('form input[name="name"]');
+		const field = focusOn('form input[name="name"]');
+		// Under a long list it opens below the window, the focus out of sight (pass 48).
+		if (field) await showWhole(field.closest('form') ?? field);
 	}
 
 	async function close() {
 		adding = false;
 		await tick();
-		focusOn('#new-account');
+		const opener = focusOn('#new-account');
+		if (opener) await showWhole(opener);
 	}
 
 	/** The form closes and the new account, in its place in the list, takes the focus and shows whole. */
 	async function created(account: Schemas['Account']) {
+		const first = !accounts.length;
+		const before = list?.offsetHeight ?? 0;
 		accounts = [...accounts, account].sort((a, b) => a.name.localeCompare(b.name));
 		adding = false;
 		await tick();
+		if (first) firstRoom(list, before);
 		const row = focusMade(`[data-account="${account.id}"]`);
 		if (row) await showWhole(row);
 	}
@@ -83,36 +90,38 @@
 	</p>
 {:else if loaded}
 	<div class="stack" in:arrive>
-		{#if accounts.length}
-			<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
-				<table class="rows-on-phone">
-					<thead>
-						<tr>
-							<th>{t('accounts.name')}</th>
-							<th>{t('accounts.kind')}</th>
-							<th>{t('accounts.currency')}</th>
-							<th>{t('accounts.bank_file')}</th>
-							<th>{t('accounts.key')}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each accounts as account (account.id)}
-							<tr data-account={account.id} in:rise>
-								<td data-label={t('accounts.name')}>{account.name}</td>
-								<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
-								<td data-label={t('accounts.currency')}>{account.currency}</td>
-								<td class="bank-file" data-label={t('accounts.bank_file')}
-									>{profileName(account.profile)}</td
-								>
-								<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
+		<div class="in-place" bind:this={list}>
+			{#if accounts.length}
+				<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
+					<table class="rows-on-phone">
+						<thead>
+							<tr>
+								<th>{t('accounts.name')}</th>
+								<th>{t('accounts.kind')}</th>
+								<th>{t('accounts.currency')}</th>
+								<th>{t('accounts.bank_file')}</th>
+								<th>{t('accounts.key')}</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{:else}
-			<p out:vanish>{t('accounts.none_yet')}</p>
-		{/if}
+						</thead>
+						<tbody>
+							{#each accounts as account (account.id)}
+								<tr data-account={account.id} in:rise>
+									<td data-label={t('accounts.name')}>{account.name}</td>
+									<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
+									<td data-label={t('accounts.currency')}>{account.currency}</td>
+									<td class="bank-file" data-label={t('accounts.bank_file')}
+										>{profileName(account.profile)}</td
+									>
+									<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<p out:vanish>{t('accounts.none_yet')}</p>
+			{/if}
+		</div>
 
 		{#if adding || accounts.length === 0}
 			<div transition:openRoom onintrostart={follow} onoutroend={follow}>

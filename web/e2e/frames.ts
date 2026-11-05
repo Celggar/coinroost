@@ -154,11 +154,11 @@ export async function expectCardGlides(page: Page) {
 }
 
 /** Starts recording where `selector` stands in the window, and how much of the page shows. */
-export async function watchTop(page: Page, selector: string) {
+export async function watchTop(page: Page, selector: string, shade = 'main') {
 	await page.evaluate(
-		({ selector, frames }) => {
+		({ selector, shade, frames }) => {
 			const w = window as unknown as { tops: [number, number][] };
-			const main = document.querySelector('main')!;
+			const main = document.querySelector(shade)!;
 			w.tops = [];
 			const step = () => {
 				const top = document.querySelector(selector)?.getBoundingClientRect().top ?? 0;
@@ -167,8 +167,21 @@ export async function watchTop(page: Page, selector: string) {
 			};
 			requestAnimationFrame(step);
 		},
-		{ selector, frames: FRAMES }
+		{ selector, shade, frames: FRAMES }
 	);
+}
+
+/** It moved in a glide: no frame took it `limit` px. What left reads 0, and counts no more. */
+export async function expectGlidedTop(page: Page, limit: number) {
+	await page.waitForFunction(
+		(frames) => (window as unknown as { tops: unknown[] }).tops.length >= frames,
+		FRAMES
+	);
+	const tops = await page.evaluate(() => (window as unknown as { tops: [number, number][] }).tops);
+	const there = tops.map(([top]) => top).filter((top) => top !== 0);
+	const trail = there.map(Math.round).join(' ');
+	const steps = there.slice(1).map((top, i) => Math.abs(top - there[i]));
+	expect(Math.max(...steps), trail).toBeLessThan(limit);
 }
 
 /** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. */

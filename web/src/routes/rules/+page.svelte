@@ -9,7 +9,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusMade, focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
-	import { follow, holdRoom, openRoom } from '#lib/ui/hold-room.ts';
+	import { firstRoom, follow, holdRoom, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import Sheet from '#lib/ui/Sheet.svelte';
@@ -105,10 +105,14 @@
 	/** The form closes and the new rule, in its place in the list, takes the focus and shows whole. */
 	async function made(rule: Schemas['Rule']) {
 		changes?.forget();
+		const list = document.querySelector<HTMLElement>('.rules-page > .in-place');
+		const first = !rules.length;
+		const before = list?.offsetHeight ?? 0;
 		await load();
 		sheet?.letGo();
 		adding = false;
 		await tick();
+		if (first) firstRoom(list, before);
 		const row = focusMade(`[data-rule="${rule.id}"]`);
 		if (row) await showWhole(row);
 	}
@@ -118,14 +122,17 @@
 		phone = matchMedia('(max-width: 899px)').matches;
 		adding = true;
 		await tick();
-		focusOn('#rule-form input');
+		const field = focusOn('#rule-form input');
+		// Under a long list it opens below the window, the focus out of sight (pass 48).
+		if (field && !phone) await showWhole(field.closest('form') ?? field);
 	}
 
 	async function close() {
 		sheet?.letGo();
 		adding = false;
 		await tick();
-		focusOn('#new-rule');
+		const opener = focusOn('#new-rule');
+		if (opener) await showWhole(opener);
 	}
 
 	onMount(load);
