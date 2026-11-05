@@ -56,10 +56,14 @@ export function check(form: HTMLFormElement): Errors {
 	return errors;
 }
 
-/** Moves the focus to the first field, in the form's order, that has an error. */
-export function focusFirst(form: HTMLFormElement, errors: Errors) {
+/** Moves the focus to the first field, in the form's order, that has an error. Inside a fold opened just now the browser
+ * still holds it hidden for a frame, and it refuses the focus until then: it stayed on the send button. */
+export async function focusFirst(form: HTMLFormElement, errors: Errors) {
 	const control = controls(form).find(([key]) => errors[key])?.[1];
-	if (control) focusShown(control, form);
+	if (!control) return;
+	for (let frames = 0; frames < 3 && !control.checkVisibility(); frames++)
+		await new Promise(requestAnimationFrame);
+	focusShown(control, form);
 }
 
 /**

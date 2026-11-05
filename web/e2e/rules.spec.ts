@@ -133,7 +133,10 @@ test('on a phone a rule moved up glides, then lands with no line across the bar'
 test('on a phone, deleting a rule leaves the page where it was', async ({ context }) => {
 	const page = await loggedIn(context);
 	await page.setViewportSize({ width: 390, height: 844 });
-	const made = await makeRules(page, ['Delete A', 'Delete B']);
+	// Enough rules that the page stays longer than the window: with the form on demand two left nothing to scroll, and
+	// the end of the page, not the deletion, set where it stood.
+	const names = ['Delete A', 'Delete C', 'Delete B', 'Delete D', 'Delete E'];
+	const made = await makeRules(page, names);
 	// Each step read once the page stands still: the list loads and the confirm opens with their own motion.
 	await page.goto('/rules');
 	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Delete B' }) });
@@ -143,6 +146,7 @@ test('on a phone, deleting a rule leaves the page where it was', async ({ contex
 	await ask.click();
 	const yes = page.getByRole('button', { name: say('rules.delete_it') });
 	const start = await still(page);
+	expect(start).toBeGreaterThan(0);
 	const drops = await watchDrops(page);
 	await yes.click();
 	await expect(page.getByRole('heading', { name: 'Delete B' })).toHaveCount(0);
@@ -151,7 +155,8 @@ test('on a phone, deleting a rule leaves the page where it was', async ({ contex
 	await expect(page.locator('main h1')).toBeFocused();
 	expect(await drops()).toEqual([]);
 	expect(await still(page)).toBe(start);
-	expect((await page.request.delete(`/api/v1/rules/${made[0]}`)).ok()).toBe(true);
+	for (const id of made.filter((_, i) => names[i] !== 'Delete B'))
+		expect((await page.request.delete(`/api/v1/rules/${id}`)).ok()).toBe(true);
 });
 
 test('on a phone, an error that opens in view leaves the page where it was', async ({
@@ -252,7 +257,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			return route.fulfill({ json: { applied: 4 } });
 		});
 		await page.goto('/rules');
-		await page.getByRole('button', { name: say('changes.check') }).click();
+		await page.getByRole('button', { name: say('changes.open') }).click();
 		const apply = page.getByRole('button', { name: say('changes.apply_other', { count: 4 }) });
 		await expect(apply).toBeVisible();
 		await still(page);
@@ -299,7 +304,7 @@ test('an answer about the rules leaves by a fade when they change', async ({ con
 	/** Asks, does what changes the rules, and reads the answer's opacity on every frame until it is gone. Inside the
 	 * block that goes with it a local transition never ran: opacity 1, then nothing (pass 30). */
 	const leaves = async (change: () => Promise<void>) => {
-		await page.getByRole('button', { name: say('changes.check') }).click();
+		await page.getByRole('button', { name: say('changes.open') }).click();
 		await expect(answer).toHaveCSS('opacity', '1');
 		await page.evaluate(() => {
 			const w = window as unknown as Frames;

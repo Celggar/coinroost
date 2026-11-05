@@ -66,9 +66,10 @@ test('a key already taken is marked on «Clave», not as a loose English line', 
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Corriente' }));
 
-	// The same name suggests the same key, folded away: the API's answer opens the fold to show it.
+	// Another name that suggests the same key, folded away: the API's answer opens the fold to show it. The very same
+	// name clashes first, on «Nombre».
 	await page.locator('#new-account').click();
-	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Corriente');
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('Corriente!');
 	await expect(page.getByLabel(say('accounts.key'))).toBeHidden();
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	const key = await fieldSays(say('accounts.key'), say('problem.already_exists.namespace'));
