@@ -542,14 +542,14 @@ export async function checkBackOnTab(page: Page) {
 	// A list that moved opens afresh: changed in place it left rows with the focus in them and jumped from its end (pass 38).
 	await page.setViewportSize({ width: 1280, height: 800 });
 	await page.goto('/uncategorized');
-	const line = (count: number) => page.getByText(say('uncategorized.count_other', { count }));
-	await expect(line(waiting.length)).toBeVisible();
+	const all = page.locator('label', { hasText: say('uncategorized.all') });
+	await expect(all).toContainText(String(waiting.length));
 	expect((await sort(waiting[0].id)).ok()).toBe(true);
 	await showTab(page, false);
 	const loaded = page.waitForEvent('load');
 	await showTab(page, true);
 	await loaded;
-	await expect(line(waiting.length - 1)).toBeVisible();
+	await expect(all).toContainText(String(waiting.length - 1));
 	const undone = await page.request.patch(`/api/v1/transactions/${waiting[0].id}`, {
 		data: { category_id: null }
 	});
@@ -577,12 +577,20 @@ export async function checkRowLeaves(page: Page) {
 		requestAnimationFrame(step);
 	});
 	await select.selectOption({ index: 1 });
-	await expect(page.locator(`[id="category-${id}"]`)).toHaveCount(0);
+	// A chosen row stays until the next choice, and leaves then.
+	const undo = page.locator(`[id="undo-${id}"]`);
+	await expect(undo).toBeVisible();
+	const next = page.locator('.queue > li').nth(1).getByRole('combobox');
+	const other = (await next.getAttribute('id'))!.replace('category-', '');
+	await next.selectOption({ index: 1 });
+	await expect(undo).toHaveCount(0);
 	const drift = await page.evaluate(() => (window as unknown as Frames).drift);
 	expect(drift.length).toBeGreaterThan(3);
 	expect(Math.max(...drift) - Math.min(...drift)).toBeLessThan(2);
-	const undone = await page.request.patch(`/api/v1/transactions/${id}`, {
-		data: { category_id: null }
-	});
-	expect(undone.ok()).toBe(true);
+	for (const chosen of [id, other]) {
+		const undone = await page.request.patch(`/api/v1/transactions/${chosen}`, {
+			data: { category_id: null }
+		});
+		expect(undone.ok()).toBe(true);
+	}
 }
