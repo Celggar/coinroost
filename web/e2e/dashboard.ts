@@ -440,11 +440,14 @@ export async function checkBackOnTab(page: Page) {
 	for (const { id } of waiting.slice(1)) {
 		expect((await sort(id)).ok()).toBe(true);
 	}
+	// Its link taken with it, the focus fell to the page (pass 38).
+	await page.getByRole('link', { name: say('review.categorize') }).focus();
 	await showTab(page, false);
 	await watch();
 	await showTab(page, true);
 	await expect(page.getByText(say('review.all_categorized'))).toBeVisible();
 	await page.waitForFunction(() => (window as unknown as Frames).frames >= 60);
+	expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY');
 	expect(await drop()).toBeLessThan(50);
 	for (const { id } of waiting) {
 		const sent = await page.request.patch(`/api/v1/transactions/${id}`, {
@@ -452,4 +455,51 @@ export async function checkBackOnTab(page: Page) {
 		});
 		expect(sent.ok()).toBe(true);
 	}
+
+	// A list that moved opens afresh: changed in place it left rows with the focus in them and jumped from its end (pass 38).
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('/uncategorized');
+	const line = (count: number) => page.getByText(say('uncategorized.count_other', { count }));
+	await expect(line(waiting.length)).toBeVisible();
+	expect((await sort(waiting[0].id)).ok()).toBe(true);
+	await showTab(page, false);
+	const loaded = page.waitForEvent('load');
+	await showTab(page, true);
+	await loaded;
+	await expect(line(waiting.length - 1)).toBeVisible();
+	const undone = await page.request.patch(`/api/v1/transactions/${waiting[0].id}`, {
+		data: { category_id: null }
+	});
+	expect(undone.ok()).toBe(true);
+}
+
+/** A row leaving a list that lends it its columns keeps its line: out of the flow it broke in three, at full opacity, on
+ * every choice (pass 38). */
+export async function checkRowLeaves(page: Page) {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('/uncategorized');
+	const row = page.locator('.queue > li').first();
+	const select = row.getByRole('combobox');
+	const id = (await select.getAttribute('id'))!.replace('category-', '');
+	type Frames = { drift: number[] };
+	await row.evaluate((li) => {
+		const w = window as unknown as Frames;
+		const money = li.querySelector('.money')!;
+		w.drift = [];
+		const step = () => {
+			if (!li.isConnected) return;
+			w.drift.push(money.getBoundingClientRect().top - li.getBoundingClientRect().top);
+			requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await select.selectOption({ index: 1 });
+	await expect(page.locator(`[id="category-${id}"]`)).toHaveCount(0);
+	const drift = await page.evaluate(() => (window as unknown as Frames).drift);
+	expect(drift.length).toBeGreaterThan(3);
+	expect(Math.max(...drift) - Math.min(...drift)).toBeLessThan(2);
+	const undone = await page.request.patch(`/api/v1/transactions/${id}`, {
+		data: { category_id: null }
+	});
+	expect(undone.ok()).toBe(true);
 }

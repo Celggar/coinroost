@@ -98,3 +98,7 @@ export function onMoved(load: () => void) {
 		untrack(load);
 	});
 }
+
+/** For a list that moved: it opens afresh, as a page does. Changed in place, with no action to follow, rows left with the
+ * focus in them, the page's end pulled back 174 px and new rows came in one frame (pass 38). */
+export const reloadOnMoved = () => onMoved(() => location.reload());

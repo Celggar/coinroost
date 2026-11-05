@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { focusOn, retry } from '#lib/ui/focus.ts';
+	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { onMoved, refreshCounts } from '#lib/nav/counts.svelte.ts';
+	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
@@ -81,7 +82,7 @@
 	}
 
 	onMount(load);
-	onMoved(load);
+	reloadOnMoved();
 </script>
 
 <svelte:head>
@@ -142,7 +143,7 @@
 					<ul class="queue txn-rows" aria-label={t('uncategorized.list')}>
 						{#each transactions as transaction (transaction.id)}
 							{@const leg = transaction.legs[0]}
-							<li class="card" out:vanish animate:glide>
+							<li class="card" out:vanishRow animate:glide>
 								<div class="txn-line">
 									<span>{day(transaction.date)}</span>
 									<span class="description">{transaction.description}</span>

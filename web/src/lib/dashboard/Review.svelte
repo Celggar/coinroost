@@ -9,7 +9,7 @@
 	import { DURATION, followContent, pop, vanish } from '#lib/motion.ts';
 	import Icon from '#lib/nav/Icon.svelte';
 	import type { IconName } from '#lib/nav/destinations.ts';
-	import { focusOn } from '#lib/ui/focus.ts';
+	import { focusOn, passFocus } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import Tick from '#lib/ui/Tick.svelte';
 	import type { Schemas } from '#lib/api/client.ts';
@@ -188,8 +188,8 @@
 	]);
 </script>
 
-<section class="card review" aria-labelledby="review-title">
-	<h2 id="review-title">{t('review.title')}</h2>
+<section class="card review" aria-labelledby="review-title" onfocusout={passFocus}>
+	<h2 id="review-title" tabindex="-1">{t('review.title')}</h2>
 	<!-- The card's height follows its rows when one turns to «al día» (FD9). -->
 	<div class="fit" use:followContent>
 		<ul class="rows">

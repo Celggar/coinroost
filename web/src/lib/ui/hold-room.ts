@@ -1,6 +1,7 @@
 import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
-import { DURATION, EASE_CSS, FADED } from '#lib/motion.ts';
+import type { TransitionConfig } from 'svelte/transition';
+import { DURATION, EASE_CSS, FADED, vanish } from '#lib/motion.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -44,4 +45,14 @@ export function glideRoom(box: HTMLElement, before: number) {
 		duration: DURATION.medium,
 		easing: EASE_CSS.standard
 	});
+}
+
+/**
+ * Out of a list that lends its rows its columns (`.txn-rows`, subgrid): out of the flow a row has no columns to borrow, and
+ * its line broke in three at full opacity on every choice (pass 38). It keeps them, in numbers, as it fades.
+ */
+export function vanishRow(node: HTMLElement): TransitionConfig {
+	const list = node.parentElement;
+	if (list) node.style.gridTemplateColumns = getComputedStyle(list).gridTemplateColumns;
+	return vanish(node);
 }

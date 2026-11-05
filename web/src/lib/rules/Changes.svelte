@@ -3,7 +3,8 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, glide, swapIn, swapOut, vanish } from '#lib/motion.ts';
+	import { followContent, glide, swapIn, swapOut } from '#lib/motion.ts';
+	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
@@ -127,7 +128,7 @@
 						</p>
 						<ul class="changes txn-rows">
 							{#each preview.changes as change (change.transaction_id)}
-								<li out:vanish animate:glide>
+								<li out:vanishRow animate:glide>
 									<div class="txn-line">
 										<span>{day(change.date)}</span>
 										<span class="description">{change.description}</span>

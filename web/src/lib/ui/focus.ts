@@ -22,6 +22,21 @@ export function focusOn(...selectors: string[]): HTMLElement | null {
 }
 
 /**
+ * For a section's `focusout`: a row that leaves by no action of the person's goes inert with the focus in it, and the
+ * browser drops it to the page (pass 38). It goes on to the section's next link, else to its title.
+ */
+export function passFocus(event: FocusEvent) {
+	const row = (event.target as Element).closest('[inert]');
+	if (!row || event.relatedTarget) return;
+	const section = event.currentTarget as HTMLElement;
+	const next = [...section.querySelectorAll<HTMLElement>('a')].find(
+		(a) =>
+			!a.closest('[inert]') && row.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING
+	);
+	(next ?? section.querySelector('h2'))?.focus({ preventScroll: true });
+}
+
+/**
  * Keeps the focus inside `box` while its rows are put in a new order, once the caller has the new order and before it
  * hands it over. A keyed list moves a row by taking it out and back in, and a focused button taken out drops the focus
  * to the page: «Bajar» dropped it every time, the row going down being the one moved (pass 20). The box takes the

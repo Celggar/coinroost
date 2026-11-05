@@ -12,6 +12,7 @@ import {
 	checkMonthFigures,
 	checkPayroll,
 	checkPayrollWithTop,
+	checkRowLeaves,
 	checkRowTap,
 	loadEmployers
 } from './dashboard.ts';
@@ -391,6 +392,10 @@ test('a tab left open catches up on return, and with no news nothing moves', asy
 	context
 }) => {
 	await checkBackOnTab(await loggedIn(context));
+});
+
+test('a row leaving the queue keeps its line', async ({ context }) => {
+	await checkRowLeaves(await loggedIn(context));
 });
 
 test('on a short phone, a file the account cannot read says why above the bottom bar', async ({

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { retry } from '#lib/ui/focus.ts';
 	import { onMount } from 'svelte';
-	import { onMoved } from '#lib/nav/counts.svelte.ts';
+	import { reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import Made from '#lib/transfers/Made.svelte';
 	import Summary from '#lib/transfers/Summary.svelte';
@@ -43,7 +43,7 @@
 	}
 
 	onMount(load);
-	onMoved(load);
+	reloadOnMoved();
 </script>
 
 <svelte:head>

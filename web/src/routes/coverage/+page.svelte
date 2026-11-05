@@ -7,7 +7,7 @@
 	import Rich from '#lib/Rich.svelte';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { notify } from '#lib/ui/notices.svelte.ts';
-	import { onMoved, refreshCounts } from '#lib/nav/counts.svelte.ts';
+	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { arrive, placeholder } from '#lib/motion.ts';
 
 	let coverage = $state<Schemas['Coverage'] | null>(null);
@@ -60,7 +60,7 @@
 	}
 
 	onMount(load);
-	onMoved(() => load());
+	reloadOnMoved();
 </script>
 
 <svelte:head>
