@@ -5,7 +5,7 @@
 	import { tick, untrack } from 'svelte';
 	import { api, failure, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { followContent, swapOut } from '#lib/motion.ts';
+	import { FADED, followContent } from '#lib/motion.ts';
 	import { names as namesOf } from '#lib/rules/describe.ts';
 	import Changes from '#lib/rules/Changes.svelte';
 	import Field from '#lib/ui/Field.svelte';
@@ -36,6 +36,11 @@
 	let busy = $state(false);
 	let made = $state<ReturnType<typeof namesOf> | null>(null);
 	let answered = $state(false);
+	let offer = $state<HTMLFormElement>();
+
+	/** The form fades by hand: a transition makes it inert as it starts, and the focus would drop to the page. */
+	const fade = () =>
+		offer?.animate({ opacity: [1, 0] }, { duration: FADED, fill: 'forwards' }).finished;
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -79,13 +84,14 @@
 </script>
 
 <!-- One cell: the form stays, busy and with the focus, until the changes have their answer. Gone first, the row went 197, 73
-     and 290 px tall in three frames and the focus fell to the page (pass 41). The room follows what the cell holds. -->
+     and 290 px tall in three frames and the focus fell to the page (pass 41). The room follows what the cell holds. Nothing
+     for it to do on leaving: it has faded by then. -->
 <div class="fit" use:followContent>
 	<div class="in-place">
 		{#if !answered}
 			<form
 				class="offer"
-				out:swapOut
+				bind:this={offer}
 				novalidate
 				onsubmit={submit}
 				oninput={(event) => {
@@ -113,7 +119,13 @@
 			</form>
 		{/if}
 		{#if made}
-			<Changes names={made} inline {onapplied} onanswer={() => (answered = true)} />
+			<Changes
+				names={made}
+				inline
+				{onapplied}
+				onanswering={fade}
+				onanswer={() => (answered = true)}
+			/>
 		{/if}
 	</div>
 </div>

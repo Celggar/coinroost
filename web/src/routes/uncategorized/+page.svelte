@@ -280,7 +280,7 @@
 				<div class="follows" bind:this={queue} use:followContent={holding}>
 					<div class="stack">
 						{#if shown.length > 0}
-							<ul class="queue card" aria-label={t('uncategorized.list')}>
+							<ul class="queue card" data-rows aria-label={t('uncategorized.list')}>
 								{#each shown as transaction (transaction.id)}
 									<li class:sorted={sorted?.id === transaction.id} out:list.leave animate:list.move>
 										<Row

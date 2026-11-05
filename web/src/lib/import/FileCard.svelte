@@ -4,7 +4,7 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, lift, rise, swapIn, swapOut, vanish } from '#lib/motion.ts';
+	import { followContent, lift, placeholder, rise, swapIn, swapOut, vanish } from '#lib/motion.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -158,7 +158,7 @@
 				{/snippet}
 			</Field>
 		{:else if busy}
-			<p class="hint" in:rise out:vanish>{t('file.reading')}</p>
+			<p class="hint" in:rise out:placeholder>{t('file.reading')}</p>
 		{/if}
 
 		<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the

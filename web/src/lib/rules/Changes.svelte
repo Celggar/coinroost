@@ -19,11 +19,15 @@
 		names,
 		onapplied,
 		onanswer,
+		onanswering,
 		inline = false
 	}: {
 		names: Names;
 		onapplied: () => void;
 		onanswer?: () => void;
+		/** Before the answer comes: what stands in its place goes first, the focus still in it, so it never sits on a block
+		 * that does not show yet: about 230 ms with no ring on a screen (pass 42). */
+		onanswering?: () => unknown;
 		inline?: boolean;
 	} = $props();
 
@@ -63,6 +67,7 @@
 			return;
 		}
 		holding = true;
+		await onanswering?.();
 		preview = data;
 		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
@@ -140,11 +145,11 @@
 			     cell, the new answer waiting for the last: after «Aplicar» it stood under the list, then fell 355 px (pass 36). -->
 			<div class="in-place">
 				{#if preview.changes.length === 0}
-					<p id="changes-none" tabindex="-1" in:swapIn|global={{ wait: inline }} out:swapOut|global>
+					<p id="changes-none" tabindex="-1" in:swapIn|global out:swapOut|global>
 						{t('changes.nothing')}
 					</p>
 				{:else}
-					<div class="stack" in:swapIn|global={{ wait: inline }} out:swapOut|global>
+					<div class="stack" in:swapIn|global out:swapOut|global>
 						<p id="changes-some" tabindex="-1">
 							{plural(preview.changes.length, 'changes.would_one', 'changes.would_other')}
 						</p>

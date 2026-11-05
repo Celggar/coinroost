@@ -2,7 +2,7 @@
 // once the page has settled, and where no line of text is cut at the top. A browser's own scroll to a focused element
 // jumped in one frame and left titles across the bar (pass 13).
 import { prefersReducedMotion } from 'svelte/motion';
-import { spare } from '#lib/motion.ts';
+import { DURATION, spare } from '#lib/motion.ts';
 
 /** Pinned to the window (a bar): it does not move with the page, so the page's edge never cuts it. */
 function pinned(element: Element): boolean {
@@ -30,7 +30,10 @@ function coverTop(): number {
 
 // A tile's label and figure are lines too: a `dt` stood 3.3 px under the bar (pass 13).
 // A table's cells too: a new account sorted first landed with the column names cut by the window's top (pass 20).
-const LINES = 'h1, h2, h3, p, label, legend, li, dt, dd, th, td, img, [data-whole]';
+// Rows that touch count by what they hold, as cells do: no line between two was clear of both, so the search went up the
+// whole list, 250 to 437 px with the answer already in view (pass 42).
+const LINES =
+	'h1, h2, h3, p, label, legend, li:not([data-rows] > li), dt, dd, th, td, img, [data-whole]';
 // A select's value stood across the bar after changes were applied (pass 14).
 const CONTROLS = 'select, input, button, textarea';
 
@@ -338,6 +341,9 @@ export async function showWhole(box: HTMLElement, end: HTMLElement = box, held?:
 	const loose = Math.min(lo, Math.max(0, scrollY + head.bottom - floor));
 	const at = uncut(y, lo, hi, loose, max);
 	if (Math.abs(at - scrollY) >= 1) {
+		// With no glide, a list moving with its room would stand elsewhere at full opacity: 168 px in a frame (pass 42).
+		if (held && prefersReducedMotion.current && Math.abs(at - scrollY) >= 4)
+			box.closest('main')?.animate({ opacity: [0, 1] }, { duration: DURATION.medium });
 		scrollTo({ top: at, behavior: behavior() });
 		if (held) await still();
 	}

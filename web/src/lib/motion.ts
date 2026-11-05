@@ -80,12 +80,12 @@ export function rise(node: Element, { delay = 0, y = 12 } = {}): TransitionConfi
 /**
  * In, to an `.in-place` cell another block is leaving: it rises once that one has faded (a fade through, the two never
  * at once). Rising while the other faded, «Nada por confirmar» was drawn over the new pairs (pass 16). With reduced
- * motion it only fades, after the same wait. `wait`: what it replaces stands in a cell around this one.
+ * motion it only fades, after the same wait.
  */
-export function swapIn(node: Element, { y = 12, wait = false } = {}): TransitionConfig {
+export function swapIn(node: Element, { y = 12 } = {}): TransitionConfig {
 	const leaving = [...(node.parentElement?.children ?? [])].some((e) => e !== node);
 	return fly(node, {
-		delay: leaving || wait ? FADED : 0,
+		delay: leaving ? FADED : 0,
 		y: still() ? 0 : y,
 		duration: DURATION.medium,
 		easing: EASE.enter
@@ -332,8 +332,7 @@ export function followContent(node: HTMLElement, held = false) {
 	if (!(content instanceof HTMLElement)) return;
 	let hold = held;
 	let last = new Map<HTMLElement, number>();
-	// The end of the glide, or a timer in case no transition ran (a box with none of its own). A cancel is no end: a
-	// glide cancels when a newer one replaces it, and that one is still running.
+	// The end of the glide, or a timer if none ran. A cancel is no end: a newer glide replaced it and is still running.
 	let settle: ReturnType<typeof setTimeout> | undefined;
 	const rest = () => delete node.dataset.moving;
 	const end = (event: TransitionEvent) => {
@@ -342,7 +341,8 @@ export function followContent(node: HTMLElement, held = false) {
 	const fit = () => {
 		const height = content.offsetHeight + frame(node);
 		if (hold && height < node.offsetHeight) return;
-		const glide = !still() && node.style.height !== '';
+		const first = node.style.height === '';
+		const glide = !still() && !first;
 		const now = new Map<HTMLElement, number>();
 		for (const element of node.querySelectorAll<HTMLElement>('[data-flip]')) {
 			const top = layoutTop(element, node);
@@ -367,6 +367,8 @@ export function followContent(node: HTMLElement, held = false) {
 		}
 		if (still()) fadeWhatFollows(node, height, DURATION.medium);
 		node.style.height = `${height}px`;
+		// From `auto` a transition goes on tracking the content: a new card went 130 to 523 px in one frame (pass 42).
+		if (first) node.getAnimations().forEach((a) => a instanceof CSSTransition && a.cancel());
 	};
 	// A resize is seen after the frame's layout, a step after scripts that read it there; a change to the content (a
 	// row in or out of the flow) is seen at once, so the rows hold their places from the very frame it happens (P3

@@ -19,6 +19,7 @@ import {
 	loadEmployers
 } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
+import { expectCardGlides, watchCard } from './frames.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
 import { pickLanguage } from './account.ts';
@@ -102,12 +103,15 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Checking' }));
 
 	await page.getByRole('link', { name: say('nav.import'), exact: true }).click();
+	await expect(page.getByLabel(say('import.choose'))).toBeAttached();
+	await watchCard(page);
 	await page
 		.getByLabel(say('import.choose'))
 		.setInputFiles([
 			statement,
 			{ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('just, some\nwords') }
 		]);
+	await expectCardGlides(page);
 
 	const card = page.getByRole('article', { name: 'input.csv' });
 	await expect(card.getByLabel(say('file.account')).locator('option:checked')).toHaveText(

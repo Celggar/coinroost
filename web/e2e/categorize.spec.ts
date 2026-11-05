@@ -1,97 +1,29 @@
 // The queue of transactions with no category, through the browser, against a real server (see run.sh): rows that
 // filter and sort, a choice that stays with its Deshacer until the next one, and a choice turned into a rule on the
 // spot. Its own user and its own data, made through the API.
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { watchDrops } from './focus.ts';
 import { expectFadedMoves, expectNoJump, expectPageFollows, watchRows } from './frames.ts';
 import { say } from './messages.ts';
-import { totp } from './totp.ts';
+import {
+	choose,
+	fill,
+	filter,
+	food,
+	logIn,
+	queue,
+	row,
+	rows,
+	session,
+	sortAll,
+	spend
+} from './queue.ts';
+import { still } from './scroll.ts';
 
 // A TOTP code is accepted once, so the run logs in once and the later tests reuse that session.
 test.describe.configure({ mode: 'serial' });
 test.use({ locale: 'es-PA' });
-let session: Awaited<ReturnType<BrowserContext['storageState']>>;
-let account = '';
-let food = '';
-
-async function post(page: Page, path: string, data: unknown) {
-	const response = await page.request.post(path, { data });
-	expect(response.ok(), path).toBe(true);
-	return response.json();
-}
-
-const spend = (description: string, amount_minor: number) => ({
-	date: '2026-05-10',
-	description,
-	legs: [{ account_id: account, amount_minor, statement_text: description }]
-});
-
-test.beforeAll(async ({ browser }) => {
-	const secret = process.env.E2E_CATEGORIZE_SECRET ?? '';
-	expect(secret, 'run through e2e/run.sh').not.toBe('');
-	const page = await browser.newPage({ locale: 'es-PA' });
-	await page.goto('/uncategorized');
-	await page.getByLabel(say('login.email')).fill(process.env.E2E_CATEGORIZE_EMAIL ?? '');
-	await page.getByLabel(say('login.password')).fill(process.env.E2E_CATEGORIZE_PASSWORD ?? '');
-	await page.getByLabel(say('login.code')).fill(totp(secret));
-	await page.getByRole('button', { name: say('login.title') }).click();
-	await expect(page.getByRole('heading', { name: say('uncategorized.title') })).toBeVisible();
-	session = await page.context().storageState();
-	account = (
-		await post(page, '/api/v1/accounts', {
-			name: 'Cash',
-			kind: 'cash',
-			currency: 'USD',
-			namespace: 'cash-queue'
-		})
-	).id;
-	food = (await post(page, '/api/v1/categories', { name: 'Food', kind: 'expense' })).id;
-	await post(page, '/api/v1/categories', { name: 'Pay', kind: 'income' });
-	for (const line of [
-		spend('CAFE CENTRAL 0042', -375),
-		spend('CAFE CENTRAL 0099', -420),
-		spend('MARKET ONE', -11326),
-		spend('SALARY MAY', 146216)
-	])
-		await post(page, '/api/v1/transactions', line);
-	await page.close();
-});
-
-async function queue(context: BrowserContext): Promise<Page> {
-	await context.addCookies(session.cookies);
-	const page = await context.newPage();
-	await page.goto('/uncategorized');
-	await expect(page.getByRole('list', { name: say('uncategorized.list') })).toBeVisible();
-	return page;
-}
-
-const rows = (page: Page) =>
-	page.getByRole('list', { name: say('uncategorized.list') }).getByRole('listitem');
-const row = (page: Page, text: string) => rows(page).filter({ hasText: text });
-const choose = (page: Page, text: string, category: string) =>
-	row(page, text).getByLabel(say('column.category')).selectOption({ label: category });
-const filter = (page: Page, name: 'all' | 'spending' | 'income') =>
-	page.getByRole('radio', { name: new RegExp(say(`uncategorized.${name}`)) });
-
-/** Rows of its own: the queue is empty between tests. */
-async function fill(context: BrowserContext, lines: ReturnType<typeof spend>[]) {
-	await context.addCookies(session.cookies);
-	for (const line of lines) {
-		const made = await context.request.post('/api/v1/transactions', { data: line });
-		expect(made.ok()).toBe(true);
-	}
-}
-
-/** Sorts what a test left waiting, so the next finds the queue empty. */
-async function sortAll(page: Page) {
-	const list = await page.request.get('/api/v1/transactions?uncategorized=true&limit=1000');
-	for (const { id } of (await list.json()).items) {
-		const sorted = await page.request.patch(`/api/v1/transactions/${id}`, {
-			data: { category_id: food }
-		});
-		expect(sorted.ok()).toBe(true);
-	}
-}
+test.beforeAll(({ browser }) => logIn(browser));
 
 test('rows filter by kind and sort by amount, each a line of about 52 px', async ({ context }) => {
 	const page = await queue(context);
@@ -556,6 +488,37 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		}
 	});
 
+	test(`a rule leaves the page where it stands when its answer shows there (${reducedMotion})`, async ({
+		context
+	}) => {
+		await fill(
+			context,
+			Array.from({ length: 12 }, (_, i) => spend(`STAY ${i} ${reducedMotion}`, -1000))
+		);
+		const page = await queue(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.setViewportSize({ width: 390, height: 844 });
+		const third = rows(page).nth(2);
+		await third.getByLabel(say('column.category')).selectOption({ label: 'Food' });
+		const send = third.getByRole('button', { name: say('uncategorized.make_rule') });
+		await expect(send).toBeVisible();
+		// The choice's own landing comes first, once the offer has opened: scrolled before it, it undid this.
+		await page.waitForTimeout(1200);
+		await still(page);
+		// The row near the window's top, as a person scrolled it there: the list's top is well above the window.
+		await third.evaluate((e) => scrollBy(0, e.getBoundingClientRect().top - 66));
+		await still(page);
+		const before = await page.evaluate(() => scrollY);
+		await send.dispatchEvent('click');
+		await expect(page.locator('#changes-none')).toBeFocused();
+		await page.waitForTimeout(800);
+		// Only as far as a line cut at the top asks. Rows touching, it went up the whole list: 250 to 437 px (pass 42).
+		const moved = (await page.evaluate(() => scrollY)) - before;
+		expect(Math.abs(moved), `from ${before}`).toBeLessThan(60);
+		await sortAll(page);
+		await page.close();
+	});
+
 	test(`a filter from a scrolled page takes it to its new end calmly (${reducedMotion})`, async ({
 		context
 	}) => {
@@ -583,6 +546,34 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await page.close();
 	});
 }
+
+test('under reduced motion the list goes up at the page end only through a fade', async ({
+	context
+}) => {
+	for (const width of [1280, 390]) {
+		const names = 'ABCDEFGH'.split('').map((name) => `END ${width} ${name}`);
+		await fill(
+			context,
+			names.map((name) => spend(name, -1000))
+		);
+		const page = await queue(context);
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.setViewportSize({ width, height: 600 });
+		const last = rows(page).last();
+		await last.getByLabel(say('column.category')).selectOption({ label: 'Food' });
+		const only = last.getByRole('button', { name: say('uncategorized.only_this') });
+		await expect(only).toBeVisible();
+		await page.waitForTimeout(500);
+		await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+		await still(page);
+		await watchRows(page);
+		// «Solo esta vez»: 168 px at 390 and 140 at 1280 in one frame, with the rows at full opacity (pass 42).
+		await only.dispatchEvent('click');
+		await expectPageFollows(page, `${width}: only this time`, false);
+		await sortAll(page);
+		await page.close();
+	}
+});
 
 test('a filter with no row of its own says so beside the chosen row', async ({ context }) => {
 	await fill(context, [spend('ONLY ONE', -1000), spend('EARNED TOO', 2000)]);

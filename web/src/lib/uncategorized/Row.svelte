@@ -47,13 +47,14 @@
 </script>
 
 <div class="row" class:sorted={took}>
-	<span class="date">{day(transaction.date)}</span>
-	<span class="description">
+	<span class="date" data-whole>{day(transaction.date)}</span>
+	<span class="description" data-whole>
 		<span class="name">{transaction.description}</span>{#if took}<Arrow /><span class="took"
 				>{took}</span
 			>{/if}
 	</span>
-	{#if leg}<span class="amount"><Money minor={leg.amount_minor} currency={leg.currency} /></span
+	{#if leg}<span class="amount" data-whole
+			><Money minor={leg.amount_minor} currency={leg.currency} /></span
 		>{/if}
 	{#if categories.length > 0}
 		<div class="control in-place">
