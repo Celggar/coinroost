@@ -47,10 +47,14 @@ export function glideRoom(box: HTMLElement, before: number, after = box.offsetHe
 	});
 }
 
+/** Whether a box giving back `room` takes the page to a new end from where it stands. */
+export function endsPage(room: number) {
+	return room > 0 && scrollY > document.documentElement.scrollHeight - innerHeight - room;
+}
+
 /** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */
-function fadeIfPageMoves(box: HTMLElement, room: number) {
-	const end = document.documentElement.scrollHeight - innerHeight - room;
-	if (room > 0 && scrollY > end) fadePage(DURATION.medium);
+function fadeIfPageMoves(room: number) {
+	if (endsPage(room)) fadePage(DURATION.medium);
 }
 
 /**
@@ -76,7 +80,7 @@ export function behindFade(box: () => HTMLElement | undefined) {
 				if (!list || !(content instanceof HTMLElement)) return;
 				const after = content.offsetHeight;
 				glideRoom(list, room, after);
-				if (prefersReducedMotion.current) fadeIfPageMoves(list, room - after);
+				if (prefersReducedMotion.current) fadeIfPageMoves(room - after);
 				list.style.minHeight = '';
 			});
 			going = false;
@@ -114,7 +118,7 @@ export function follow(event: Event) {
 	if (!prefersReducedMotion.current) return;
 	const box = event.currentTarget as HTMLElement;
 	fadeAfter(box, DURATION.medium);
-	if (event.type === 'outroend') fadeIfPageMoves(box, box.offsetHeight);
+	if (event.type === 'outroend') fadeIfPageMoves(box.offsetHeight);
 }
 
 /**

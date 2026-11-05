@@ -131,6 +131,10 @@
 </div>
 
 <style>
+	/* A long description is cut at the field's edge: the dots say it goes on (pass 46). */
+	input {
+		text-overflow: ellipsis;
+	}
 	/* Clipped only while it glides: at rest a focus ring reaches past the box. */
 	.fit {
 		position: relative;

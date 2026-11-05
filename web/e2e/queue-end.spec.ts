@@ -1,42 +1,65 @@
 // The queue where the page ends and under a notice, through the browser, against a real server (see run.sh): its own
 // user, as the categorizing spec has reached its size.
 import { expect, test } from '@playwright/test';
+import { watchDrops } from './focus.ts';
 import { expectPageFollows, watchRows } from './frames.ts';
 import { say } from './messages.ts';
-import { answered, fill, food, logIn, queue, rows, sortAll, spend } from './queue.ts';
+import { answered, fill, food, logIn, queue, rows, session, sortAll, spend } from './queue.ts';
 import { still } from './scroll.ts';
 
 // A TOTP code is accepted once, so the run logs in once and the later tests reuse that session.
 test.describe.configure({ mode: 'serial' });
 test.use({ locale: 'es-PA' });
-test.beforeAll(({ browser }) => logIn(browser, 'QUEUE'));
+// Long enough for a row to take a line more with its category, which it gives back with the offer.
+const LONG = 'A category whose name takes a whole line of its own, and on a phone some more';
 
-test('under reduced motion «Deshacer» at the page end goes up only through a fade', async ({
-	context
-}) => {
-	for (const width of [390, 1280]) {
-		const names = 'ABCDEFGH'.split('').map((name) => `UNDO ${width} ${name}`);
-		await fill(
-			context,
-			names.map((name) => spend(name, -1000))
-		);
-		const page = await queue(context);
-		await page.emulateMedia({ reducedMotion: 'reduce' });
-		await page.setViewportSize({ width, height: 600 });
-		const last = rows(page).last();
-		await last.getByLabel(say('column.category')).selectOption({ label: 'Food' });
-		await expect(page.getByRole('textbox', { name: say('uncategorized.offer') })).toBeVisible();
-		await page.waitForTimeout(1200);
-		await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-		await still(page);
-		await watchRows(page);
-		await page.getByRole('button', { name: /^Deshacer/ }).dispatchEvent('click');
-		// It stood 168 px higher in a frame, the row with it, at full opacity (pass 45).
-		await expectPageFollows(page, `${width}`, false);
-		await sortAll(page);
-		await page.close();
-	}
+test.beforeAll(async ({ browser }) => {
+	await logIn(browser, 'QUEUE');
+	const context = await browser.newContext();
+	await context.addCookies(session.cookies);
+	const data = { name: LONG, kind: 'expense' };
+	expect((await context.request.post('/api/v1/categories', { data })).ok()).toBe(true);
+	await context.close();
 });
+
+for (const key of ['uncategorized.undo', 'uncategorized.only_this'] as const) {
+	test(`under reduced motion «${say(key)}» at the page end goes up only through a fade`, async ({
+		context
+	}) => {
+		for (const width of [390, 1280]) {
+			const names = 'ABCDEFGH'.split('').map((name) => `${key} ${width} ${name}`);
+			await fill(
+				context,
+				names.map((name) => spend(name, -1000))
+			);
+			const page = await queue(context);
+			await page.emulateMedia({ reducedMotion: 'reduce' });
+			await page.setViewportSize({ width, height: 600 });
+			const last = rows(page).last();
+			const height = () => last.locator('.row').evaluate((e) => e.getBoundingClientRect().height);
+			const before = await height();
+			await last.getByLabel(say('column.category')).selectOption({ label: LONG });
+			await expect(page.getByRole('textbox', { name: say('uncategorized.offer') })).toBeVisible();
+			await page.waitForTimeout(1200);
+			await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+			await still(page);
+			if (width === 390)
+				expect(await height(), 'the row takes a line more').toBeGreaterThan(before + 10);
+			// As a press leaves it, without the tool's own scroll to the button.
+			const press = page.getByRole('button', { name: say(key) });
+			await press.evaluate((e) => e.focus({ preventScroll: true }));
+			const drops = await watchDrops(page);
+			await watchRows(page);
+			await press.dispatchEvent('click');
+			// It stood 168 px higher in a frame, the row with it (pass 45), after 24 px of its own (pass 46).
+			await expectPageFollows(page, `${width}`, false);
+			// The offer goes at once with the button in it: the focus moves on, never left on the page.
+			expect(await drops(), `${width}`).toEqual([]);
+			await sortAll(page);
+			await page.close();
+		}
+	});
+}
 
 test('on a phone a notice never stays over the field that keeps the focus', async ({ context }) => {
 	const names = 'ABCDEFGHIJKLMNOP'.split('').map((name) => `NOTE ${name}`);

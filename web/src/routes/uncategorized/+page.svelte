@@ -3,7 +3,8 @@
 	import { showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { behindFade, follow } from '#lib/ui/hold-room.ts';
+	import { goneBehindPage } from '#lib/ui/followers.ts';
+	import { behindFade, endsPage, follow } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
@@ -31,8 +32,13 @@
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
 			: slide(node, { duration: DURATION.medium, easing: EASE.standard });
+	// Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in
+	// plain sight, then 168 (pass 46).
+	const shut = (node: HTMLElement) =>
+		prefersReducedMotion.current && endsPage(node.offsetHeight)
+			? goneBehindPage(node, DURATION.medium)
+			: open(node);
 
-	/** `arriving` runs as the new list comes, in the same flush. */
 	const fetched = () =>
 		Promise.all([
 			api.GET('/api/v1/transactions', { params: { query: { uncategorized: true, limit: 1000 } } }),
@@ -41,6 +47,7 @@
 			api.GET('/api/v1/accounts')
 		]);
 
+	/** `arriving` runs as the new list comes, in the same flush. */
 	async function load(arriving?: () => void, answers = fetched()) {
 		loadError = '';
 		const [list, kinds, any, held] = await answers;
@@ -297,7 +304,7 @@
 											onundo={() => undo(transaction)}
 										/>
 										{#if sorted?.id === transaction.id && sorted.offering}
-											<div class="more" transition:open onoutroend={follow}>
+											<div class="more" in:open out:shut onoutroend={follow}>
 												<Offer
 													description={transaction.description}
 													category={sorted.category}
