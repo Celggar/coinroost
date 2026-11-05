@@ -304,7 +304,7 @@ test('an answer about the rules leaves by a fade when they change', async ({ con
 	/** Asks, does what changes the rules, and reads the answer's opacity on every frame until it is gone. Inside the
 	 * block that goes with it a local transition never ran: opacity 1, then nothing (pass 30). */
 	const leaves = async (change: () => Promise<void>) => {
-		await page.getByRole('button', { name: say('changes.open') }).click();
+		await page.locator('section.follows button.secondary').click();
 		await expect(answer).toHaveCSS('opacity', '1');
 		await page.evaluate(() => {
 			const w = window as unknown as Frames;

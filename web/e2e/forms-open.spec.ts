@@ -153,14 +153,36 @@ test('a rule moved under an answer leaves the block standing, the answer fading'
 	await page.setViewportSize({ width: 1280, height: 800 });
 	const [first, second] = await makeRules(page, ['Moved A', 'Moved B']);
 	await page.goto('/rules');
-	await page.getByRole('button', { name: say('changes.open') }).click();
+	const ask = page.locator('section.follows button.secondary');
+	await expect(ask).toHaveText(say('changes.open'));
+	type Words = { words: [string, number][] };
+	await page.evaluate(() => {
+		const w = window as unknown as Words;
+		const button = document.querySelector('section.follows button.secondary')!;
+		w.words = [];
+		const step = () => {
+			w.words.push([button.textContent!.trim(), Number(getComputedStyle(button).opacity)]);
+			if (w.words.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+	await ask.dispatchEvent('click');
 	const answer = page.locator('#changes-none');
 	await expect(answer).toHaveCSS('opacity', '1');
+	await page.waitForFunction(() => (window as unknown as Words).words.length >= 60);
+	const words = await page.evaluate(() => (window as unknown as Words).words);
+	// Its word changes once, out of sight: in a frame, the button went from 319 to 128 px at full opacity (pass 49).
+	const changed = words.flatMap(([word, shown], i) =>
+		i && word !== words[i - 1][0] ? [Math.max(shown, words[i - 1][1])] : []
+	);
+	expect(changed.length, JSON.stringify(words)).toBe(1);
+	expect(changed[0], JSON.stringify(words)).toBeLessThan(0.3);
 	await restTop(page, '#changes-none');
 	await watchTop(page, '#changes-none');
 	await page.locator(`[data-move="${first}-down"]`).dispatchEvent('click');
 	await expect(answer).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: say('changes.title') })).toBeVisible();
+	await expect(ask).toHaveText(say('changes.check'));
 	await expectGlidedTop(page, 40);
 	await forget(page, [first, second]);
 });

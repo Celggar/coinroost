@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
+	import { fadeThrough, followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
 	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
@@ -35,6 +35,10 @@
 	// Once answered, the block stays: the answer can leave by a rule that changed, and with it a title and a card went in
 	// one frame, the line under them 100 px up (pass 48).
 	let opened = $state(false);
+	// Its word changes once, with the first answer, through a fade: with the answer's coming and going it changed in a frame,
+	// 128 to 319 px wide (pass 49).
+	let asking = $state<HTMLElement>();
+	let asked = $state(false);
 	let busy = $state(false);
 	let card = $state<HTMLElement>();
 	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole).
@@ -72,6 +76,7 @@
 		holding = true;
 		await onanswering?.();
 		preview = data;
+		if (!opened) fadeThrough(asking, () => void (asked = true));
 		opened = true;
 		// The answer may land below the window or under the bottom bar: the focus goes to it and the page shows it.
 		await tick();
@@ -140,10 +145,11 @@
 				<button
 					id={opened ? undefined : 'changes-title'}
 					class="secondary"
+					bind:this={asking}
 					onclick={() => {
 						check();
 					}}
-					aria-disabled={busy}>{preview ? t('changes.check') : t('changes.open')}</button
+					aria-disabled={busy}>{asked ? t('changes.check') : t('changes.open')}</button
 				>
 			</div>
 		{/if}
