@@ -142,6 +142,9 @@ export function behindFade(box: () => HTMLElement | undefined) {
 				if (!list || !(content instanceof HTMLElement)) return;
 				const after = content.offsetHeight;
 				glideRoom(list, room, after);
+				// Held, the box kept its old height under the glide, and stood there again as the glide ended, 353 px for two
+				// frames, until it was let go.
+				list.style.height = `${after}px`;
 				if (prefersReducedMotion.current) fadeIfPageMoves(room - after);
 				list.style.minHeight = '';
 			});
