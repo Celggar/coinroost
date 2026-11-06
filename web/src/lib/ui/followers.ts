@@ -6,8 +6,11 @@ const widths = new WeakMap<HTMLElement, number>();
  * not blank: a landing just after an answer blanked the page under the focus (pass 45). It stays dim for two frames: what
  * moves a frame after the fade began moved at 0.34 (pass 46). */
 export function fadePage(duration: number, page = document.querySelector('main')) {
-	page?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { duration });
+	page?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { id: 'page', duration });
 }
+
+/** A fade over what has already taken its place: nothing moves in it. */
+export const fadesInPlace = ({ id }: Animation) => id === 'page' || id === 'follow';
 
 /** Whether a box giving back `room` takes the page, or the sheet that scrolls it, to a new end from where it stands. */
 export function endsPage(room: number, page: Element = document.documentElement) {

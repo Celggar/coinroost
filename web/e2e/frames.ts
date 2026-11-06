@@ -184,8 +184,8 @@ export async function expectGlidedTop(page: Page, limit: number) {
 	expect(Math.max(...steps), trail).toBeLessThan(limit);
 }
 
-/** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. */
-export async function expectFadedTop(page: Page, least = 1) {
+/** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. `once`: behind a single dim. */
+export async function expectFadedTop(page: Page, least = 1, once = false) {
 	await page.waitForFunction(
 		(frames) => (window as unknown as { tops: unknown[] }).tops.length >= frames,
 		FRAMES
@@ -201,6 +201,8 @@ export async function expectFadedTop(page: Page, least = 1) {
 		moves.filter(({ shown }) => shown > 0.4),
 		trail
 	).toEqual([]);
+	const dims = tops.slice(1).filter(([, shown], i) => shown < 0.5 && tops[i][1] >= 0.5);
+	if (once) expect(dims.length, trail).toBe(1);
 }
 
 /** Waits for `selector` to stand still on screen: motion turned off in the middle of a glide ends it in one frame. */

@@ -146,6 +146,32 @@ test('under reduced motion a fold closing at the end moves nothing in plain sigh
 	await forget(page, made);
 });
 
+test('under reduced motion a form closing in a short window dims the page once', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	const made = await makeRules(page, ['Short A', 'Short B', 'Short C']);
+	// The page falls to its new end and goes on up to the button: one press dimmed it twice (pass 54).
+	const closes = async (opener: string, list: string, cancel: string) => {
+		await page.locator(opener).click();
+		await still(page);
+		await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+		await still(page);
+		await watchTop(page, list);
+		await page.getByRole('button', { name: cancel }).dispatchEvent('click');
+		await expectFadedTop(page, 2, true);
+	};
+	await page.setViewportSize({ width: 1280, height: 600 });
+	await page.goto('/rules');
+	await closes('#new-rule', 'ol.rules', say('ruleform.cancel'));
+
+	await page.setViewportSize({ width: 390, height: 600 });
+	await page.goto('/accounts');
+	await closes('#new-account', '.table-wrap', say('accounts.cancel'));
+	await forget(page, made);
+});
+
 test('a rule moved under an answer leaves the block standing, the answer fading', async ({
 	context
 }) => {
