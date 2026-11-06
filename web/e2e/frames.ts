@@ -222,14 +222,24 @@ export async function restTop(page: Page, selector: string) {
 
 type Press = { jumps: string[]; pops: string[]; twice: string[]; dims: number; frames: number };
 
-/** Starts recording a press where nothing may slide: what stands in the window and takes a new place while it shows, what falls
- * from showing to not twice, how many times the page dims and, inside `block`, what comes or goes in one frame while it shows.
+/** Starts recording a press: what stands in the window and takes a new place while it shows (with motion allowed, in a step of
+ * over `lone` px with nothing around it), what falls from showing to not twice, how many times the page dims and, inside `block`,
+ * what comes or goes in one frame while it shows.
  * A fall is counted on each thing, its parents' opacity with it: the page's dims said once while the rows fell twice (pass 58). */
-export async function watchPress(page: Page, block = '', jump = 4) {
+export async function watchPress(page: Page, block = '', lone = 8) {
 	await page.evaluate(
-		({ block, frames, jump }) => {
+		({ block, frames, lone }) => {
 			const w = window as unknown as Press;
-			const places = new Map<Element, { top: number; shown: number; name: string }>();
+			type Place = {
+				top: number;
+				shown: number;
+				name: string;
+				step: number;
+				before: number;
+				late: boolean;
+			};
+			const places = new Map<Element, Place>();
+			const sliding = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 			const falls = new Map<Element, number>();
 			w.jumps = [];
 			w.pops = [];
@@ -237,7 +247,12 @@ export async function watchPress(page: Page, block = '', jump = 4) {
 			w.dims = 0;
 			w.frames = 0;
 			let dim = false;
-			const step = () => {
+			let then = 0;
+			const step = (time: number) => {
+				// A frame that came late holds the steps of those it replaced: a glide's half went in one, −353 px. There what stood
+				// dead still around it tells a jump, and a jump comes in the frames with the most to do.
+				const late = time - then > 25;
+				then = time;
 				const opacities = new Map<Element, number>();
 				const seen = (e: Element | null): number => {
 					if (!e) return 1;
@@ -260,9 +275,19 @@ export async function watchPress(page: Page, block = '', jump = 4) {
 					const now = seen(e);
 					const was = places.get(e);
 					const inSight = bottom > 0 && top < innerHeight;
-					if (was && inSight && Math.abs(top - was.top) >= jump && Math.min(now, was.shown) > 0.4)
-						w.jumps.push(`${name}: ${Math.round(top - was.top)} px at ${now.toFixed(2)}`);
-					if (was && inSight && was.shown >= 0.5 && now < 0.5) {
+					const step = was ? top - was.top : 0;
+					if (!sliding && was && inSight && Math.abs(step) >= 4 && Math.min(now, was.shown) > 0.4)
+						w.jumps.push(`${name}: ${Math.round(step)} px at ${now.toFixed(2)}`);
+					// With motion allowed a glide takes many frames: what moves in one alone jumped (pass 62).
+					const near = was?.late ? 1 : Math.abs(was?.step ?? 0) / 4;
+					const alone =
+						was &&
+						Math.abs(was.step) > lone &&
+						Math.abs(was.before) < near &&
+						Math.abs(step) < near;
+					if (sliding && alone && inSight && Math.min(now, was.shown) > 0.4)
+						w.jumps.push(`${name}: ${Math.round(was.step)} px alone at ${now.toFixed(2)}`);
+					if (!sliding && was && inSight && was.shown >= 0.5 && now < 0.5) {
 						falls.set(e, (falls.get(e) ?? 0) + 1);
 						if (falls.get(e) === 2) w.twice.push(name);
 					}
@@ -271,7 +296,7 @@ export async function watchPress(page: Page, block = '', jump = 4) {
 						w.pops.push(`came in a frame: ${name}`);
 					if (!was && w.frames && block && e.matches(block) && now > 0.4)
 						w.pops.push(`in ${name} at ${now.toFixed(2)}`);
-					places.set(e, { top, shown: now, name });
+					places.set(e, { top, shown: now, name, step, before: was?.step ?? 0, late });
 				}
 				for (const [e, was] of places) {
 					if (shown.has(e)) continue;
@@ -283,7 +308,7 @@ export async function watchPress(page: Page, block = '', jump = 4) {
 			};
 			requestAnimationFrame(step);
 		},
-		{ block, frames: FRAMES, jump }
+		{ block, frames: FRAMES, lone }
 	);
 	await started(page);
 }

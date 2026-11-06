@@ -46,6 +46,7 @@ add_user categorize
 add_user queue
 add_user open
 add_user press
+add_user glide
 # Setup links for the web enrollment, recovery-code and language tests, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -107,4 +108,5 @@ BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2
   E2E_QUEUE_EMAIL="$queue_email" E2E_QUEUE_PASSWORD="$queue_password" E2E_QUEUE_SECRET="$queue_secret" \
   E2E_OPEN_EMAIL="$open_email" E2E_OPEN_PASSWORD="$open_password" E2E_OPEN_SECRET="$open_secret" \
   E2E_PRESS_EMAIL="$press_email" E2E_PRESS_PASSWORD="$press_password" E2E_PRESS_SECRET="$press_secret" \
+  E2E_GLIDE_EMAIL="$glide_email" E2E_GLIDE_PASSWORD="$glide_password" E2E_GLIDE_SECRET="$glide_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" E2E_LANGUAGE_INVITE="$language_invite" npx playwright test "$@"
