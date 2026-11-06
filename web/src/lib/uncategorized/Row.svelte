@@ -5,9 +5,11 @@
 	import { day } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { fade } from 'svelte/transition';
 	import { DURATION, swapIn, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
 	import { fadeAfter } from '#lib/ui/followers.ts';
+	import { glideRoom } from '#lib/ui/hold-room.ts';
 	import Money from '#lib/ui/Money.svelte';
 
 	let {
@@ -42,12 +44,31 @@
 	});
 	$effect(() => {
 		void took;
-		if (!words || !prefersReducedMotion.current) return;
-		if (Math.abs(words.offsetHeight - lines) < 4) return;
+		if (!words || !lines) return;
+		const moved = Math.abs(words.offsetHeight - lines) >= 4;
+		if (!prefersReducedMotion.current) {
+			if (moved) glideRoom(words, lines);
+			return;
+		}
 		// Centred in the row, its first line went up 10 px for the second.
 		words.animate({ opacity: [0, 1] }, { id: 'follow', duration: DURATION.medium });
-		fadeAfter(words, DURATION.medium, true);
+		if (moved) fadeAfter(words, DURATION.medium, true);
 	});
+
+	/** Out, it gives back the line it held in a glide: gone in a frame at the end of the page, the whole screen moved 48 px (pass
+	 * 61). Where nothing may slide it goes at once, behind the words' own fade. */
+	function goes(node: HTMLElement) {
+		if (prefersReducedMotion.current || !words) {
+			node.style.display = 'none';
+			return { duration: 1 };
+		}
+		const before = words.offsetHeight;
+		node.style.display = 'none';
+		const after = words.offsetHeight;
+		node.style.display = '';
+		glideRoom(words, before, after);
+		return vanish(node);
+	}
 
 	// What moves the choice on a closed select: in Chromium each of these is a choice at once, and a choice moves on, so
 	// «Su» for Supermercado saved Salario and the «u» fell on the next row (pass 40, WCAG 3.2.2). They open it instead.
@@ -69,7 +90,9 @@
 	<span class="date" data-whole>{day(transaction.date)}</span>
 	<span class="description" data-whole bind:this={words}>
 		<span class="name">{transaction.description}</span>
-		{#if took}<Arrow /><span class="took">{took}</span>{/if}
+		{#if took}<span in:fade={{ duration: DURATION.medium }} out:goes
+				><Arrow /><span class="took">{took}</span></span
+			>{/if}
 	</span>
 	{#if leg}<span class="amount" data-whole
 			><Money minor={leg.amount_minor} currency={leg.currency} /></span

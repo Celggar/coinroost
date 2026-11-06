@@ -479,3 +479,33 @@ for (const [width, height] of [
 		);
 	});
 }
+
+test('what a row took comes and goes in a glide, at the end of the page', async ({ context }) => {
+	const page = await opened(context, 390, 844);
+	await page.emulateMedia({ reducedMotion: 'no-preference' });
+	const name = 'Subscriptions and digital services of the home, at the end';
+	await category(page, name);
+	const description = 'CASH AT THE END';
+	await seeded(page, 'end', [{ description, date: '2025-12-31' }]);
+	await page.goto('/uncategorized');
+	const row = page.locator('.queue > li', { hasText: description });
+	const select = row.locator('select');
+	const undo = row.getByRole('button', { name: say('uncategorized.undo') });
+	await select.scrollIntoViewIfNeeded();
+	await still(page);
+	// A landing glides here, tens of pixels a frame: what counts is the words. They came and went in a frame (pass 61).
+	await watchPress(page, '.took', 100);
+	await select.selectOption({ label: name });
+	await expect(undo).toBeVisible();
+	await expectPress(page, 'took', 0);
+	await page.getByRole('button', { name: say('uncategorized.only_this') }).click();
+	await expect(page.getByRole('textbox', { name: say('uncategorized.offer') })).toHaveCount(0);
+	await still(page);
+	await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+	await still(page);
+	// The row gave back a line in a frame, and the page its end with it: the whole screen moved 48 px (pass 61).
+	await watchPress(page, '.took', 24);
+	await undo.dispatchEvent('click');
+	await expect(select).toBeVisible();
+	await expectPress(page, 'undone', 0);
+});

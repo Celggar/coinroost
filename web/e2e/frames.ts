@@ -225,9 +225,9 @@ type Press = { jumps: string[]; pops: string[]; twice: string[]; dims: number; f
 /** Starts recording a press where nothing may slide: what stands in the window and takes a new place while it shows, what falls
  * from showing to not twice, how many times the page dims and, inside `block`, what comes or goes in one frame while it shows.
  * A fall is counted on each thing, its parents' opacity with it: the page's dims said once while the rows fell twice (pass 58). */
-export async function watchPress(page: Page, block = '') {
+export async function watchPress(page: Page, block = '', jump = 4) {
 	await page.evaluate(
-		({ block, frames }) => {
+		({ block, frames, jump }) => {
 			const w = window as unknown as Press;
 			const places = new Map<Element, { top: number; shown: number; name: string }>();
 			const falls = new Map<Element, number>();
@@ -260,7 +260,7 @@ export async function watchPress(page: Page, block = '') {
 					const now = seen(e);
 					const was = places.get(e);
 					const inSight = bottom > 0 && top < innerHeight;
-					if (was && inSight && Math.abs(top - was.top) >= 4 && Math.min(now, was.shown) > 0.4)
+					if (was && inSight && Math.abs(top - was.top) >= jump && Math.min(now, was.shown) > 0.4)
 						w.jumps.push(`${name}: ${Math.round(top - was.top)} px at ${now.toFixed(2)}`);
 					if (was && inSight && was.shown >= 0.5 && now < 0.5) {
 						falls.set(e, (falls.get(e) ?? 0) + 1);
@@ -283,7 +283,7 @@ export async function watchPress(page: Page, block = '') {
 			};
 			requestAnimationFrame(step);
 		},
-		{ block, frames: FRAMES }
+		{ block, frames: FRAMES, jump }
 	);
 	await started(page);
 }
