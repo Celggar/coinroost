@@ -98,10 +98,13 @@ export async function reshape(change: () => unknown) {
 /** A block opening in place, closing the same way (`closesInPlace`); with reduced motion it only fades. Not with `fade`, which
  * takes the opacity on screen for the whole: what follows a line that wrapped had just begun at 0, and the offer stayed there
  * for all its length and came in a frame (pass 60). */
-export const opensInPlace = (node: Element) =>
-	prefersReducedMotion.current
-		? { duration: DURATION.short, css: (t: number) => `opacity: ${t}` }
-		: slide(node, { duration: DURATION.medium, easing: EASE.standard });
+export function opensInPlace(node: Element) {
+	if (prefersReducedMotion.current)
+		return { duration: DURATION.short, css: (t: number) => `opacity: ${t}` };
+	const room = slide(node, { duration: DURATION.medium, easing: EASE.standard });
+	// Slide's own opacity reaches 1 in a twentieth of its way: the words stood whole from the second frame.
+	return { ...room, css: (t: number, u: number) => `${room.css?.(t, u)}; opacity: ${t}` };
+}
 
 /** Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in
  * plain sight, then 168 (pass 46). `held`: the page's room stays, and that end is not reached. */

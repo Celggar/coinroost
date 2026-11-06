@@ -6,8 +6,8 @@
 	import { formatName, kindName } from '#lib/accounts/names.ts';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { arrive, placeholder, rise, vanish } from '#lib/motion.ts';
-	import { firstRoom, follow, openRoom } from '#lib/ui/hold-room.ts';
+	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
+	import { firstRoom, follow, glideRoom, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -57,7 +57,10 @@
 		accounts = [...accounts, account].sort((a, b) => a.name.localeCompare(b.name));
 		adding = false;
 		await tick();
+		// What follows the table goes with its new row: a row of a table takes no height of its own, 39 px in a frame at 1280 and
+		// 191 on a phone (pass 62).
 		if (first) firstRoom(list, before);
+		else if (list) glideRoom(list, before);
 		const row = focusMade(`[data-account="${account.id}"]`);
 		if (row) await showWhole(row);
 	}
@@ -89,7 +92,7 @@
 		>
 	</p>
 {:else if loaded}
-	<div class="stack" in:arrive>
+	<div class="stack accounts-page" in:arrive>
 		<div class="in-place" bind:this={list}>
 			{#if accounts.length}
 				<div class="table-wrap" in:rise use:scrollable={t('accounts.title')}>
@@ -105,7 +108,7 @@
 						</thead>
 						<tbody>
 							{#each accounts as account (account.id)}
-								<tr data-account={account.id} in:rise onintrostart={follow}>
+								<tr data-account={account.id} in:rise animate:glide onintrostart={follow}>
 									<td data-label={t('accounts.name')}>{account.name}</td>
 									<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 									<td data-label={t('accounts.currency')}>{account.currency}</td>
@@ -138,6 +141,17 @@
 {/if}
 
 <style>
+	/* The browser anchors the scroll on the field in use: the rows above a new account took its height up as the list measured
+	   them, and came down 184 px in a frame (pass 62's sweep). */
+	:global(html:has(.accounts-page)) {
+		overflow-anchor: none;
+	}
+	/* A column, not the stack's grid: a grid row cannot be less than 0, and the form closing kept its gap to the end, the page's
+	   end 16 px up in a frame. */
+	.accounts-page {
+		display: flex;
+		flex-direction: column;
+	}
 	/* Where the table has the room, a bank file's name keeps to one line and the key, which breaks at its hyphens,
 	   takes the rest: «BAC · credit / card (CSV)» broke beside a 300 px key (pass 9). Narrower, it wraps, or the
 	   name column would shrink to a word per line (tried at 600 px). */

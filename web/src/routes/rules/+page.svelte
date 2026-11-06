@@ -259,33 +259,27 @@
 	/* While this page shows, the browser does not anchor the scroll: a rule moved up kept its place on screen by the
 	   browser moving the page 218 px in one frame, its title left across the top bar; with only the list or the page's
 	   content left out, what followed it became the anchor and the page jumped 32 px when the list got shorter
-	   (pass 13). The rule glides and the page follows it. */
+	   (pass 13). The rule glides and the page follows it. A new rule too: anchored on the field in use, the rows above took a
+	   row's height up as the list measured them, and came down 222 px in a frame (pass 62's sweep). */
 	/* A column, not the stack's grid: a form that opens with its gap starts at a height of 0 and a margin of −16 px, and a grid
 	   row cannot be less than 0, so what follows stood 16 px lower before anything opened (pass 46's brief, P5). */
 	.rules-page {
 		display: flex;
 		flex-direction: column;
 	}
-	:global(html:has(.rules-page):not(:has([data-growing]))) {
-		overflow-anchor: none;
-	}
-	/* While a new rule grows, the browser anchors the scroll on what follows the list's cell (the form being used: with
-	   only the list left out, the cell around it became the anchor; and not on the rail's column, as tall as the page
-	   and never moving, which the browser took as the anchor at 1280), so it
-	   stays still on screen as the rule opens its room above it: the focused button, pushed down, left the screen
-	   (pass 17). Kept by hand, every frame read before the page moved showed the form 58 px off its place. */
-	.rules-page > .in-place,
-	:global(html:has(.rules-page [data-growing]) .wide-only) {
+	:global(html:has(.rules-page)) {
 		overflow-anchor: none;
 	}
 	/* The cards' gap is the page's (.stack): a rule shown under the bar keeps the room the page's scroll padding
 	   gives it, and the one above ends at the bar's edge. With 12 px, 4 px of it stood under the bar, and the landing
-	   went up a whole card to show it (pass 14). */
+	   went up a whole card to show it (pass 14). A column: a grid row cannot be less than 0, and a new rule's gap stood whole
+	   from its first frame, the form under it 16 px down at once (pass 62's sweep). */
 	.rules {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-lg);
 	}
 	.rule p {

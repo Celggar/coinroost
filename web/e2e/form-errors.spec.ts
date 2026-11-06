@@ -486,7 +486,8 @@ test('a new rule opens its room as its form closes: nothing jumps, and the focus
 		w.focus = [];
 		const step = () => {
 			w.tops.push(e.getBoundingClientRect().top + scrollY);
-			if (document.querySelector('[data-growing]')) w.growing.push(scrollY);
+			if (document.querySelector('ol.rules > li:last-child')?.getAnimations().length)
+				w.growing.push(scrollY);
 			const active = document.activeElement;
 			const box = active?.getBoundingClientRect();
 			w.focus.push(

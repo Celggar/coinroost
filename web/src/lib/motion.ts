@@ -95,17 +95,12 @@ export function swapIn(node: Element, { y = 12 } = {}): TransitionConfig {
 /**
  * In, to a list with something under it: the item opens its own room as it fades in (its height, padding, borders and
  * the list's gap together) instead of taking it at once: «Regla nueva» moved 222 px in one frame as a new rule came in
- * above it (pass 17). The gap comes on the side that has a neighbour, held back by a negative margin. While it grows it
- * carries `data-growing`, for a page that lets the browser anchor the scroll on what follows meanwhile (Reglas). With
- * reduced motion it only fades, in its whole room at once.
+ * above it (pass 17). The gap comes on the side that has a neighbour, held back by a negative margin. With reduced motion
+ * it only fades, in its whole room at once.
  */
 export function grow(node: Element): TransitionConfig {
-	node.setAttribute('data-growing', '');
-	const tick = (t: number) => {
-		if (t >= 1) node.removeAttribute('data-growing');
-	};
 	if (!(node instanceof HTMLElement) || still()) {
-		return { ...fade(node, { duration: DURATION.medium, easing: EASE.enter }), tick };
+		return fade(node, { duration: DURATION.medium, easing: EASE.enter });
 	}
 	const style = getComputedStyle(node);
 	const [height, top, bottom, edgeTop, edgeBottom] = [
@@ -128,8 +123,7 @@ export function grow(node: Element): TransitionConfig {
 		css: (t) =>
 			`overflow: hidden; opacity: ${t}; min-height: 0; height: ${t * height}px; padding-top: ${t * top}px;` +
 			` padding-bottom: ${t * bottom}px; border-top-width: ${t * edgeTop}px;` +
-			` border-bottom-width: ${t * edgeBottom}px;${side ? ` ${side}: ${(t - 1) * gap}px;` : ''}`,
-		tick
+			` border-bottom-width: ${t * edgeBottom}px;${side ? ` ${side}: ${(t - 1) * gap}px;` : ''}`
 	};
 }
 

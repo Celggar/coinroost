@@ -51,7 +51,11 @@
 			return;
 		}
 		// Centred in the row, its first line went up 10 px for the second.
-		words.animate({ opacity: [0, 1] }, { id: 'follow', duration: DURATION.medium });
+		const fades = [words];
+		// The date comes before them, and on a phone stands under them: 24 px in plain sight with no landing to dim the page.
+		if (moved) fades.push(words.previousElementSibling as HTMLElement);
+		for (const node of fades)
+			node.animate({ opacity: [0, 1] }, { id: 'follow', duration: DURATION.medium });
 		if (moved) fadeAfter(words, DURATION.medium, true);
 	});
 
@@ -153,9 +157,6 @@
 	.description {
 		min-width: 0;
 		overflow-wrap: anywhere;
-	}
-	.sorted .name {
-		font-weight: 600;
 	}
 	/* The space before it opens the gap on one line and goes at a wrap, so a line that starts with the arrow starts under the
 	   text above; the drawing's own margin in its box comes back here: it stood 5 px to the right (pass 47). */

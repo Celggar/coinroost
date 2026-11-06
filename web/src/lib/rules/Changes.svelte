@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { fadeThrough, followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
+	import { fadeThrough, followContent, glide, grow, swapIn, swapOut } from '#lib/motion.ts';
 	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
@@ -41,8 +41,10 @@
 	let asked = $state(false);
 	let busy = $state(false);
 	let card = $state<HTMLElement>();
-	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole).
+	// Held while a new answer replaces the last one: the page moves once, to where it stands after (showWhole). Only the last
+	// check lets go: a first one ending under a second's landing gave the room back as the page moved.
 	let holding = $state(false);
+	let checks = 0;
 
 	/** The rules changed: what the last check said no longer holds, so it leaves and «Ver cambios» asks again (pass 29). */
 	export function forget() {
@@ -73,6 +75,7 @@
 			onanswer?.();
 			return;
 		}
+		const mine = ++checks;
 		holding = true;
 		await onanswering?.();
 		preview = data;
@@ -87,7 +90,7 @@
 			? answer?.parentElement?.querySelector<HTMLElement>('.changes ~ .actions')
 			: null;
 		if (answer) await showWhole(answer, send ?? answer, card);
-		holding = false;
+		if (mine === checks) holding = false;
 	}
 
 	async function apply() {
@@ -134,11 +137,15 @@
 	bind:this={card}
 	use:followContent={holding}
 >
-	<div class="stack">
+	<div class="stack column">
 		{#if !inline}
 			{#if opened}
-				<h2 id="changes-title" in:rise|global>{t('changes.title')}</h2>
-				<p class="hint" in:rise|global>{t('changes.hint')}</p>
+				<!-- It opens its room: taken at once, the button pressed went 100 to 154 px down under the card's edge (pass 62). As one
+				     block, and in a column: a grid row cannot be less than 0, and each gap stood whole from the first frame, 33 px. -->
+				<div class="stack heading" in:grow|global>
+					<h2 id="changes-title">{t('changes.title')}</h2>
+					<p class="hint">{t('changes.hint')}</p>
+				</div>
 			{/if}
 			<div class="actions">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
@@ -214,9 +221,19 @@
 		overflow: visible;
 	}
 	@media (prefers-reduced-motion: no-preference) {
+		/* The padding too: as a card it took it at once, and the button stepped 57 px (pass 62). */
 		.follows {
-			transition: height var(--duration-medium) var(--ease-standard);
+			transition:
+				height var(--duration-medium) var(--ease-standard),
+				padding var(--duration-medium) var(--ease-standard);
 		}
+	}
+	.column {
+		display: flex;
+		flex-direction: column;
+	}
+	.heading {
+		flex: none;
 	}
 	.changes {
 		list-style: none;
