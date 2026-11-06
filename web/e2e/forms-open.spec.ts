@@ -197,12 +197,13 @@ test('a rule moved under an answer leaves the block standing, the answer fading'
 	await expect(answer).toHaveCSS('opacity', '1');
 	await page.waitForFunction(() => (window as unknown as Words).words.length >= 60);
 	const words = await page.evaluate(() => (window as unknown as Words).words);
-	// Its word changes once, out of sight: in a frame, the button went from 319 to 128 px at full opacity (pass 49).
-	const changed = words.flatMap(([word, shown], i) =>
-		i && word !== words[i - 1][0] ? [Math.max(shown, words[i - 1][1])] : []
-	);
-	expect(changed.length, JSON.stringify(words)).toBe(1);
-	expect(changed[0], JSON.stringify(words)).toBeLessThan(0.3);
+	// Its word changes once, out of sight, at the end of a fade: in a frame, the button went from 319 to 128 px at full opacity
+	// (pass 49). What the frame before reads says nothing: a late frame missed the fade's last step, 0.53 then 0.
+	const changes = words.flatMap(([word], i) => (i && word !== words[i - 1][0] ? [i] : []));
+	expect(changes.length, JSON.stringify(words)).toBe(1);
+	expect(words[changes[0]][1], JSON.stringify(words)).toBeLessThan(0.05);
+	const fading = words.slice(0, changes[0]).filter(([, shown]) => shown < 0.9);
+	expect(fading.length, JSON.stringify(words)).toBeGreaterThanOrEqual(2);
 	await restTop(page, '#changes-none');
 	await watchTop(page, '#changes-none');
 	await page.locator(`[data-move="${first}-down"]`).dispatchEvent('click');
