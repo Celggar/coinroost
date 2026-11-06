@@ -17,6 +17,10 @@ type Frames = {
 
 const FRAMES = 60;
 
+/** The recording has seen a frame. A press sent before that had the page dim from the first frame, and the dim went uncounted. */
+const started = (page: Page) =>
+	page.waitForFunction(() => (window as unknown as { frames: number }).frames > 0);
+
 /** Starts recording: every step of a row beyond 2 px, every fall of a row's opacity in one frame, a row taken away included. */
 export async function watchRows(page: Page) {
 	await page.evaluate((frames) => {
@@ -73,6 +77,7 @@ export async function watchRows(page: Page) {
 		};
 		requestAnimationFrame(step);
 	}, FRAMES);
+	await started(page);
 }
 
 async function recorded(page: Page) {
@@ -277,6 +282,7 @@ export async function watchPress(page: Page, block = '') {
 		},
 		{ block, frames: FRAMES }
 	);
+	await started(page);
 }
 
 /** Nothing took a new place while it showed, nothing came or went in a frame, and the page dimmed at most `most` times. */
