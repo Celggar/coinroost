@@ -43,6 +43,8 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 	// frame, 38 of two lines' 48. Given back in a frame it is the whole line.
 	const LINE = 20;
 	const LINES = 40;
+	// D65: a form closing with little scroll left takes the page along its curve, up to 66 px a frame, cut where the scroll ends.
+	const closing = (width: number) => (width >= 900 ? 70 : undefined);
 
 	/** Presses `control` with the page at rest and judges what it moved once `done` holds. */
 	async function press(
@@ -119,7 +121,8 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				if (width >= 900) {
 					await add.click();
 					const cancel = page.getByRole('button', { name: say('ruleform.cancel') });
-					await press(page, `rule cancel ${size}`, cancel, () => expect(add).toBeFocused());
+					const back = () => expect(add).toBeFocused();
+					await press(page, `rule cancel ${size}`, cancel, back, closing(width));
 				}
 				await add.click();
 				await still(page);
@@ -171,7 +174,8 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				const add = page.locator('#new-account');
 				await add.click();
 				const cancel = page.getByRole('button', { name: say('accounts.cancel') });
-				await press(page, `account cancel ${size}`, cancel, () => expect(add).toBeFocused());
+				const back = () => expect(add).toBeFocused();
+				await press(page, `account cancel ${size}`, cancel, back, closing(width));
 				for (const name of [`Aaa ${size}`, `Zzz ${size}`]) {
 					await add.click();
 					await still(page);
@@ -181,7 +185,8 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 					);
 					await page.getByLabel(say('accounts.name'), { exact: true }).fill(name);
 					const made = page.locator('tr[data-account]', { hasText: name });
-					await press(page, `new account ${name}`, send, () => expect(made).toBeFocused());
+					const shown = () => expect(made).toBeFocused();
+					await press(page, `new account ${name}`, send, shown, closing(width));
 				}
 			});
 
