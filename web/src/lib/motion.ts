@@ -126,7 +126,7 @@ export function grow(node: Element): TransitionConfig {
 		duration: DURATION.medium,
 		easing: EASE.standard,
 		css: (t) =>
-			`overflow: hidden; opacity: ${t}; height: ${t * height}px; padding-top: ${t * top}px;` +
+			`overflow: hidden; opacity: ${t}; min-height: 0; height: ${t * height}px; padding-top: ${t * top}px;` +
 			` padding-bottom: ${t * bottom}px; border-top-width: ${t * edgeTop}px;` +
 			` border-bottom-width: ${t * edgeBottom}px;${side ? ` ${side}: ${(t - 1) * gap}px;` : ''}`,
 		tick

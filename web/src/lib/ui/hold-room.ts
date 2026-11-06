@@ -33,25 +33,31 @@ export async function holdRoom(box: HTMLElement | null, change: () => unknown) {
 	// that end, 149 to 238 px in a frame, before the animation held it again (pass 50).
 	const staying = [...box.children].filter((e) => e instanceof HTMLElement && !e.inert);
 	const after = Math.max(0, ...staying.map((e) => (e as HTMLElement).offsetHeight));
-	const ends = endsPage(before - after);
 	if (after >= before) {
 		box.style.minHeight = '';
 		return letGo();
 	}
+	if (prefersReducedMotion.current) {
+		// Whether the page ends is asked as the room goes: another box may have given back its own since, and neither alone
+		// reached the end, 232 px at full opacity (pass 52).
+		setTimeout(() => {
+			const ends = endsPage(before - after);
+			box.style.minHeight = '';
+			letGo();
+			fadeAfter(box, DURATION.medium);
+			if (ends) fadePage(DURATION.medium);
+		}, FADED);
+		return;
+	}
 	const room = box.animate([{ minHeight: `${before}px` }, { minHeight: `${after}px` }], {
 		delay: FADED,
-		duration: prefersReducedMotion.current ? 0 : DURATION.medium,
+		duration: DURATION.medium,
 		easing: EASE_CSS.standard,
 		fill: 'backwards'
 	});
 	box.style.minHeight = '';
 	room.oncancel = letGo;
-	room.onfinish = () => {
-		letGo();
-		if (!prefersReducedMotion.current) return;
-		fadeAfter(box, DURATION.medium);
-		if (ends) fadePage(DURATION.medium);
-	};
+	room.onfinish = letGo;
 }
 
 /**

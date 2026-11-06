@@ -4,14 +4,16 @@
 	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t, type Key } from '#lib/i18n.svelte.ts';
-	import { arrive, placeholder, rise } from '#lib/motion.ts';
+	import { arrive, grow, placeholder, swapIn, vanish } from '#lib/motion.ts';
 	import CategoryForm from '#lib/rules/CategoryForm.svelte';
 	import { retry } from '#lib/ui/focus.ts';
+	import { firstRoom, follow } from '#lib/ui/hold-room.ts';
 	import { focusShown } from '#lib/ui/landing.ts';
 
 	let categories = $state<Schemas['Category'][]>([]);
 	let loadError = $state('');
 	let loaded = $state(false);
+	let list = $state<HTMLElement>();
 
 	const holds = {
 		expense: 'categoryform.expense',
@@ -28,6 +30,15 @@
 		}
 		categories = data.items.toSorted((a, b) => a.name.localeCompare(b.name));
 		loaded = true;
+	}
+
+	/** A new row opens its room, and the first one the list's: taken at once, the form with the focus fell 48 px (pass 52). */
+	async function created() {
+		const first = !categories.length;
+		const before = list?.offsetHeight ?? 0;
+		await load();
+		await tick();
+		if (first) firstRoom(list, before);
 	}
 
 	// A link to the form (from an uncategorized queue with no category to choose) lands in its name field: the form only
@@ -69,19 +80,21 @@
 	</p>
 {:else if loaded}
 	<div class="stack" in:arrive>
-		{#if categories.length}
-			<ul class="card list" aria-label={t('categories.title')}>
-				{#each categories as category (category.id)}
-					<li in:rise>
-						<span>{category.name}</span>
-						<span class="hint">{t(holds[category.kind])}</span>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p>{t('categories.none_yet')}</p>
-		{/if}
-		<CategoryForm oncreated={load} back={fromQueue} />
+		<div class="in-place" bind:this={list}>
+			{#if categories.length}
+				<ul class="card list" aria-label={t('categories.title')} in:swapIn>
+					{#each categories as category (category.id)}
+						<li in:grow onintrostart={follow}>
+							<span>{category.name}</span>
+							<span class="hint">{t(holds[category.kind])}</span>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p out:vanish>{t('categories.none_yet')}</p>
+			{/if}
+		</div>
+		<CategoryForm oncreated={created} back={fromQueue} />
 	</div>
 {:else}
 	<p class="hint loading" out:placeholder>{t('app.loading')}</p>

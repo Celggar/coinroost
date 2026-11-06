@@ -270,14 +270,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 }
 
 for (const width of [390, 1280]) {
-	for (const count of [0, 6]) {
-		test(`under reduced motion a rule deleted over an answer of ${count} moves the end behind a fade (${width})`, async ({
+	// Between: neither the answer's room nor the rule's reaches the end alone, both together do.
+	for (const [count, between] of [
+		[0, false],
+		[6, false],
+		[6, true]
+	] as const) {
+		test(`under reduced motion a rule deleted over an answer of ${count} moves the end behind a fade (${width}${between ? ', between' : ''})`, async ({
 			context
 		}) => {
 			const page = await loggedIn(context);
 			await page.emulateMedia({ reducedMotion: 'reduce' });
 			await page.setViewportSize({ width, height: 800 });
-			const names = ['Over A', 'Over B', 'Over C'].map((name) => `${name} ${count} ${width}`);
+			const names = ['Over A', 'Over B', 'Over C'].map(
+				(name) => `${name} ${count} ${width} ${between}`
+			);
 			const made = await makeRules(page, names);
 			const row = (n: number) => ({
 				transaction_id: `00000000-0000-4000-8000-00000000000${n}`,
@@ -302,7 +309,15 @@ for (const width of [390, 1280]) {
 			const yes = page.getByRole('button', { name: say('rules.delete_it') });
 			await expect(yes).toBeVisible();
 			await still(page);
-			await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+			await page.evaluate((between) => {
+				const height = (selector: string) =>
+					document.querySelector<HTMLElement>(selector)!.offsetHeight;
+				const room = Math.max(height('section.follows .in-place'), height('ol.rules > li') + 24);
+				scrollTo(
+					0,
+					document.documentElement.scrollHeight - innerHeight - (between ? room + 20 : 0)
+				);
+			}, between);
 			await restTop(page, 'ol.rules');
 			await watchTop(page, 'ol.rules');
 			await yes.dispatchEvent('click');
@@ -336,3 +351,29 @@ test('on a phone asking to delete a rule moves nothing under it', async ({ conte
 	await expectGlidedTop(page, 4);
 	await forget(page, made);
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`a new category opens its room, the form not thrown down (${reducedMotion})`, async ({
+		context
+	}) => {
+		const page = await loggedIn(context);
+		await page.emulateMedia({ reducedMotion });
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await page.goto('/categories');
+		const form = page.locator('#new-category');
+		const name = form.getByLabel(say('categoryform.name'));
+		const make = async (category: string) => {
+			await name.fill(category);
+			await restTop(page, '#new-category');
+			const faded = reducedMotion === 'reduce';
+			const first = (await page.locator('ul.list > li').count()) === 0;
+			await watchTop(page, '#new-category', faded && !first ? '#new-category' : 'main');
+			await form.getByRole('button', { name: say('categoryform.create') }).dispatchEvent('click');
+			await expect(page.getByText(category, { exact: true })).toBeVisible();
+			if (faded) await expectFadedTop(page);
+			else await expectGlidedTop(page, 20);
+		};
+		await make(`Aaa first ${reducedMotion}`);
+		await make(`Bbb next ${reducedMotion}`);
+	});
+}
