@@ -269,13 +269,13 @@ export async function watchPress(page: Page, block = '') {
 	);
 }
 
-/** Nothing took a new place while it showed, nothing came or went in a frame, and the page dimmed at most once. */
-export async function expectPress(page: Page, what: string) {
+/** Nothing took a new place while it showed, nothing came or went in a frame, and the page dimmed at most `most` times. */
+export async function expectPress(page: Page, what: string, most = 1) {
 	await page.waitForFunction((frames) => (window as unknown as Press).frames >= frames, FRAMES);
 	const { jumps, pops, dims } = await page.evaluate(() => {
 		const { jumps, pops, dims } = window as unknown as Press;
 		return { jumps, pops, dims };
 	});
 	expect({ what, jumps, pops }).toEqual({ what, jumps: [], pops: [] });
-	expect(dims, `${what}: the page's dims`).toBeLessThanOrEqual(1);
+	expect(dims, `${what}: the page's dims`).toBeLessThanOrEqual(most);
 }

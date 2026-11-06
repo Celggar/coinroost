@@ -67,10 +67,10 @@ const still = () => prefersReducedMotion.current;
  */
 export const FADED = DURATION.exit;
 
-/** In: rises a little into place. A delay that waits for the card to grow is dropped when nothing grows. */
-export function rise(node: Element, { delay = 0, y = 12 } = {}): TransitionConfig {
+/** In: rises a little into place. A delay that waits for the card to grow is dropped when nothing grows: `wait` is its own. */
+export function rise(node: Element, { delay = 0, y = 12, wait = 0 } = {}): TransitionConfig {
 	return fly(node, {
-		delay: still() ? 0 : delay,
+		delay: still() ? wait : delay,
 		y: still() ? 0 : y,
 		duration: DURATION.medium,
 		easing: EASE.enter

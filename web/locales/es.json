@@ -210,7 +210,7 @@
 	"then.payee_from_text": "beneficiario: el nombre después del texto",
 	"payee.new": "{name} (nuevo)",
 	"ruleform.title": "Regla nueva",
-	"ruleform.hint": "Queda de última. Clasifica los archivos que importes de ahora en adelante; las transacciones que ya existen cambian solo cuando ves los cambios y los aplicas abajo.",
+	"ruleform.hint": "Queda de última. Clasifica los archivos que importes de ahora en adelante; las transacciones que ya existen cambian solo cuando ves los cambios y los aplicas.",
 	"ruleform.name": "Nombre de la regla",
 	"ruleform.text": "La descripción tiene",
 	"ruleform.text_hint": "Mayúsculas y minúsculas da igual; los acentos y los espacios cuentan.",

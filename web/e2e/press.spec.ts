@@ -46,6 +46,24 @@ async function press(page: Page, what: string, control: Locator, done: () => Pro
 	await expectPress(page, what);
 }
 
+type Shown = { shown: number[] };
+
+/** Starts recording the opacity of `selector`, its parents' with it, while it stands. */
+async function watchShown(page: Page, selector: string) {
+	await page.evaluate((selector) => {
+		const w = window as unknown as Shown;
+		w.shown = [];
+		const step = () => {
+			let shown = document.querySelector(selector) ? 1 : 0;
+			for (let e = document.querySelector(selector); e; e = e.parentElement)
+				shown *= Number(getComputedStyle(e).opacity);
+			w.shown.push(shown);
+			if (w.shown.length < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	}, selector);
+}
+
 const account = (name: string) => ({
 	name,
 	kind: 'cash',
@@ -123,13 +141,34 @@ test.describe.serial('every size', () => {
 			}
 		});
 
+		test(`a refused sign-in at ${size}`, async ({ context }) => {
+			const page = await context.newPage();
+			await page.emulateMedia({ reducedMotion: 'reduce' });
+			await page.setViewportSize({ width, height });
+			await page.goto('/login');
+			await page.getByLabel(say('login.email')).fill('nobody@example.com');
+			await page.getByLabel(say('login.password')).fill('not the password');
+			await page.getByLabel(say('login.code')).fill('000000');
+			const send = page.getByRole('button', { name: say('login.title') });
+			await press(page, `sign-in refused ${size}`, send, () =>
+				expect(page.getByRole('alert').first()).toContainText(say('login.wrong'))
+			);
+		});
+
 		test(`a category's error at ${size}`, async ({ context }) => {
 			const page = await opened(context, width, height);
 			await page.goto('/categories');
 			const send = page.locator('#new-category [type="submit"]');
-			await press(page, `category error ${size}`, send, () =>
-				expect(page.locator('#new-category .field-error').first()).toBeVisible()
-			);
+			const error = page.locator('#new-category .field-error').first();
+			await press(page, `category error ${size}`, send, () => expect(error).toBeVisible());
+			// A key that takes the error away moves little, and nothing that needs the whole page dim (pass 56).
+			await still(page);
+			await watchPress(page);
+			await page.locator('#new-category input').first().fill(`Press ${size}`);
+			await expect(error).toHaveCount(0);
+			await expectPress(page, `category error gone ${size}`, 0);
+			const made = page.getByText(`Press ${size}`, { exact: true });
+			await press(page, `new category ${size}`, send, () => expect(made).toBeVisible());
 		});
 	}
 });
@@ -145,8 +184,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 	}) => {
 		const page = await opened(context, 1280, 800);
 		await page.emulateMedia({ reducedMotion });
-		const make = async (name: string) => {
-			const data = { ...account(name), profile: 'bac-account' };
+		const make = async (name: string, profile = 'bac-account') => {
+			const data = { ...account(name), profile };
 			const response = await page.request.post('/api/v1/accounts', { data });
 			expect(response.ok()).toBe(true);
 			return (await response.json()).id as string;
@@ -175,5 +214,29 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		};
 		await swaps(full, () => expect(card.getByRole('status')).toBeVisible());
 		await swaps(fresh, () => expect(button).toBeVisible());
+
+		// To an account that cannot read it what it read goes, once, and comes back, once: it fell, came back with the old
+		// figures and left, and came back twice on the way home (pass 56).
+		const other = `Other ${reducedMotion}`;
+		await make(other, 'bac-card');
+		await page.reload();
+		await page.locator('input[type=file]').setInputFiles(statement);
+		await choice.selectOption({ label: fresh });
+		await expect(button).toBeVisible();
+		const once = async (label: string, shows: () => Promise<void>, way: 1 | -1) => {
+			await still(page);
+			await watchShown(page, '.reading');
+			await watchPress(page);
+			await choice.selectOption({ label });
+			await shows();
+			// With motion allowed it rises into place, a few pixels a frame.
+			if (reducedMotion === 'reduce') await expectPress(page, `reading to ${label}`);
+			await page.waitForFunction(() => (window as unknown as Shown).shown.length >= 60);
+			const shown = await page.evaluate(() => (window as unknown as Shown).shown);
+			const back = shown.slice(1).filter((now, i) => (now - shown[i]) * way < -0.02);
+			expect(back, JSON.stringify(shown)).toEqual([]);
+		};
+		await once(other, () => expect(card.locator('.field-error')).toBeVisible(), -1);
+		await once(fresh, () => expect(button).toBeVisible(), 1);
 	});
 }

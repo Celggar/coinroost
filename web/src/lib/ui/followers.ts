@@ -41,7 +41,7 @@ export const fadesInPlace = ({ id }: Animation) => id === 'page' || id === 'foll
 
 /** Whether a box giving back `room` takes the page, or the sheet that scrolls it, to a new end from where it stands. */
 export function endsPage(room: number, page: Element = document.documentElement) {
-	return room > 0 && page.scrollTop > page.scrollHeight - page.clientHeight - room;
+	return room > 0 && page.scrollTop > Math.max(0, page.scrollHeight - page.clientHeight - room);
 }
 
 /** Out where its box takes a new height at once and, centred, it would stand elsewhere: 97 px higher, at setup (pass 44). */
@@ -51,6 +51,12 @@ export function goneBehindPage(node: HTMLElement, duration: number) {
 	return { duration: 1 };
 }
 
+/** Whether an animation ends fainter than it began. */
+function leaves({ effect }: Animation) {
+	const frames = effect instanceof KeyframeEffect ? effect.getKeyframes() : [];
+	return Number(frames.at(-1)?.opacity ?? 1) < Number(frames[0]?.opacity ?? 1);
+}
+
 /** Fades in what follows `box` inside the page, which has just taken its new place. `again`: it moved again, so a fade on its
  * way starts over, or the second place would land in plain sight. */
 export function fadeAfter(box: Element, duration: number, again = false) {
@@ -58,8 +64,13 @@ export function fadeAfter(box: Element, duration: number, again = false) {
 	if (!page) return;
 	for (let at: Element | null = box; at && at !== page; at = at.parentElement) {
 		for (let next = at.nextElementSibling; next; next = next.nextElementSibling) {
-			const fading = next.getAnimations().filter((animation) => animation.id === 'follow');
-			if (fading.length && !again) continue;
+			const running = next.getAnimations();
+			const fading = running.filter((animation) => animation.id === 'follow');
+			const own = running.filter((animation) => animation.id !== 'follow');
+			// On its way out it goes now, with no way back: fading in, a reading leaving came back for a moment (pass 56). On its
+			// way in it has its own fade.
+			if (own.some(leaves)) next.animate({ opacity: [0, 0] }, { id: 'follow', duration });
+			if (own.length || (fading.length && !again)) continue;
 			for (const animation of fading) animation.cancel();
 			next.animate({ opacity: [0, 1] }, { id: 'follow', duration });
 		}

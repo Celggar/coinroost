@@ -4,7 +4,7 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, lift, placeholder, rise, swapIn, vanish } from '#lib/motion.ts';
+	import { FADED, followContent, lift, placeholder, rise, swapIn, vanish } from '#lib/motion.ts';
 	import { follow, nextAnswer } from '#lib/ui/hold-room.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
@@ -30,6 +30,8 @@
 	let report = $state<Schemas['ImportReport'] | null>(null);
 	let block = $state<HTMLElement>();
 	const answer = nextAnswer(() => block);
+	// What it read waits for the error it replaces, where nothing may slide: it stood 24 px lower until that left (pass 55).
+	let late = $state(false);
 
 	const importable = $derived(accounts.filter((a) => a.profile));
 	const account = $derived(accounts.find((a) => a.id === accountId));
@@ -38,8 +40,7 @@
 		reading ? reading.rows_read - reading.new - reading.duplicates - reading.errors : 0
 	);
 
-	/** Why a file adds nothing. «Every row is already imported» stood in green over a file with no row read, the statement
-	 * left out with nothing to say so (pass 54). */
+	/** Why a file adds nothing: «every row is already imported» stood in green over a file with no row read (pass 54). */
 	const nothing = $derived.by(() => {
 		if (reading?.duplicates) return reading.errors ? 'file.nothing_rest' : 'file.nothing_new';
 		return reading?.errors ? 'file.nothing_read' : 'file.nothing_found';
@@ -91,6 +92,7 @@
 			return;
 		}
 		const take = () => {
+			late = Boolean(accountError);
 			accountError = '';
 			preview = data;
 			accountId = data.account_id ?? '';
@@ -178,7 +180,7 @@
 		<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
 			 file, instead of leaving in one frame (FD9, pass 3). -->
 		{#if reading && account}
-			<div class="reading" in:rise out:vanish bind:this={block}>
+			<div class="reading" in:rise={{ wait: late ? FADED : 0 }} out:vanish bind:this={block}>
 				<dl class="figures">
 					<div>
 						<dt>{t('file.rows_read')}</dt>
@@ -281,8 +283,7 @@
 				<!-- The card keeps its state (imported); what the import did is said once, by the page's notice (FD8). The
 				     button and the line that replaces it share one cell: the button fades out, keeping the focus until the
 				     line takes it, then the line rises in its place. In a block inside another, the button left in one
-				     frame and the focus fell to the page (pass 19). Nothing new: the notice says so, and no button is
-				     shown that could not be pressed. -->
+				     frame and the focus fell to the page (pass 19). Nothing new: no button that could not be pressed. -->
 				<div class="in-place">
 					{#if report}
 						<p class="result" tabindex="-1" bind:this={resultLine} in:swapIn>

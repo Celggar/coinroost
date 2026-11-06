@@ -295,6 +295,11 @@ async function still() {
  * screen with its label whatever is cut.
  */
 export async function showBelow(end: HTMLElement, keep: HTMLElement) {
+	landingBegins();
+	await goBelow(end, keep).finally(landingEnds);
+}
+
+async function goBelow(end: HTMLElement, keep: HTMLElement) {
 	await still();
 	const { top, bottom, floor } = edges();
 	const lo = scrollY + end.getBoundingClientRect().bottom - bottom;

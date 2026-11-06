@@ -26,12 +26,14 @@
 		if (text && !room && prefersReducedMotion.current) fade();
 	});
 
-	function makeRoom() {
+	function makeRoom(event: Event) {
 		if (!region || !prefersReducedMotion.current) return;
 		const height = region.offsetHeight;
 		if (room && height - room >= 4) fade();
 		room = Math.max(room, height);
 		region.style.minHeight = `${room}px`;
+		// It stands whole already: shown once it had risen, the page dimmed again for one error, 340 ms apart (pass 56).
+		reveal(event.currentTarget as HTMLElement);
 	}
 
 	// The message lands under the field that keeps the focus; on a short screen it and the button after it could sit
@@ -51,7 +53,7 @@
 				in:rise|global={{ delay: DURATION.medium }}
 				out:lift|global
 				onintrostart={makeRoom}
-				onintroend={(event) => reveal(event.currentTarget)}
+				onintroend={(event) => prefersReducedMotion.current || reveal(event.currentTarget)}
 			>
 				{text}
 			</p>{/if}

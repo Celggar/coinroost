@@ -210,7 +210,7 @@
 	"then.payee_from_text": "payee: the name after the text",
 	"payee.new": "{name} (new)",
 	"ruleform.title": "New rule",
-	"ruleform.hint": "It goes last. It sorts files imported from now on; existing transactions change only when you check and apply below.",
+	"ruleform.hint": "It goes last. It sorts files imported from now on; existing transactions change only when you check the changes and apply them.",
 	"ruleform.name": "Rule name",
 	"ruleform.text": "Description has",
 	"ruleform.text_hint": "Upper or lower case alike; accents and spaces count.",
