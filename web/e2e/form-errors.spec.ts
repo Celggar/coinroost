@@ -65,6 +65,8 @@ test('a key already taken is marked on «Clave», not as a loose English line', 
 	await page.getByLabel(say('accounts.bank_file')).selectOption({ value: 'bac-account' });
 	await page.getByRole('button', { name: say('accounts.create') }).click();
 	await expect(page.getByRole('status')).toHaveText(say('accounts.created', { name: 'Corriente' }));
+	// The file chosen stays with the account: one came out with none, once (pass 63).
+	await expect(page.locator('tr[data-account]', { hasText: 'Corriente' })).toContainText('BAC');
 
 	// Another name that suggests the same key, folded away: the API's answer opens the fold to show it. The very same
 	// name clashes first, on «Nombre».

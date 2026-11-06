@@ -191,6 +191,33 @@ export async function expectGlidedTop(page: Page, limit: number) {
 	expect(Math.max(...steps), trail).toBeLessThan(limit);
 }
 
+/** Starts recording how far past the bottom of `box`, which clips it, `inner` stands. */
+export async function watchCut(page: Page, inner: string, box: string) {
+	await page.evaluate(
+		({ inner, box, frames }) => {
+			const w = window as unknown as { cut: number[]; cutting: number };
+			w.cut = [];
+			w.cutting = frames;
+			const step = () => {
+				const bottom = (selector: string) =>
+					document.querySelector(selector)?.getBoundingClientRect().bottom ?? 0;
+				const past = bottom(inner) - bottom(box);
+				if (past > 1) w.cut.push(Math.round(past));
+				if (--w.cutting > 0) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		},
+		{ inner, box, frames: FRAMES }
+	);
+}
+
+/** It stayed whole: the button pressed went out through its card's edge for 150 ms (pass 63). */
+export async function expectNotCut(page: Page, what: string) {
+	await page.waitForFunction(() => (window as unknown as { cutting: number }).cutting <= 0);
+	const cut = await page.evaluate(() => (window as unknown as { cut: number[] }).cut);
+	expect(cut, what).toEqual([]);
+}
+
 /** It moved, and never in plain sight: where nothing may slide, only behind the page's fade. `once`: behind a single dim. */
 export async function expectFadedTop(page: Page, least = 1, once = false) {
 	await page.waitForFunction(

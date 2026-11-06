@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { expectPress, watchPress } from './frames.ts';
+import { expectNotCut, expectPress, watchCut, watchPress } from './frames.ts';
 import { unfold } from './forms.ts';
 import { say } from './messages.ts';
 import { makeRules } from './rules.ts';
@@ -142,9 +142,14 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				await press(page, `new rule ${size}`, send, () => expect(row).toBeFocused());
 				await expectOneFade(page);
 				const check = page.locator('section.follows button.secondary');
-				await press(page, `changes asked ${size}`, check, () =>
+				const ask = async () => {
+					await watchCut(page, 'section.follows button.secondary', 'section.follows');
+					await check.dispatchEvent('click');
+				};
+				await press(page, `changes asked ${size}`, ask, () =>
 					expect(page.locator('#changes-none, #changes-some')).toBeFocused()
 				);
+				await expectNotCut(page, `changes asked ${size}`);
 				// Moved near the top a landing follows, and the rows must not fall for each (pass 58).
 				await page.evaluate(() => scrollTo(0, 0));
 				const down = page.locator(`[data-move="${made[0]}-down"]`);

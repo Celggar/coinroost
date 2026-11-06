@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { fadeThrough, followContent, glide, grow, swapIn, swapOut } from '#lib/motion.ts';
+	import { fadeThrough, followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
 	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
@@ -137,21 +137,20 @@
 	bind:this={card}
 	use:followContent={holding}
 >
-	<div class="stack column">
+	<div class="stack">
 		{#if !inline}
 			{#if opened}
-				<!-- It opens its room: taken at once, the button pressed went 100 to 154 px down under the card's edge (pass 62). As one
-				     block, and in a column: a grid row cannot be less than 0, and each gap stood whole from the first frame, 33 px. -->
-				<div class="stack heading" in:grow|global>
-					<h2 id="changes-title">{t('changes.title')}</h2>
-					<p class="hint">{t('changes.hint')}</p>
-				</div>
+				<h2 id="changes-title" in:rise|global>{t('changes.title')}</h2>
+				<p class="hint" in:rise|global>{t('changes.hint')}</p>
 			{/if}
 			<div class="actions">
-				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. -->
+				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. `data-flip`: it goes down
+				     with the card's edge as the card opens around it: alone it went 100 to 154 px down in a frame (pass 62), and with
+				     the title opening its room above it, out through that edge for 150 ms (pass 63). -->
 				<button
 					id={opened ? undefined : 'changes-title'}
 					class="secondary"
+					data-flip
 					bind:this={asking}
 					onclick={() => {
 						check();
@@ -220,20 +219,19 @@
 	.follows:not(.card, .inline, [data-moving]) {
 		overflow: visible;
 	}
+	/* Its surface comes with a transition from nothing: the edge from the text's colour stood dark for a moment. */
+	.follows:not(.card) {
+		border-color: transparent;
+	}
 	@media (prefers-reduced-motion: no-preference) {
-		/* The padding too: as a card it took it at once, and the button stepped 57 px (pass 62). */
+		/* The surface too: the card came in a frame, at full opacity (pass 63). */
 		.follows {
 			transition:
 				height var(--duration-medium) var(--ease-standard),
-				padding var(--duration-medium) var(--ease-standard);
+				background-color var(--duration-medium) var(--ease-standard),
+				border-color var(--duration-medium) var(--ease-standard),
+				box-shadow var(--duration-medium) var(--ease-standard);
 		}
-	}
-	.column {
-		display: flex;
-		flex-direction: column;
-	}
-	.heading {
-		flex: none;
 	}
 	.changes {
 		list-style: none;
