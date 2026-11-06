@@ -180,7 +180,7 @@
 		<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
 			 file, instead of leaving in one frame (FD9, pass 3). -->
 		{#if reading && account}
-			<div class="reading" in:rise={{ wait: late ? FADED : 0 }} out:vanish bind:this={block}>
+			<div class="reading" in:rise={{ wait: late ? FADED : 0 }} out:answer.gone bind:this={block}>
 				<dl class="figures">
 					<div>
 						<dt>{t('file.rows_read')}</dt>

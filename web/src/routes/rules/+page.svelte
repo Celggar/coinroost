@@ -9,7 +9,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import Confirm from '#lib/ui/Confirm.svelte';
 	import { focusMade, focusOn, holdFocus, retry } from '#lib/ui/focus.ts';
-	import { firstRoom, follow, holdRoom, openRoom } from '#lib/ui/hold-room.ts';
+	import { firstRoom, follow, holdRoom, openRoom, reshape } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import Sheet from '#lib/ui/Sheet.svelte';
@@ -108,7 +108,8 @@
 		const list = document.querySelector<HTMLElement>('.rules-page > .in-place');
 		const first = !rules.length;
 		const before = list?.offsetHeight ?? 0;
-		await load();
+		// The page takes its new height behind the same dim as its landing: the rows went out and back, then out again (pass 57).
+		await reshape(load);
 		sheet?.letGo();
 		adding = false;
 		await tick();

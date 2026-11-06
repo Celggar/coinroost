@@ -40,28 +40,45 @@ async function opened(context: BrowserContext, width: number, height: number): P
 /** Presses `control` with the page at rest and judges what it moved once `done` holds. */
 async function press(page: Page, what: string, control: Locator, done: () => Promise<void>) {
 	await still(page);
+	// What the last key moved may still be fading: that dim is not this press's.
+	await page.waitForFunction(() => !document.getAnimations().some((a) => a.id === 'page'));
 	await watchPress(page);
 	await control.first().dispatchEvent('click');
 	await done();
 	await expectPress(page, what);
 }
 
-type Shown = { shown: number[] };
+type Shown = { shown: Record<string, number[]> };
 
 /** Starts recording the opacity of `selector`, its parents' with it, while it stands. */
 async function watchShown(page: Page, selector: string) {
 	await page.evaluate((selector) => {
 		const w = window as unknown as Shown;
-		w.shown = [];
+		w.shown ??= {};
+		const shown: number[] = (w.shown[selector] = []);
 		const step = () => {
-			let shown = document.querySelector(selector) ? 1 : 0;
+			let now = document.querySelector(selector) ? 1 : 0;
 			for (let e = document.querySelector(selector); e; e = e.parentElement)
-				shown *= Number(getComputedStyle(e).opacity);
-			w.shown.push(shown);
-			if (w.shown.length < 60) requestAnimationFrame(step);
+				now *= Number(getComputedStyle(e).opacity);
+			shown.push(now);
+			if (shown.length < 60) requestAnimationFrame(step);
 		};
 		requestAnimationFrame(step);
 	}, selector);
+}
+
+/** What `watchShown` saw of each selector, once it has seen enough: it may fall, then rise, not more. */
+async function expectOneFade(page: Page) {
+	await page.waitForFunction(() =>
+		Object.values((window as unknown as Shown).shown).every((shown) => shown.length >= 60)
+	);
+	const seen = await page.evaluate(() => (window as unknown as Shown).shown);
+	for (const [selector, shown] of Object.entries(seen)) {
+		const steps = shown.slice(1).map((now, i) => now - shown[i]);
+		const rose = steps.findIndex((step) => step > 0.02);
+		const again = rose < 0 ? [] : steps.slice(rose).filter((step) => step < -0.02);
+		expect(again, `${selector}: ${JSON.stringify(shown)}`).toEqual([]);
+	}
 }
 
 const account = (name: string) => ({
@@ -105,7 +122,11 @@ test.describe.serial('every size', () => {
 			await unfold(page);
 			await form.getByLabel(say('ruleform.payee')).selectOption('text');
 			const row = page.locator('ol.rules > li', { hasText: name });
+			// The rows standing above it fall and rise once, whatever the page does around them (pass 57).
+			await page.evaluate(() => ((window as unknown as Shown).shown = {}));
+			await watchShown(page, 'ol.rules > li');
 			await press(page, `new rule ${size}`, send, () => expect(row).toBeFocused());
+			await expectOneFade(page);
 			const check = page.locator('section.follows button.secondary');
 			await press(page, `changes asked ${size}`, check, () =>
 				expect(page.locator('#changes-none, #changes-some')).toBeFocused()
@@ -216,27 +237,31 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await swaps(fresh, () => expect(button).toBeVisible());
 
 		// To an account that cannot read it what it read goes, once, and comes back, once: it fell, came back with the old
-		// figures and left, and came back twice on the way home (pass 56).
+		// figures and left, and came back twice on the way home (pass 56). The next card goes behind one fade, not two with a
+		// jump between: 355 px at half its opacity (pass 57).
 		const other = `Other ${reducedMotion}`;
 		await make(other, 'bac-card');
 		await page.reload();
-		await page.locator('input[type=file]').setInputFiles(statement);
+		await page
+			.locator('input[type=file]')
+			.setInputFiles([statement, { ...statement, name: 'siguiente.csv' }]);
 		await choice.selectOption({ label: fresh });
 		await expect(button).toBeVisible();
-		const once = async (label: string, shows: () => Promise<void>, way: 1 | -1) => {
+		const next = 'article.card[aria-label="siguiente.csv"]';
+		await expect(page.locator(next)).toBeVisible();
+		const once = async (label: string, shows: () => Promise<void>) => {
 			await still(page);
+			await page.evaluate(() => ((window as unknown as Shown).shown = {}));
 			await watchShown(page, '.reading');
+			await watchShown(page, next);
 			await watchPress(page);
 			await choice.selectOption({ label });
 			await shows();
 			// With motion allowed it rises into place, a few pixels a frame.
 			if (reducedMotion === 'reduce') await expectPress(page, `reading to ${label}`);
-			await page.waitForFunction(() => (window as unknown as Shown).shown.length >= 60);
-			const shown = await page.evaluate(() => (window as unknown as Shown).shown);
-			const back = shown.slice(1).filter((now, i) => (now - shown[i]) * way < -0.02);
-			expect(back, JSON.stringify(shown)).toEqual([]);
+			await expectOneFade(page);
 		};
-		await once(other, () => expect(card.locator('.field-error')).toBeVisible(), -1);
-		await once(fresh, () => expect(button).toBeVisible(), 1);
+		await once(other, () => expect(card.locator('.field-error')).toBeVisible());
+		await once(fresh, () => expect(button).toBeVisible());
 	});
 }

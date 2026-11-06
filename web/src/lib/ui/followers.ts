@@ -2,7 +2,7 @@
 // at their new place from one frame to the next; they fade in there instead.
 const widths = new WeakMap<HTMLElement, number>();
 
-// Landings on their way, and the dims that wait for them.
+// Landings on their way, and the fades that wait for them.
 let landings = 0;
 const waiting = new Set<Animation>();
 
@@ -22,11 +22,11 @@ function hold(dim: Animation) {
 	waiting.add(dim);
 }
 
-/** Whatever moved first, a press's landing moves the page again, up to 200 ms later: the page stays dim for it, or it dimmed
- * twice for one press (pass 55). With the last landing over it comes back, once. */
+/** Whatever moved first, a press's landing moves the page again, up to 200 ms later: what fades waits for it at its darkest,
+ * or the page dimmed twice for one press (pass 55). With the last landing over it comes back, once. */
 export function landingBegins() {
 	landings += 1;
-	for (const dim of document.getAnimations()) if (dim.id === 'page') hold(dim);
+	for (const fade of document.getAnimations()) if (fadesInPlace(fade)) hold(fade);
 }
 
 export function landingEnds() {
@@ -34,6 +34,13 @@ export function landingEnds() {
 	if (landings) return;
 	for (const dim of waiting) dim.play();
 	waiting.clear();
+}
+
+/** Something leaves for `ms` and gives its room back as it goes: what follows waits for that, or it took a fade for each and
+ * jumped 355 px at half its opacity between them (pass 57). */
+export function holdFor(ms: number) {
+	landingBegins();
+	setTimeout(landingEnds, ms);
 }
 
 /** A fade over what has already taken its place: nothing moves in it. */
@@ -71,8 +78,12 @@ export function fadeAfter(box: Element, duration: number, again = false) {
 			// way in it has its own fade.
 			if (own.some(leaves)) next.animate({ opacity: [0, 0] }, { id: 'follow', duration });
 			if (own.length || (fading.length && !again)) continue;
-			for (const animation of fading) animation.cancel();
-			next.animate({ opacity: [0, 1] }, { id: 'follow', duration });
+			for (const animation of fading) {
+				waiting.delete(animation);
+				animation.cancel();
+			}
+			const fade = next.animate({ opacity: [0, 1] }, { id: 'follow', duration });
+			if (landings) hold(fade);
 		}
 	}
 }

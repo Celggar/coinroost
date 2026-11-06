@@ -13,7 +13,7 @@ import {
 	swapOut,
 	vanish
 } from '#lib/motion.ts';
-import { endsPage, fadeAfter, fadePage } from '#lib/ui/followers.ts';
+import { endsPage, fadeAfter, fadePage, holdFor } from '#lib/ui/followers.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -86,10 +86,10 @@ export function firstRoom(box: HTMLElement | null | undefined, before: number) {
 
 /** `change` reloads what a page shows, its blocks taking new places at once where nothing may slide: 334 px at full opacity as
  * a pair was made (pass 55). A new height comes through a fade. */
-export async function reshape(change: () => void) {
+export async function reshape(change: () => unknown) {
 	const page = document.querySelector('main');
 	const before = page?.offsetHeight ?? 0;
-	change();
+	await change();
 	await tick();
 	const moved = Math.abs((page?.offsetHeight ?? 0) - before) >= 4;
 	if (moved && prefersReducedMotion.current) fadePage(DURATION.medium);
@@ -172,6 +172,10 @@ export function nextAnswer(box: () => HTMLElement | undefined) {
 			if (!going) return swapOut(node);
 			node.style.display = 'none';
 			return { duration: 1 };
+		},
+		gone(node: Element) {
+			holdFor(FADED);
+			return vanish(node);
 		}
 	};
 }

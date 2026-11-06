@@ -6,7 +6,8 @@
 	import { untrack, type Snippet } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { DURATION, EASE, fadeThrough } from '#lib/motion.ts';
+	import { DURATION, EASE, FADED, fadeThrough } from '#lib/motion.ts';
+	import { holdFor } from '#lib/ui/followers.ts';
 	import { follow } from '#lib/ui/hold-room.ts';
 	import { inView, showWhole } from '#lib/ui/landing.ts';
 
@@ -99,6 +100,7 @@
 			transition:open
 			onintrostart={follow}
 			onintroend={(event) => reveal(event.currentTarget)}
+			onoutrostart={() => holdFor(FADED)}
 			onoutroend={follow}
 		>
 			{error}
