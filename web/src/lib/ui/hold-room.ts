@@ -8,7 +8,9 @@ import {
 	FADED,
 	fadeThrough,
 	glide,
+	rise,
 	swapIn,
+	swapOut,
 	vanish
 } from '#lib/motion.ts';
 import { endsPage, fadeAfter, fadePage } from '#lib/ui/followers.ts';
@@ -82,6 +84,17 @@ export function firstRoom(box: HTMLElement | null | undefined, before: number) {
 	if (prefersReducedMotion.current) fadePage(DURATION.medium);
 }
 
+/** `change` reloads what a page shows, its blocks taking new places at once where nothing may slide: 334 px at full opacity as
+ * a pair was made (pass 55). A new height comes through a fade. */
+export async function reshape(change: () => void) {
+	const page = document.querySelector('main');
+	const before = page?.offsetHeight ?? 0;
+	change();
+	await tick();
+	const moved = Math.abs((page?.offsetHeight ?? 0) - before) >= 4;
+	if (moved && prefersReducedMotion.current) fadePage(DURATION.medium);
+}
+
 /** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */
 function fadeIfPageMoves(room: number) {
 	if (endsPage(room)) fadePage(DURATION.medium);
@@ -139,6 +152,27 @@ export function behindFade(box: () => HTMLElement | undefined) {
 		arrive: (node: Element) => (going ? { duration: 0 } : swapIn(node)),
 		move: (node: Element, places: { from: DOMRect; to: DOMRect }) =>
 			going ? { duration: 0 } : glide(node, places)
+	};
+}
+
+/**
+ * Another answer replaces a block behind one fade, in place: its lines came and went in a frame and a notice was printed over
+ * the button leaving, on a change of account (pass 55). Meanwhile nothing in it comes or goes on its own.
+ */
+export function nextAnswer(box: () => HTMLElement | undefined) {
+	let going = false;
+	return {
+		async run(change: () => void) {
+			going = true;
+			await fadeThrough(box(), change);
+			going = false;
+		},
+		arrive: (node: Element) => (going ? { duration: 0 } : rise(node)),
+		leave(node: HTMLElement) {
+			if (!going) return swapOut(node);
+			node.style.display = 'none';
+			return { duration: 1 };
+		}
 	};
 }
 

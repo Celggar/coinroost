@@ -3,7 +3,7 @@
 // jumped in one frame and left titles across the bar (pass 13).
 import { prefersReducedMotion } from 'svelte/motion';
 import { DURATION, spare } from '#lib/motion.ts';
-import { fadePage, fadesInPlace } from '#lib/ui/followers.ts';
+import { fadePage, fadesInPlace, landingBegins, landingEnds } from '#lib/ui/followers.ts';
 
 /** Pinned to the window (a bar): it does not move with the page, so the page's edge never cuts it. */
 function pinned(element: Element): boolean {
@@ -352,6 +352,11 @@ async function settled() {
  * the page slid back with it and then moved again past a cut line (pass 14: changes applied on a phone).
  */
 export async function showWhole(box: HTMLElement, end: HTMLElement = box, held?: HTMLElement) {
+	landingBegins();
+	await land(box, end, held).finally(landingEnds);
+}
+
+async function land(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
 	await settled();
 	if (!box.isConnected) return;
 	// An end that left while the page settled holds nothing: its box reads as 0, above everything.

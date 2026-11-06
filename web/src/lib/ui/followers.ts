@@ -2,11 +2,38 @@
 // at their new place from one frame to the next; they fade in there instead.
 const widths = new WeakMap<HTMLElement, number>();
 
+// Landings on their way, and the dims that wait for them.
+let landings = 0;
+const waiting = new Set<Animation>();
+
 /** The whole page comes back through a fade: what stands in it is about to be elsewhere, with no way to slide there. From dim,
  * not blank: a landing just after an answer blanked the page under the focus (pass 45). It stays dim for two frames: what
  * moves a frame after the fade began moved at 0.34 (pass 46). */
 export function fadePage(duration: number, page = document.querySelector('main')) {
-	page?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { id: 'page', duration });
+	const dim = page?.animate(
+		{ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] },
+		{ id: 'page', duration }
+	);
+	if (dim && landings) hold(dim);
+}
+
+function hold(dim: Animation) {
+	dim.pause();
+	waiting.add(dim);
+}
+
+/** Whatever moved first, a press's landing moves the page again, up to 200 ms later: the page stays dim for it, or it dimmed
+ * twice for one press (pass 55). With the last landing over it comes back, once. */
+export function landingBegins() {
+	landings += 1;
+	for (const dim of document.getAnimations()) if (dim.id === 'page') hold(dim);
+}
+
+export function landingEnds() {
+	landings -= 1;
+	if (landings) return;
+	for (const dim of waiting) dim.play();
+	waiting.clear();
 }
 
 /** A fade over what has already taken its place: nothing moves in it. */

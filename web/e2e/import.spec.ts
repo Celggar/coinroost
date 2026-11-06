@@ -19,7 +19,7 @@ import {
 	loadEmployers
 } from './dashboard.ts';
 import { watchDrops } from './focus.ts';
-import { expectCardGlides, watchCard } from './frames.ts';
+import { expectCardGlides, expectPress, watchCard, watchPress } from './frames.ts';
 import { unfold } from './forms.ts';
 import { widestTabs } from './lines.ts';
 import { english, say } from './messages.ts';
@@ -310,7 +310,16 @@ test('pairs two legs and splits them', async ({ context }) => {
 	await page.getByLabel(say('period.to'), { exact: true }).fill('2026-05-31');
 	const unpaired = page.getByRole('definition').nth(2);
 	await expect(unpaired).toHaveText('$500.00');
-	await page.getByRole('button', { name: say('waiting.pair_one') }).click();
+	// Where nothing may slide, what the pair moves goes behind a fade: 334 px at full opacity (pass 55).
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.setViewportSize({ width: 1280, height: 600 });
+	const pair = page.getByRole('button', { name: say('waiting.pair_one') });
+	await pair.evaluate((e) => e.scrollIntoView({ block: 'start', behavior: 'instant' }));
+	await still(page);
+	await watchPress(page);
+	await pair.dispatchEvent('click');
+	await expectPress(page, 'a pair made');
+	await page.emulateMedia({ reducedMotion: 'no-preference' });
 	const paired = say('waiting.paired_one');
 	await expect(page.getByRole('status').filter({ hasText: paired })).toHaveText(paired);
 	const made = page.getByRole('list', { name: say('made.title') });

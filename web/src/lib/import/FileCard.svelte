@@ -4,8 +4,8 @@
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
-	import { followContent, lift, placeholder, rise, swapIn, swapOut, vanish } from '#lib/motion.ts';
-	import { follow } from '#lib/ui/hold-room.ts';
+	import { followContent, lift, placeholder, rise, swapIn, vanish } from '#lib/motion.ts';
+	import { follow, nextAnswer } from '#lib/ui/hold-room.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import Money from '#lib/ui/Money.svelte';
 	import Tick from '#lib/ui/Tick.svelte';
@@ -28,6 +28,8 @@
 	let accountError = $state('');
 	let resultLine = $state<HTMLElement>();
 	let report = $state<Schemas['ImportReport'] | null>(null);
+	let block = $state<HTMLElement>();
+	const answer = nextAnswer(() => block);
 
 	const importable = $derived(accounts.filter((a) => a.profile));
 	const account = $derived(accounts.find((a) => a.id === accountId));
@@ -88,9 +90,13 @@
 			else error = why;
 			return;
 		}
-		accountError = '';
-		preview = data;
-		accountId = data.account_id ?? '';
+		const take = () => {
+			accountError = '';
+			preview = data;
+			accountId = data.account_id ?? '';
+		};
+		if (!reading || !data.reading) return take();
+		await answer.run(take);
 	}
 
 	async function commit() {
@@ -172,7 +178,7 @@
 		<!-- What the chosen account read, as one block: it rises in, and fades out when another account cannot read the
 			 file, instead of leaving in one frame (FD9, pass 3). -->
 		{#if reading && account}
-			<div class="reading" in:rise out:vanish>
+			<div class="reading" in:rise out:vanish bind:this={block}>
 				<dl class="figures">
 					<div>
 						<dt>{t('file.rows_read')}</dt>
@@ -284,13 +290,16 @@
 							{t('file.imported')}
 						</p>
 					{:else if reading.new === 0}
-						{#key nothing}
-							<p class="notice" class:warn={nothing !== 'file.nothing_new'} role="status" in:rise>
-								{t(nothing)}
-							</p>
-						{/key}
+						<p
+							class="notice"
+							class:warn={nothing !== 'file.nothing_new'}
+							role="status"
+							in:answer.arrive
+						>
+							{t(nothing)}
+						</p>
 					{:else}
-						<div class="actions" out:swapOut>
+						<div class="actions" out:answer.leave>
 							<button onclick={() => busy || commit()} aria-disabled={busy}>
 								{plural(reading.new, 'file.import_one', 'file.import_other')}
 							</button>

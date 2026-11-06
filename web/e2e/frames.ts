@@ -212,3 +212,70 @@ export async function restTop(page: Page, selector: string) {
 	let last: number | undefined = NaN;
 	await expect.poll(async () => last === (last = await top()), { intervals: [300] }).toBe(true);
 }
+
+type Press = { jumps: string[]; pops: string[]; dims: number; frames: number };
+
+/** Starts recording a press where nothing may slide: what stands in the window and takes a new place while it shows, how many
+ * times the page dims and, inside `block`, what comes or goes in one frame while it shows. */
+export async function watchPress(page: Page, block = '') {
+	await page.evaluate(
+		({ block, frames }) => {
+			const w = window as unknown as Press;
+			const places = new Map<Element, { top: number; shown: number; name: string }>();
+			w.jumps = [];
+			w.pops = [];
+			w.dims = 0;
+			w.frames = 0;
+			let dim = false;
+			const step = () => {
+				const opacities = new Map<Element, number>();
+				const seen = (e: Element | null): number => {
+					if (!e) return 1;
+					if (!opacities.has(e))
+						opacities.set(e, Number(getComputedStyle(e).opacity) * seen(e.parentElement));
+					return opacities.get(e)!;
+				};
+				const main = document.querySelector('main')!;
+				const dark = Number(getComputedStyle(main).opacity) < 0.5;
+				if (dark && !dim) w.dims += 1;
+				dim = dark;
+				const stands = 'main :is(h1, h2, h3, p, li, label, input, select, button, td, summary)';
+				const shown = new Set<Element>();
+				for (const e of document.querySelectorAll(`${stands}${block ? `, ${block}` : ''}`)) {
+					if (!e.checkVisibility()) continue;
+					shown.add(e);
+					const { top, bottom } = e.getBoundingClientRect();
+					const name = `${e.tagName} ${(e.textContent ?? '').trim().slice(0, 28)}`;
+					const now = seen(e);
+					const was = places.get(e);
+					const inSight = bottom > 0 && top < innerHeight;
+					if (was && inSight && Math.abs(top - was.top) >= 4 && Math.min(now, was.shown) > 0.4)
+						w.jumps.push(`${name}: ${Math.round(top - was.top)} px at ${now.toFixed(2)}`);
+					if (!was && w.frames && block && e.matches(block) && now > 0.4)
+						w.pops.push(`in ${name} at ${now.toFixed(2)}`);
+					places.set(e, { top, shown: now, name });
+				}
+				for (const [e, was] of places) {
+					if (shown.has(e)) continue;
+					if (block && e.matches(block) && was.shown > 0.4)
+						w.pops.push(`out ${was.name} at ${was.shown.toFixed(2)}`);
+					places.delete(e);
+				}
+				if (++w.frames < frames) requestAnimationFrame(step);
+			};
+			requestAnimationFrame(step);
+		},
+		{ block, frames: FRAMES }
+	);
+}
+
+/** Nothing took a new place while it showed, nothing came or went in a frame, and the page dimmed at most once. */
+export async function expectPress(page: Page, what: string) {
+	await page.waitForFunction((frames) => (window as unknown as Press).frames >= frames, FRAMES);
+	const { jumps, pops, dims } = await page.evaluate(() => {
+		const { jumps, pops, dims } = window as unknown as Press;
+		return { jumps, pops, dims };
+	});
+	expect({ what, jumps, pops }).toEqual({ what, jumps: [], pops: [] });
+	expect(dims, `${what}: the page's dims`).toBeLessThanOrEqual(1);
+}

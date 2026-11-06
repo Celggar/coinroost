@@ -7,6 +7,7 @@
 	import { fade, slide } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { DURATION, EASE, fadeThrough } from '#lib/motion.ts';
+	import { follow } from '#lib/ui/hold-room.ts';
 	import { inView, showWhole } from '#lib/ui/landing.ts';
 
 	export type Wiring = {
@@ -57,7 +58,7 @@
 	});
 	// The error opens and fades in together, at Material's standard pace: slide's own opacity reaches 1 in a twentieth
 	// of the time, so the text showed whole in one frame with two thirds of its height (pass 12); the later `opacity`
-	// wins. Under reduced motion it only fades in place.
+	// wins. Under reduced motion it only fades in place, and what follows through a fade: 67 px at full opacity (pass 55).
 	const open = (node: Element) => {
 		if (prefersReducedMotion.current) return fade(node, { duration: DURATION.short });
 		const opening = slide(node, { duration: DURATION.medium, easing: EASE.standard });
@@ -96,7 +97,9 @@
 			class="field-error"
 			id={errorId}
 			transition:open
+			onintrostart={follow}
 			onintroend={(event) => reveal(event.currentTarget)}
+			onoutroend={follow}
 		>
 			{error}
 		</p>{/if}

@@ -11,6 +11,7 @@
 	import { t } from '#lib/i18n.svelte.ts';
 	import { arrive, placeholder } from '#lib/motion.ts';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
+	import { reshape } from '#lib/ui/hold-room.ts';
 
 	let preview = $state<Schemas['TransferPreview'] | null>(null);
 	let transfers = $state<Schemas['Transaction'][]>([]);
@@ -34,12 +35,16 @@
 			loadError = problem(failed.error, failed.response?.status, t('transfers.failed'));
 			return;
 		}
-		preview = p.data;
-		transfers = x.data.items;
-		names = accountNames(a.data.items);
-		accounts = a.data.items;
-		empty = any.data.items.length === 0;
-		version += 1;
+		const take = () => {
+			preview = p.data;
+			transfers = x.data.items;
+			names = accountNames(a.data.items);
+			accounts = a.data.items;
+			empty = any.data.items.length === 0;
+			version += 1;
+		};
+		if (preview) await reshape(take);
+		else take();
 	}
 
 	onMount(load);

@@ -105,7 +105,7 @@
 						</thead>
 						<tbody>
 							{#each accounts as account (account.id)}
-								<tr data-account={account.id} in:rise>
+								<tr data-account={account.id} in:rise onintrostart={follow}>
 									<td data-label={t('accounts.name')}>{account.name}</td>
 									<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 									<td data-label={t('accounts.currency')}>{account.currency}</td>

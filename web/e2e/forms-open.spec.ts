@@ -77,7 +77,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await send.dispatchEvent('click');
 		const row = page.locator('ol.rules > li', { hasText: 'First' });
 		await expect(row).toBeFocused();
-		if (reducedMotion === 'reduce') await expectFadedTop(page);
+		if (reducedMotion === 'reduce') await expectFadedTop(page, 1, true);
 		else await expectGlidedTop(page, 80);
 		await forget(page, [(await row.getAttribute('data-rule'))!]);
 	});
