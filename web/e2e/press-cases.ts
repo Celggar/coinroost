@@ -39,6 +39,11 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 		return page;
 	}
 
+	// With motion, how far a line's glide may step: the main thread stalled 80 ms as it began, and 13 px of its 24 fell in one
+	// frame, 38 of two lines' 48. Given back in a frame it is the whole line.
+	const LINE = 20;
+	const LINES = 40;
+
 	/** Presses `control` with the page at rest and judges what it moved once `done` holds. */
 	async function press(
 		page: Page,
@@ -245,7 +250,8 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 					page,
 					`choice ${round} at ${width}x${height}`,
 					() => select.selectOption({ index: 1 }),
-					() => expect(row.getByRole('button', { name: say('uncategorized.undo') })).toBeVisible()
+					() => expect(row.getByRole('button', { name: say('uncategorized.undo') })).toBeVisible(),
+					LINE
 				);
 			}
 		});
@@ -390,8 +396,7 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				`first choice ${size}`,
 				() => row.locator('select').selectOption({ label: name }),
 				() => expect(undo).toBeVisible(),
-				// With motion a line's glide is 24 px, and half of it can fall in one frame.
-				20
+				LINE
 			);
 			expect((await words.boundingBox())?.height).toBeGreaterThan(before + 3);
 			// With the offer open it gives back the offer's room and a line: −24 px at full opacity (pass 59).
@@ -490,7 +495,9 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 	}
 
 	if (motion === 'no-preference') {
-		test('what a row took comes and goes in a glide, at the end of the page', async ({ context }) => {
+		test('what a row took comes and goes in a glide, at the end of the page', async ({
+			context
+		}) => {
 			const page = await opened(context, 390, 844);
 			const name = 'Subscriptions and digital services of the home, at the end';
 			await category(page, name);
@@ -503,7 +510,7 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 			await select.scrollIntoViewIfNeeded();
 			await still(page);
 			// They came and went in a frame (pass 61).
-			await watchPress(page, '.took');
+			await watchPress(page, '.took', LINES);
 			await select.selectOption({ label: name });
 			await expect(undo).toBeVisible();
 			await expectPress(page, 'took', 0);
@@ -513,7 +520,7 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 			await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
 			await still(page);
 			// The row gave back a line in a frame, and the page its end with it: the whole screen moved 48 px (pass 61).
-			await watchPress(page, '.took');
+			await watchPress(page, '.took', LINES);
 			await undo.dispatchEvent('click');
 			await expect(select).toBeVisible();
 			await expectPress(page, 'undone', 0);
