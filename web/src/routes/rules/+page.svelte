@@ -325,4 +325,12 @@
 	.buttons > :global(.swap-cell) {
 		margin-inline-start: auto;
 	}
+	/* Where its question does not fit beside two moves, «Borrar» keeps a line of its own: asking, the row took one more at
+	   once, 52 px in a frame for every rule under it (pass 51). */
+	@media (max-width: 479px) {
+		.buttons > :global(.swap-cell) {
+			flex-basis: 100%;
+			justify-items: end;
+		}
+	}
 </style>

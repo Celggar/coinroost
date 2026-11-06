@@ -11,7 +11,7 @@ import {
 	swapIn,
 	vanish
 } from '#lib/motion.ts';
-import { fadeAfter, fadePage } from '#lib/ui/followers.ts';
+import { endsPage, fadeAfter, fadePage } from '#lib/ui/followers.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -66,11 +66,6 @@ export function glideRoom(box: HTMLElement, before: number, after = box.offsetHe
 		duration: DURATION.medium,
 		easing: EASE_CSS.standard
 	});
-}
-
-/** Whether a box giving back `room` takes the page, or the sheet that scrolls it, to a new end from where it stands. */
-export function endsPage(room: number, page: Element = document.documentElement) {
-	return room > 0 && page.scrollTop > page.scrollHeight - page.clientHeight - room;
 }
 
 /** A list's first row takes the list's whole room, from the `before` of what stood there: it came in a frame, 198 px with

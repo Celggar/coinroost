@@ -4,7 +4,8 @@
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
 	import { goneBehindPage } from '#lib/ui/followers.ts';
-	import { behindFade, endsPage, follow } from '#lib/ui/hold-room.ts';
+	import { endsPage } from '#lib/ui/followers.ts';
+	import { behindFade, follow } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';

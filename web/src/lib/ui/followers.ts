@@ -9,6 +9,11 @@ export function fadePage(duration: number, page = document.querySelector('main')
 	page?.animate({ opacity: [0.3, 0.3, 1], offset: [0, 0.14, 1] }, { duration });
 }
 
+/** Whether a box giving back `room` takes the page, or the sheet that scrolls it, to a new end from where it stands. */
+export function endsPage(room: number, page: Element = document.documentElement) {
+	return room > 0 && page.scrollTop > page.scrollHeight - page.clientHeight - room;
+}
+
 /** Out where its box takes a new height at once and, centred, it would stand elsewhere: 97 px higher, at setup (pass 44). */
 export function goneBehindPage(node: HTMLElement, duration: number) {
 	node.style.display = 'none';
@@ -46,11 +51,13 @@ export function fadeToPlace(up: number, out: number, duration: number) {
 }
 
 /** `fadeAfter` for a box about to take `height`. A resize is left alone: the text rewraps at each of its steps, and a
- * fade for each would blink. So is a change of a few pixels, which nobody sees. */
+ * fade for each would blink. So is a change of a few pixels, which nobody sees. Where it ends the page, what stands above
+ * it moves too, 294 px at full opacity as an answer left (pass 51), and the whole page fades. */
 export function fadeWhatFollows(box: HTMLElement, height: number, duration: number) {
 	const width = box.offsetWidth;
 	const resized = widths.get(box) !== width;
 	widths.set(box, width);
 	if (resized || !box.style.height || Math.abs(box.offsetHeight - height) < 4) return;
 	fadeAfter(box, duration);
+	if (endsPage(box.offsetHeight - height)) fadePage(duration);
 }

@@ -268,3 +268,71 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		});
 	}
 }
+
+for (const width of [390, 1280]) {
+	for (const count of [0, 6]) {
+		test(`under reduced motion a rule deleted over an answer of ${count} moves the end behind a fade (${width})`, async ({
+			context
+		}) => {
+			const page = await loggedIn(context);
+			await page.emulateMedia({ reducedMotion: 'reduce' });
+			await page.setViewportSize({ width, height: 800 });
+			const names = ['Over A', 'Over B', 'Over C'].map((name) => `${name} ${count} ${width}`);
+			const made = await makeRules(page, names);
+			const row = (n: number) => ({
+				transaction_id: `00000000-0000-4000-8000-00000000000${n}`,
+				date: `2026-05-0${n}`,
+				description: `Row ${n}`,
+				amount_minor: -1000 * n,
+				currency: 'USD',
+				before: { category_id: null, payee_id: null },
+				after: { category_id: null, payee_id: null }
+			});
+			const changes = [1, 2, 3, 4, 5, 6].slice(0, count).map(row);
+			await page.route('**/api/v1/rules/preview', (route) =>
+				route.fulfill({ json: { tag: 'tag', changes } })
+			);
+			await page.goto('/rules');
+			await page.locator('section.follows button.secondary').click();
+			await expect(page.locator(count ? '#changes-some' : '#changes-none')).toBeVisible();
+			await still(page);
+			await page
+				.getByRole('button', { name: say('rules.delete_named', { name: names[1] }) })
+				.dispatchEvent('click');
+			const yes = page.getByRole('button', { name: say('rules.delete_it') });
+			await expect(yes).toBeVisible();
+			await still(page);
+			await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+			await restTop(page, 'ol.rules');
+			await watchTop(page, 'ol.rules');
+			await yes.dispatchEvent('click');
+			await expect(page.getByRole('heading', { name: names[1] })).toHaveCount(0);
+			await expectFadedTop(page);
+			await page.unroute('**/api/v1/rules/preview');
+			await forget(page, [made[0], made[2]]);
+		});
+	}
+}
+
+test('on a phone asking to delete a rule moves nothing under it', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 800 });
+	const names = ['Ask A', 'Ask B', 'Ask C'];
+	const made = await makeRules(page, names);
+	await page.goto('/rules');
+	const ask = page.getByRole('button', { name: say('rules.delete_named', { name: 'Ask B' }) });
+	await expect(ask).toBeVisible();
+	await still(page);
+	// Where a person could press it: below the window, the focus on its answer scrolled the page.
+	await ask.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' }));
+	await watchTop(page, 'ol.rules > li:nth-child(3)');
+	await ask.dispatchEvent('click');
+	const keep = page.getByRole('button', { name: say('rules.keep_it') });
+	await expect(keep).toBeVisible();
+	await expectGlidedTop(page, 4);
+	await watchTop(page, 'ol.rules > li:nth-child(3)');
+	await keep.dispatchEvent('click');
+	await expect(ask).toBeVisible();
+	await expectGlidedTop(page, 4);
+	await forget(page, made);
+});
