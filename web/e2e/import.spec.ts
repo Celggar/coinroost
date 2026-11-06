@@ -61,7 +61,7 @@ async function overflow(page: Page): Promise<number> {
 
 function count(card: Locator, label: string): Locator {
 	return card
-		.locator('.counts div', { has: card.page().getByText(label, { exact: true }) })
+		.locator('.figures div', { has: card.page().getByText(label, { exact: true }) })
 		.locator('dd');
 }
 

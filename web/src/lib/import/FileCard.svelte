@@ -166,10 +166,10 @@
 			 file, instead of leaving in one frame (FD9, pass 3). -->
 		{#if reading && account}
 			<div class="reading" in:rise out:vanish>
-				<dl class="counts">
+				<dl class="figures">
 					<div>
 						<dt>{t('file.rows_read')}</dt>
-						<dd>
+						<dd class="value">
 							<Tick value={reading.rows_read}>{reading.rows_read}</Tick>
 						</dd>
 					</div>
@@ -177,7 +177,7 @@
 						<dt>
 							<Tick value={Boolean(report)}>{report ? t('file.added') : t('file.new')}</Tick>
 						</dt>
-						<dd>
+						<dd class="value">
 							<Tick value={report ? report.batch.added : reading.new}
 								>{report ? report.batch.added : reading.new}</Tick
 							>
@@ -185,7 +185,7 @@
 					</div>
 					<div>
 						<dt>{t('file.already')}</dt>
-						<dd>
+						<dd class="value">
 							<Tick value={report ? report.batch.duplicates : reading.duplicates}
 								>{report ? report.batch.duplicates : reading.duplicates}</Tick
 							>
@@ -193,7 +193,7 @@
 					</div>
 					<div>
 						<dt>{t('file.unreadable_rows')}</dt>
-						<dd>
+						<dd class="value">
 							<Tick value={reading.errors}>{reading.errors}</Tick>
 						</dd>
 					</div>
@@ -318,27 +318,6 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--space-lg);
-	}
-	.counts {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-		gap: var(--space-sm);
-		margin: 0;
-	}
-	.counts div {
-		background: var(--bg);
-		border-radius: var(--radius-button);
-		padding: var(--space-sm) var(--space-md);
-	}
-	dt {
-		color: var(--muted);
-		font-size: var(--text-sm);
-	}
-	dd {
-		margin: 0;
-		font-size: var(--text-xl);
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
 	}
 	h3 {
 		margin: 0 0 var(--space-xs);
