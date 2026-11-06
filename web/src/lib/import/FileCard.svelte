@@ -36,6 +36,13 @@
 		reading ? reading.rows_read - reading.new - reading.duplicates - reading.errors : 0
 	);
 
+	/** Why a file adds nothing. «Every row is already imported» stood in green over a file with no row read, the statement
+	 * left out with nothing to say so (pass 54). */
+	const nothing = $derived.by(() => {
+		if (reading?.duplicates) return reading.errors ? 'file.nothing_rest' : 'file.nothing_new';
+		return reading?.errors ? 'file.nothing_read' : 'file.nothing_found';
+	});
+
 	/** What an import did, in one sentence; the already-imported part only when there was some. */
 	function added(count: number, duplicates: number): string {
 		const first = plural(count, 'file.added_one', 'file.added_other');
@@ -277,7 +284,11 @@
 							{t('file.imported')}
 						</p>
 					{:else if reading.new === 0}
-						<p class="notice" role="status" in:rise>{t('file.nothing_new')}</p>
+						{#key nothing}
+							<p class="notice" class:warn={nothing !== 'file.nothing_new'} role="status" in:rise>
+								{t(nothing)}
+							</p>
+						{/key}
 					{:else}
 						<div class="actions" out:swapOut>
 							<button onclick={() => busy || commit()} aria-disabled={busy}>

@@ -150,6 +150,26 @@ test('rows that cannot be read say why in Spanish', async () => {
 	await expect(page.locator('main')).not.toContainText(ENGLISH);
 });
 
+test('a file with nothing to read does not call itself imported', async () => {
+	const fixture = fileURLToPath(
+		new URL('../../spec/fixtures/bac-account/input.csv', import.meta.url)
+	);
+	const lines = readFileSync(fixture, 'latin1').split('\n');
+	const says = async (name: string, without: RegExp, text: string) => {
+		await page.goto('/import');
+		const buffer = Buffer.from(lines.filter((line) => !without.test(line)).join('\n'), 'latin1');
+		await page.locator('input[type=file]').setInputFiles({ name, mimeType: 'text/csv', buffer });
+		const card = page.getByRole('article', { name });
+		const account = card.getByLabel(say('file.account'));
+		if (await account.isVisible()) await account.selectOption({ label: 'Corriente' });
+		await expect(card.getByRole('status')).toHaveText(text);
+		await expect(card.getByRole('status')).toHaveClass(/warn/);
+	};
+	// Left with its one date written another way it has no row to read; without that one, no row at all.
+	await says('rara.csv', /^\d\d\/\d\d\/\d{4},/, say('file.nothing_read'));
+	await says('vacia.csv', /^\d+\/\d+\/\d+,/, say('file.nothing_found'));
+});
+
 test('an account that cannot read the file shrinks its card without moving the page in one frame', async () => {
 	const response = await page.request.post('/api/v1/accounts', {
 		data: {

@@ -173,10 +173,21 @@ test('previews, imports, and re-importing adds nothing', async ({ context }) => 
 	const again = page.getByRole('article', { name: 'input.csv' }).nth(1);
 	await expect(count(again, say('file.new'))).toHaveText('0');
 	await expect(count(again, say('file.already'))).toHaveText(String(transactions));
-	await expect(again.getByRole('status')).toHaveText(say('file.nothing_new'));
+	// It has a row nobody can read, so not every row is in: only those that could be read (pass 54).
+	await expect(again.getByRole('status')).toHaveText(say('file.nothing_rest'));
+	await expect(again.getByRole('status')).toHaveClass(/warn/);
 	await expect(
 		again.getByRole('button', { name: say('file.import_other', { count: 0 }) })
 	).toHaveCount(0);
+
+	// Without that row, every row is.
+	const clean = statement.buffer.toString('latin1').replace(/^2026\/05\/20,.*\r?\n/m, '');
+	await page
+		.getByLabel(say('import.choose'))
+		.setInputFiles({ ...statement, name: 'clean.csv', buffer: Buffer.from(clean, 'latin1') });
+	const whole = page.getByRole('article', { name: 'clean.csv' }).getByRole('status');
+	await expect(whole).toHaveText(say('file.nothing_new'));
+	await expect(whole).not.toHaveClass(/warn/);
 
 	const listed = await page.request.get('/api/v1/transactions?limit=1000');
 	expect((await listed.json()).items).toHaveLength(transactions);
