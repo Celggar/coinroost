@@ -95,10 +95,12 @@ export async function reshape(change: () => unknown) {
 	if (moved && prefersReducedMotion.current) fadePage(DURATION.medium);
 }
 
-/** A block opening in place, closing the same way (`closesInPlace`); with reduced motion it only fades. */
+/** A block opening in place, closing the same way (`closesInPlace`); with reduced motion it only fades. Not with `fade`, which
+ * takes the opacity on screen for the whole: what follows a line that wrapped had just begun at 0, and the offer stayed there
+ * for all its length and came in a frame (pass 60). */
 export const opensInPlace = (node: Element) =>
 	prefersReducedMotion.current
-		? fade(node, { duration: DURATION.short })
+		? { duration: DURATION.short, css: (t: number) => `opacity: ${t}` }
 		: slide(node, { duration: DURATION.medium, easing: EASE.standard });
 
 /** Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in

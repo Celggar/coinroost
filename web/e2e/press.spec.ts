@@ -459,3 +459,23 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await turn(cancel, ask);
 	});
 }
+
+for (const [width, height] of [
+	[1280, 800],
+	[390, 844]
+] as const) {
+	test(`out of «Otro…» to other figures at ${width}x${height}`, async ({ context }) => {
+		const page = await opened(context, width, height);
+		await page.goto('/');
+		const preset = (name: string) => page.locator('.presets button', { hasText: name });
+		const dates = page.locator('#period-dates');
+		await expect(page.locator('.reports')).toBeVisible();
+		await preset(say('dashboard.this_month')).click();
+		await preset(say('dashboard.other')).click();
+		await expect(dates).toBeVisible();
+		// All that follows the period stood blank for 300 ms and came back in a frame (pass 60).
+		await press(page, `out of Otro ${width}`, preset(say('dashboard.twelve')), () =>
+			expect(dates).toHaveCount(0)
+		);
+	});
+}

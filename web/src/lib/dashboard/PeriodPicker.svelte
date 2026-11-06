@@ -9,7 +9,7 @@
 	import { t, type Key } from '#lib/i18n.svelte.ts';
 	import { DURATION, EASE, pop, vanish } from '#lib/motion.ts';
 	import DateRange from '#lib/ui/DateRange.svelte';
-	import { fadeAfter } from '#lib/ui/followers.ts';
+	import { fadeAfter, goneBehindPage } from '#lib/ui/followers.ts';
 
 	let {
 		from = $bindable(),
@@ -53,11 +53,13 @@
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
 			: slide(node, { duration: DURATION.medium, easing: EASE.standard });
-	const close = (node: Element) =>
+	// Closing where nothing may slide they go at once, behind the page's fade: as they left at their own pace the figures were on
+	// their fade through, and all that follows stood blank for 300 ms and came back in a frame (pass 60).
+	const close = (node: HTMLElement) =>
 		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
+			? goneBehindPage(node, DURATION.medium)
 			: slide(node, { duration: DURATION.exit, easing: EASE.standard });
-	// Under reduced motion their room comes and goes at once: what follows fades in at its new place.
+	// Under reduced motion their room comes at once: what follows fades in at its new place.
 	function follow(event: Event) {
 		const period = (event.currentTarget as Element).parentElement;
 		if (period && prefersReducedMotion.current) fadeAfter(period, DURATION.medium);
@@ -98,14 +100,7 @@
 	</div>
 	<!-- The gap above the dates is their own padding, so it opens and closes with them. -->
 	{#if custom}
-		<div
-			class="dates"
-			id="period-dates"
-			in:open
-			out:close
-			onintrostart={follow}
-			onoutroend={follow}
-		>
+		<div class="dates" id="period-dates" in:open out:close onintrostart={follow}>
 			<DateRange bind:from bind:to />
 		</div>
 	{/if}

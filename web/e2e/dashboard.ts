@@ -193,7 +193,9 @@ async function watchWhatFollows(page: Page, selector: string) {
 		if (!next) throw new Error('nothing follows');
 		w.seen = [];
 		const step = () => {
-			const opacity = Number(getComputedStyle(next).opacity);
+			// With the page's fade: it may be what it comes through.
+			const of = (e: Element | null) => Number(e ? getComputedStyle(e).opacity : 1);
+			const opacity = of(next) * of(next.closest('main'));
 			w.seen.push({ top: next.getBoundingClientRect().top, opacity });
 			if (w.seen.length < 120) requestAnimationFrame(step);
 		};

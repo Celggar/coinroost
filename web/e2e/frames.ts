@@ -266,6 +266,9 @@ export async function watchPress(page: Page, block = '') {
 						falls.set(e, (falls.get(e) ?? 0) + 1);
 						if (falls.get(e) === 2) w.twice.push(name);
 					}
+					// A fade that stayed at nothing and came in a frame: a fade under way read as what it should reach (pass 60).
+					if (was && inSight && was.shown <= 0.1 && now >= 0.9)
+						w.pops.push(`came in a frame: ${name}`);
 					if (!was && w.frames && block && e.matches(block) && now > 0.4)
 						w.pops.push(`in ${name} at ${now.toFixed(2)}`);
 					places.set(e, { top, shown: now, name });

@@ -101,7 +101,10 @@ export function fadeAfter(box: Element, duration: number, again = false) {
 		for (let next = at.nextElementSibling; next; next = next.nextElementSibling) {
 			const running = next.getAnimations();
 			const fading = running.filter((animation) => animation.id === 'follow');
-			const own = running.filter((animation) => animation.id !== 'follow');
+			// A dim in CSS is no way out: read as one it held the figures at nothing while they came back (pass 60).
+			const own = running.filter(
+				(animation) => animation.id !== 'follow' && !(animation instanceof CSSTransition)
+			);
 			// On its way out it goes now, with no way back: fading in, a reading leaving came back for a moment (pass 56). On its
 			// way in it has its own fade.
 			if (own.some(leaves)) next.animate({ opacity: [0, 0] }, { id: 'follow', duration });
