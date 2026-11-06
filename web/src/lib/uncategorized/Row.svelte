@@ -4,8 +4,10 @@
 	import type { Schemas } from '#lib/api/client.ts';
 	import { day } from '#lib/format.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { swapIn, vanish } from '#lib/motion.ts';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { DURATION, swapIn, vanish } from '#lib/motion.ts';
 	import Arrow from '#lib/ui/Arrow.svelte';
+	import { fadeAfter } from '#lib/ui/followers.ts';
 	import Money from '#lib/ui/Money.svelte';
 
 	let {
@@ -30,6 +32,20 @@
 
 	const leg = $derived(transaction.legs[0]);
 
+	// What it took may give its words a second line: where nothing may slide, what follows them fades in at its new place. It
+	// stood 24 px lower from one frame to the next at 390 (pass 58).
+	let words = $state<HTMLElement>();
+	let lines = 0;
+	$effect.pre(() => {
+		void took;
+		lines = words?.offsetHeight ?? 0;
+	});
+	$effect(() => {
+		void took;
+		if (!words || !prefersReducedMotion.current) return;
+		if (Math.abs(words.offsetHeight - lines) >= 4) fadeAfter(words, DURATION.medium, true);
+	});
+
 	// What moves the choice on a closed select: in Chromium each of these is a choice at once, and a choice moves on, so
 	// «Su» for Supermercado saved Salario and the «u» fell on the next row (pass 40, WCAG 3.2.2). They open it instead.
 	const MOVES = /^(.|Arrow(Up|Down|Left|Right)|Home|End|Page(Up|Down))$/u;
@@ -48,7 +64,7 @@
 
 <div class="row" class:sorted={took}>
 	<span class="date" data-whole>{day(transaction.date)}</span>
-	<span class="description" data-whole>
+	<span class="description" data-whole bind:this={words}>
 		<span class="name">{transaction.description}</span>
 		{#if took}<Arrow /><span class="took">{took}</span>{/if}
 	</span>

@@ -1,5 +1,7 @@
 // What follows a box whose height changes under reduced motion. Nothing may slide there, so the rows below would stand
 // at their new place from one frame to the next; they fade in there instead.
+import { prefersReducedMotion } from 'svelte/motion';
+
 const widths = new WeakMap<HTMLElement, number>();
 
 // Landings on their way, and the fades that wait for them.
@@ -63,6 +65,12 @@ function leaves({ effect }: Animation) {
 	const frames = effect instanceof KeyframeEffect ? effect.getKeyframes() : [];
 	return Number(frames.at(-1)?.opacity ?? 1) < Number(frames[0]?.opacity ?? 1);
 }
+
+/** Whether a landing waits for an animation. A fade over what stands in its place, no: the landing came as it ended and dimmed
+ * the page again for the same press (pass 54). Where nothing may slide only what leaves still holds room: rows fading to their
+ * place fell with the page after they rose (pass 58). */
+export const holdsPlace = (animation: Animation) =>
+	!fadesInPlace(animation) && (!prefersReducedMotion.current || leaves(animation));
 
 /** Fades in what follows `box` inside the page, which has just taken its new place. `again`: it moved again, so a fade on its
  * way starts over, or the second place would land in plain sight. */

@@ -3,6 +3,7 @@
 // a new set retires the old one.
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { expectGlidedTop, watchTop } from './frames.ts';
 import { endsAlone } from './lines.ts';
 import { say, type Key } from './messages.ts';
 import { logOut } from './account.ts';
@@ -193,6 +194,8 @@ test('recovery codes let a person back in and make them set up a new authenticat
 	await page.getByLabel(say('login.code'), { exact: true }).fill(totp(fresh, Date.now() + 30_000));
 	// Sent from the keyboard: the new codes' title takes the focus and wears the ring, as every focused title does;
 	// it had none (pass 20).
+	// The form leaving keeps its height: stretched to the taller codes coming in, its buttons went 117 px in a frame (pass 58).
+	await watchTop(page, '.mode form .buttons');
 	await page.getByRole('button', { name: say('security.confirm'), exact: true }).press('Enter');
 	const title = page.getByRole('heading', { name: say('security.new_title') });
 	await expect(title).toBeFocused();
@@ -221,6 +224,7 @@ test('recovery codes let a person back in and make them set up a new authenticat
 		return Math.min(text.left - box.left, box.right - text.right) + offset;
 	});
 	expect(side).toBeGreaterThanOrEqual(6);
+	await expectGlidedTop(page, 40);
 	const renewed = await shownCodes(page);
 	expect(renewed.some((code) => codes.includes(code))).toBe(false);
 	await expect(page.getByTestId('recovery-status')).toHaveText(

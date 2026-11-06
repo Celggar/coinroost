@@ -38,12 +38,18 @@ async function opened(context: BrowserContext, width: number, height: number): P
 }
 
 /** Presses `control` with the page at rest and judges what it moved once `done` holds. */
-async function press(page: Page, what: string, control: Locator, done: () => Promise<void>) {
+async function press(
+	page: Page,
+	what: string,
+	control: Locator | (() => Promise<unknown>),
+	done: () => Promise<void>
+) {
 	await still(page);
 	// What the last key moved may still be fading: that dim is not this press's.
 	await page.waitForFunction(() => !document.getAnimations().some((a) => a.id === 'page'));
 	await watchPress(page);
-	await control.first().dispatchEvent('click');
+	if (typeof control === 'function') await control();
+	else await control.first().dispatchEvent('click');
 	await done();
 	await expectPress(page, what);
 }
@@ -131,6 +137,10 @@ test.describe.serial('every size', () => {
 			await press(page, `changes asked ${size}`, check, () =>
 				expect(page.locator('#changes-none, #changes-some')).toBeFocused()
 			);
+			// Moved near the top a landing follows, and the rows must not fall for each (pass 58).
+			await page.evaluate(() => scrollTo(0, 0));
+			const down = page.locator(`[data-move="${made[0]}-down"]`);
+			await press(page, `rule moved ${size}`, down, () => expect(down).toBeFocused());
 			await page.getByRole('button', { name: say('rules.delete_named', { name }) }).click();
 			const yes = page.getByRole('button', { name: say('rules.delete_it') });
 			await press(page, `rule deleted ${size}`, yes, () => expect(row).toHaveCount(0));
@@ -178,6 +188,10 @@ test.describe.serial('every size', () => {
 
 		test(`a category's error at ${size}`, async ({ context }) => {
 			const page = await opened(context, width, height);
+			for (const n of [1, 2, 3, 4, 5, 6]) {
+				const data = { name: `Many ${size} ${n}`, kind: 'expense' };
+				expect((await page.request.post('/api/v1/categories', { data })).ok()).toBe(true);
+			}
 			await page.goto('/categories');
 			const send = page.locator('#new-category [type="submit"]');
 			const error = page.locator('#new-category .field-error').first();
@@ -189,10 +203,49 @@ test.describe.serial('every size', () => {
 			await expect(error).toHaveCount(0);
 			await expectPress(page, `category error gone ${size}`, 0);
 			const made = page.getByText(`Press ${size}`, { exact: true });
-			await press(page, `new category ${size}`, send, () => expect(made).toBeVisible());
+			const name = page.locator('#new-category input').first();
+			await press(
+				page,
+				`new category ${size}`,
+				() => name.press('Enter'),
+				() => expect(made).toBeVisible()
+			);
 		});
 	}
 });
+
+for (const [width, height] of [
+	[1280, 600],
+	[390, 600],
+	[390, 844]
+] as const) {
+	test(`choices in the queue at ${width}x${height}`, async ({ context }) => {
+		const page = await opened(context, width, height);
+		const data = account(`Queue ${width}x${height}`);
+		const made = await page.request.post('/api/v1/accounts', { data });
+		expect(made.ok()).toBe(true);
+		const { id } = await made.json();
+		for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+			// One line that takes a second with what it took, one that has two already (pass 58).
+			const description = n % 2 ? `A RATHER LONGER ONE OF A KIND ${n}` : `CAFE EJEMPLO ${n}`;
+			const legs = [{ account_id: id, amount_minor: -100 * n, statement_text: description }];
+			const row = { date: '2026-05-10', description, legs };
+			expect((await page.request.post('/api/v1/transactions', { data: row })).ok()).toBe(true);
+		}
+		await page.goto('/uncategorized');
+		for (const round of [1, 2, 3, 4]) {
+			const select = page.locator('.queue select:not([disabled])').first();
+			await expect(select).toBeVisible();
+			const row = select.locator('xpath=ancestor::li');
+			await press(
+				page,
+				`choice ${round} at ${width}x${height}`,
+				() => select.selectOption({ index: 1 }),
+				() => expect(row.getByRole('button', { name: say('uncategorized.undo') })).toBeVisible()
+			);
+		}
+	});
+}
 
 const fixture = fileURLToPath(
 	new URL('../../spec/fixtures/bac-account/input.csv', import.meta.url)
@@ -263,5 +316,25 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		};
 		await once(other, () => expect(card.locator('.field-error')).toBeVisible());
 		await once(fresh, () => expect(button).toBeVisible());
+	});
+}
+
+for (const [width, height] of [
+	[1280, 800],
+	[390, 844]
+] as const) {
+	test(`a card taken away from the page's end at ${width}x${height}`, async ({ context }) => {
+		const page = await opened(context, width, height);
+		await page.goto('/import');
+		await page
+			.locator('input[type=file]')
+			.setInputFiles(['uno.csv', 'dos.csv', 'tres.csv'].map((name) => ({ ...statement, name })));
+		const remove = page.getByRole('button', {
+			name: say('file.remove_named', { name: 'uno.csv' })
+		});
+		await expect(remove).toBeVisible();
+		await still(page);
+		await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+		await press(page, `card removed ${width}`, remove, () => expect(remove).toHaveCount(0));
 	});
 }

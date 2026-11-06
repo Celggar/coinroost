@@ -3,7 +3,7 @@
 // jumped in one frame and left titles across the bar (pass 13).
 import { prefersReducedMotion } from 'svelte/motion';
 import { DURATION, spare } from '#lib/motion.ts';
-import { fadePage, fadesInPlace, landingBegins, landingEnds } from '#lib/ui/followers.ts';
+import { fadePage, holdsPlace, landingBegins, landingEnds } from '#lib/ui/followers.ts';
 
 /** Pinned to the window (a bar): it does not move with the page, so the page's edge never cuts it. */
 function pinned(element: Element): boolean {
@@ -232,29 +232,34 @@ export async function landOn(
 	made?: HTMLElement,
 	left: Element | null = document.activeElement
 ) {
-	await settled();
-	// The person moved on while the page settled (a field filled, the form sent again and its error focused): the
-	// focus and the page stay where that left them. A late landing took the focus back from «Clave» (pass 15 gates).
-	if (document.activeElement !== left) return;
-	if (made?.isConnected) {
-		const { top, bottom } = edges();
-		// Down to the form's send button when that fits too, as `focusShown` does: down to the field only, the button
-		// stood below the screen at 1280.
-		const from = made.getBoundingClientRect().top;
-		const send = form.querySelector<HTMLElement>('button[type="submit"]');
-		const end = [send, control].find(
-			(e) => e && e.getBoundingClientRect().bottom - from <= bottom - top
-		);
-		if (!end && !made.hasAttribute('tabindex')) made.tabIndex = -1;
-		await showWhole(made, end ?? made);
-		await focusOnArrival(end ? control : made, left);
-		return;
-	}
-	if (focusShown(control, form, false)) {
-		await focusOnArrival(control, left);
-	} else {
-		control.focus({ preventScroll: true });
-		await keepWhole();
+	landingBegins();
+	try {
+		await settled();
+		// The person moved on while the page settled (a field filled, the form sent again and its error focused): the
+		// focus and the page stay where that left them. A late landing took the focus back from «Clave» (pass 15 gates).
+		if (document.activeElement !== left) return;
+		if (made?.isConnected) {
+			const { top, bottom } = edges();
+			// Down to the form's send button when that fits too, as `focusShown` does: down to the field only, the button
+			// stood below the screen at 1280.
+			const from = made.getBoundingClientRect().top;
+			const send = form.querySelector<HTMLElement>('button[type="submit"]');
+			const end = [send, control].find(
+				(e) => e && e.getBoundingClientRect().bottom - from <= bottom - top
+			);
+			if (!end && !made.hasAttribute('tabindex')) made.tabIndex = -1;
+			await showWhole(made, end ?? made);
+			await focusOnArrival(end ? control : made, left);
+			return;
+		}
+		if (focusShown(control, form, false)) {
+			await focusOnArrival(control, left);
+		} else {
+			control.focus({ preventScroll: true });
+			await keepWhole();
+		}
+	} finally {
+		landingEnds();
 	}
 }
 
@@ -333,12 +338,11 @@ export async function keepWhole() {
 async function settled() {
 	// In waves: what ends can start more (a block that waits for another's fade, a card that shrinks once it left).
 	// Waiting for the first wave only, the page landed while «Parejas por confirmar» still shrank, and the page's end
-	// then pulled it back over a cut line (pass 16 sweep). A fade over what stands in its place is not waited for: the landing
-	// came as it ended and dimmed the page again for the same press, 350 ms apart (pass 54); it lands in that dim.
+	// then pulled it back over a cut line (pass 16 sweep).
 	for (let wave = 0; wave < 8; wave++) {
 		await new Promise((done) => requestAnimationFrame(done));
 		const running = (document.querySelector('main')?.getAnimations({ subtree: true }) ?? []).filter(
-			(a) => a.effect?.getTiming().iterations !== Infinity && !fadesInPlace(a)
+			(a) => a.effect?.getTiming().iterations !== Infinity && holdsPlace(a)
 		);
 		if (!running.length) break;
 		await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
@@ -362,10 +366,21 @@ export async function showWhole(box: HTMLElement, end: HTMLElement = box, held?:
 }
 
 async function land(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
+	// Where nothing may slide a page that will move dims now, whatever it waits for: dimmed when it moved, what had fallen with
+	// the press fell again (pass 58).
+	if (prefersReducedMotion.current) fadeIfFar(place(box, end, held) - scrollY);
 	await settled();
 	if (!box.isConnected) return;
 	// An end that left while the page settled holds nothing: its box reads as 0, above everything.
-	if (!end.isConnected) end = box;
+	const at = place(box, end.isConnected ? end : box, held);
+	if (Math.abs(at - scrollY) >= 1) {
+		go(at);
+		if (held) await still();
+	}
+}
+
+/** Where `land` takes the page. */
+function place(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
 	const { top, bottom, floor } = edges();
 	const head = box.getBoundingClientRect();
 	const foot = end.getBoundingClientRect().bottom;
@@ -381,9 +396,5 @@ async function land(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
 	const lo = Math.min(scrollY + foot - bottom, hi, max);
 	const y = Math.min(Math.max(scrollY, lo), hi);
 	const loose = Math.min(lo, Math.max(0, scrollY + head.bottom - floor));
-	const at = uncut(y, lo, hi, loose, max);
-	if (Math.abs(at - scrollY) >= 1) {
-		go(at);
-		if (held) await still();
-	}
+	return uncut(y, lo, hi, loose, max);
 }

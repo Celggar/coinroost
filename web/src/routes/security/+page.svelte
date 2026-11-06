@@ -300,9 +300,11 @@
 	.cell:not(:has(.mode > *)) {
 		display: none;
 	}
+	/* Its own height, not the cell's: the form leaving grew 117 px, stretched to the new codes coming in (pass 58). */
 	.mode {
 		grid-area: 1 / 1;
 		display: grid;
+		align-self: start;
 		min-width: 0;
 	}
 	.mode > button {
