@@ -28,7 +28,27 @@ function hold(dim: Animation) {
  * or the page dimmed twice for one press (pass 55). With the last landing over it comes back, once. */
 export function landingBegins() {
 	landings += 1;
-	for (const fade of document.getAnimations()) if (fadesInPlace(fade)) hold(fade);
+	for (const fade of document.getAnimations()) {
+		if (!fadesInPlace(fade)) continue;
+		if (!underOwnFade(fade)) {
+			hold(fade);
+			continue;
+		}
+		waiting.delete(fade);
+		fade.cancel();
+	}
+}
+
+/** Whether what a fade works on has one of its own over it, as a row fading to its place: held, the fade came out as the row's
+ * ended, and the rows fell twice for one press (pass 59). */
+function underOwnFade({ effect }: Animation) {
+	const target = effect instanceof KeyframeEffect ? effect.target : null;
+	return target?.getAnimations().some((own) => !fadesInPlace(own) && fades(own));
+}
+
+function fades({ effect }: Animation) {
+	const frames = effect instanceof KeyframeEffect ? effect.getKeyframes() : [];
+	return frames.some((frame) => 'opacity' in frame);
 }
 
 export function landingEnds() {

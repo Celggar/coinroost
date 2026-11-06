@@ -43,7 +43,10 @@
 	$effect(() => {
 		void took;
 		if (!words || !prefersReducedMotion.current) return;
-		if (Math.abs(words.offsetHeight - lines) >= 4) fadeAfter(words, DURATION.medium, true);
+		if (Math.abs(words.offsetHeight - lines) < 4) return;
+		// Centred in the row, its first line went up 10 px for the second.
+		words.animate({ opacity: [0, 1] }, { id: 'follow', duration: DURATION.medium });
+		fadeAfter(words, DURATION.medium, true);
 	});
 
 	// What moves the choice on a closed select: in Chromium each of these is a choice at once, and a choice moves on, so

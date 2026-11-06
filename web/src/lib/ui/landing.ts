@@ -380,7 +380,7 @@ async function land(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
 }
 
 /** Where `land` takes the page. */
-function place(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
+export function place(box: HTMLElement, end: HTMLElement, held?: HTMLElement) {
 	const { top, bottom, floor } = edges();
 	const head = box.getBoundingClientRect();
 	const foot = end.getBoundingClientRect().bottom;

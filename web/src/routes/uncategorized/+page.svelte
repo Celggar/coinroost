@@ -1,23 +1,20 @@
 <script lang="ts">
 	import { focusOn, retry } from '#lib/ui/focus.ts';
-	import { showWhole } from '#lib/ui/landing.ts';
+	import { place, showWhole } from '#lib/ui/landing.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import FirstStep from '#lib/ui/FirstStep.svelte';
-	import { goneBehindPage } from '#lib/ui/followers.ts';
-	import { endsPage } from '#lib/ui/followers.ts';
-	import { behindFade, follow } from '#lib/ui/hold-room.ts';
+	import { behindFade, closesInPlace, follow, opensInPlace } from '#lib/ui/hold-room.ts';
 	import { refreshCounts, reloadOnMoved } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { arrive, DURATION, EASE, followContent, placeholder, rise, swapIn } from '#lib/motion.ts';
+	import { arrive, followContent, placeholder, rise, swapIn } from '#lib/motion.ts';
 	import { confetti } from '#lib/ui/confetti.ts';
 	import { announce, notify } from '#lib/ui/notices.svelte.ts';
 	import Filters, { type Kind } from '#lib/uncategorized/Filters.svelte';
 	import Offer from '#lib/uncategorized/Offer.svelte';
 	import Row from '#lib/uncategorized/Row.svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { fade, slide } from 'svelte/transition';
 
 	let transactions = $state<Schemas['Transaction'][]>([]);
 	let categories = $state<Schemas['Category'][]>([]);
@@ -28,17 +25,9 @@
 	let empty = $state(false);
 	let busy = $state<string | null>(null);
 
-	// The offer opens in place and closes the same way; with reduced motion it only fades.
-	const open = (node: Element) =>
-		prefersReducedMotion.current
-			? fade(node, { duration: DURATION.short })
-			: slide(node, { duration: DURATION.medium, easing: EASE.standard });
-	// Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in
-	// plain sight, then 168 (pass 46).
+	// The offer opens in place and closes the same way, or goes with the list's own fade.
 	const shut = (node: HTMLElement) =>
-		prefersReducedMotion.current && !holding && endsPage(node.offsetHeight)
-			? goneBehindPage(node, DURATION.medium)
-			: open(node);
+		list.going() ? list.leave(node) : closesInPlace(node, holding);
 
 	const fetched = () =>
 		Promise.all([
@@ -196,12 +185,16 @@
 		}
 		announce(t('uncategorized.undone', { description: transaction.description }));
 		refreshCounts();
-		kept = transaction.id;
-		sorted = null;
-		await tick();
-		// Undone before its fade ended, the row gets the same select back, still on the choice.
-		const select = focusOn(`#category-${transaction.id}`);
-		if (select instanceof HTMLSelectElement) select.value = '';
+		const back = async () => {
+			kept = transaction.id;
+			sorted = null;
+			await tick();
+			// Undone before its fade ended, the row gets the same select back, still on the choice.
+			const select = focusOn(`#category-${transaction.id}`);
+			if (select instanceof HTMLSelectElement) select.value = '';
+		};
+		// An open offer gives back its room as the row gives back a line, with no way to slide: −24 px at full opacity (pass 59).
+		await (sorted?.offering && prefersReducedMotion.current ? list.run(back) : back());
 	}
 
 	/** «Solo esta vez»: the offer closes and the row keeps its Deshacer until the next choice. */
@@ -228,11 +221,13 @@
 			const first = shown[0];
 			target = first ? focusOn(`#category-${first.id}`) : focusOn('#all-done a', 'main h1');
 		};
-		if (left.data?.items.length) await list.run(change);
+		const staying = left.data?.items.length;
+		if (staying && !prefersReducedMotion.current) await list.run(change);
 		else
 			await list.whole(async () => {
 				await change();
-				scrollTo({ top: 0, behavior: 'instant' });
+				// Where nothing may slide the landing comes behind the same fade: after it the list fell again, with the page (pass 59).
+				scrollTo({ top: staying && target ? place(target, target) : 0, behavior: 'instant' });
 			});
 		if (left.data?.items.length === 0) confetti('sorted');
 		if (target) await showWhole(target);
@@ -308,9 +303,9 @@
 										{#if sorted?.id === transaction.id && sorted.offering}
 											<div
 												class="more"
-												in:open
+												in:opensInPlace
 												out:shut
-												onoutroend={(event) => follow(event, holding)}
+												onoutroend={(event) => list.going() || follow(event, holding)}
 											>
 												<Offer
 													description={transaction.description}
@@ -327,7 +322,7 @@
 							</ul>
 						{/if}
 						{#if view.kind !== 'all' && counts[view.kind] === 0}
-							<p class="hint" transition:open>{t('uncategorized.none_here')}</p>
+							<p class="hint" transition:opensInPlace>{t('uncategorized.none_here')}</p>
 						{/if}
 					</div>
 				</div>

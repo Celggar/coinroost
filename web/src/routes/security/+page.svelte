@@ -9,7 +9,16 @@
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import RecoveryCodes from '#lib/auth/RecoveryCodes.svelte';
 	import { plural, tag, t } from '#lib/i18n.svelte.ts';
-	import { arrive, followContent, placeholder, pop, rise, swapOut, vanish } from '#lib/motion.ts';
+	import {
+		arrive,
+		FADED,
+		followContent,
+		placeholder,
+		pop,
+		rise,
+		swapOut,
+		vanish
+	} from '#lib/motion.ts';
 	import { session } from '#lib/session.svelte.ts';
 	import { check, focusFirst } from '#lib/ui/form.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
@@ -183,7 +192,8 @@
 
 		<div class="cell">
 			{#key mode}
-				<div class="mode" in:rise={{ delay: 100 }} out:swapOut>
+				<!-- It waits for the one leaving: where nothing may slide it stood over it, both at 0.8 for 120 ms (pass 59). -->
+				<div class="mode" in:rise={{ delay: FADED, wait: FADED }} out:swapOut>
 					{#if mode === 'view'}
 						<!-- With no codes yet there is nothing to replace: the button makes the first ones. Only once the status is
 						     known: before it, or when it failed, «Crear códigos» would replace codes the person may have. -->

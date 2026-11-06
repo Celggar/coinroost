@@ -43,7 +43,9 @@ export async function watchRows(page: Page) {
 			}
 			for (const row of rows) {
 				const top = row.getBoundingClientRect().top + scrollY;
-				const shown = opacity(row) * opacity(row.closest('.follows'));
+				// The page's fade too: what moves behind it does not show, whatever the list's own opacity says.
+				const shown =
+					opacity(row) * opacity(row.closest('.follows')) * opacity(row.closest('main'));
 				const was = places.get(row);
 				if (was && Math.abs(top - was.top) > 2) w.moves.push({ step: top - was.top, shown });
 				if (was && was.shown - shown > 0.7) w.gone.push(was.shown - shown);

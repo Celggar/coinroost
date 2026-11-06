@@ -13,7 +13,7 @@ import {
 	swapOut,
 	vanish
 } from '#lib/motion.ts';
-import { endsPage, fadeAfter, fadePage, holdFor } from '#lib/ui/followers.ts';
+import { endsPage, fadeAfter, fadePage, goneBehindPage, holdFor } from '#lib/ui/followers.ts';
 
 /**
  * Keeps a list's room while `change` takes a row out of it, and gives the room back with the rows' own wait and glide
@@ -93,6 +93,20 @@ export async function reshape(change: () => unknown) {
 	await tick();
 	const moved = Math.abs((page?.offsetHeight ?? 0) - before) >= 4;
 	if (moved && prefersReducedMotion.current) fadePage(DURATION.medium);
+}
+
+/** A block opening in place, closing the same way (`closesInPlace`); with reduced motion it only fades. */
+export const opensInPlace = (node: Element) =>
+	prefersReducedMotion.current
+		? fade(node, { duration: DURATION.short })
+		: slide(node, { duration: DURATION.medium, easing: EASE.standard });
+
+/** Taking the page to a new end, it goes at once behind the page's fade, with the line its row gives back: first 48 px in
+ * plain sight, then 168 (pass 46). `held`: the page's room stays, and that end is not reached. */
+export function closesInPlace(node: HTMLElement, held: boolean) {
+	return prefersReducedMotion.current && !held && endsPage(node.offsetHeight)
+		? goneBehindPage(node, DURATION.medium)
+		: opensInPlace(node);
 }
 
 /** With no glide a box giving back `room` takes the page to its new end at once, all of it: it comes back through a fade. */

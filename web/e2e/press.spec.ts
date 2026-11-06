@@ -338,3 +338,124 @@ for (const [width, height] of [
 		await press(page, `card removed ${width}`, remove, () => expect(remove).toHaveCount(0));
 	});
 }
+
+/** Rows of an account of their own, in the order of `rows`. */
+async function seeded(page: Page, tag: string, rows: { description: string; date: string }[]) {
+	const made = await page.request.post('/api/v1/accounts', { data: account(`Rows ${tag}`) });
+	expect(made.ok()).toBe(true);
+	const { id } = await made.json();
+	for (const [n, { description, date }] of rows.entries()) {
+		const legs = [{ account_id: id, amount_minor: -100 * (n + 1), statement_text: description }];
+		const row = { date, description, legs };
+		expect((await page.request.post('/api/v1/transactions', { data: row })).ok()).toBe(true);
+	}
+}
+
+async function category(page: Page, name: string) {
+	const data = { name, kind: 'expense' };
+	expect((await page.request.post('/api/v1/categories', { data })).ok()).toBe(true);
+}
+
+const others = (tag: string, date: string) =>
+	[1, 2, 3, 4, 5, 6].map((n) => ({ description: `OTHER ${tag} ${n}`, date }));
+
+for (const [width, height] of [
+	[1280, 800],
+	[390, 844]
+] as const) {
+	test(`a first choice whose words take a line, and back, at ${width}x${height}`, async ({
+		context
+	}) => {
+		const page = await opened(context, width, height);
+		const size = `${width}x${height}`;
+		const name = `Subscriptions and digital services of the home ${size}`;
+		await category(page, name);
+		const description = width < 900 ? `CASH ${size}` : `A DEPOSIT IN CASH AT THE BRANCH ${size}`;
+		await seeded(page, size, [{ description, date: '2026-12-31' }, ...others(size, '2026-12-30')]);
+		await page.goto('/uncategorized');
+		const row = page.locator('.queue > li', { hasText: description });
+		const undo = row.getByRole('button', { name: say('uncategorized.undo') });
+		const words = row.locator('.description');
+		const before = (await words.boundingBox())?.height ?? 0;
+		// The rows below fell for the fade it took, and again for one left waiting under it (pass 59).
+		await press(
+			page,
+			`first choice ${size}`,
+			() => row.locator('select').selectOption({ label: name }),
+			() => expect(undo).toBeVisible()
+		);
+		expect((await words.boundingBox())?.height).toBeGreaterThan(before + 3);
+		// With the offer open it gives back the offer's room and a line: −24 px at full opacity (pass 59).
+		await press(page, `undone ${size}`, undo, () => expect(row.locator('select')).toBeFocused());
+	});
+}
+
+for (const [width, height] of [
+	[1280, 800],
+	[390, 600],
+	[390, 844]
+] as const) {
+	test(`changes applied from the offer at ${width}x${height}`, async ({ context }) => {
+		const page = await opened(context, width, height);
+		const size = `${width}x${height}`;
+		const name = `Applied ${size}`;
+		await category(page, name);
+		const shop = `SAME SHOP ${size}`;
+		await seeded(page, `applied ${size}`, [
+			...others(`applied ${size}`, '2026-12-29'),
+			...[1, 2, 3].map((n) => ({ description: shop, date: `2026-01-0${n}` }))
+		]);
+		await page.goto('/uncategorized');
+		const select = page.locator('.queue > li', { hasText: shop }).first().locator('select');
+		await select.scrollIntoViewIfNeeded();
+		await select.selectOption({ label: name });
+		await page.getByRole('button', { name: say('uncategorized.make_rule') }).click();
+		const apply = page.getByRole('button', { name: say('changes.apply_other', { count: 2 }) });
+		await expect(apply).toBeVisible();
+		// The list fell behind its fade, and with the page as the landing dimmed it after (pass 59).
+		await press(page, `changes applied ${size}`, apply, () =>
+			expect(page.locator('.queue select').first()).toBeFocused()
+		);
+	});
+}
+
+type Together = { together: number; counted: number };
+
+/** Starts counting how many of `selector` show at once, at most. */
+async function watchTogether(page: Page, selector: string) {
+	await page.evaluate((selector) => {
+		const w = window as unknown as Together;
+		w.together = 0;
+		w.counted = 0;
+		const step = () => {
+			const showing = [...document.querySelectorAll(selector)].filter(
+				(e) => Number(getComputedStyle(e).opacity) > 0.1
+			);
+			w.together = Math.max(w.together, showing.length);
+			if (++w.counted < 60) requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	}, selector);
+}
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`what Security swaps takes turns (${reducedMotion})`, async ({ context }) => {
+		const page = await opened(context, 1280, 800);
+		await page.emulateMedia({ reducedMotion });
+		await page.goto('/security');
+		const block = '.cell > .mode';
+		const turn = async (control: Locator, shows: Locator) => {
+			await still(page);
+			await watchTogether(page, block);
+			await control.dispatchEvent('click');
+			await expect(shows).toBeVisible();
+			await page.waitForFunction(() => (window as unknown as Together).counted >= 60);
+			// The new block stood over the old one, both at 0.8 for 120 ms where nothing may slide (pass 59).
+			expect(await page.evaluate(() => (window as unknown as Together).together)).toBe(1);
+		};
+		const ask = page.locator(`${block} > button.primary`);
+		const cancel = page.getByRole('button', { name: say('security.cancel') });
+		await turn(ask, cancel);
+		await turn(cancel, ask);
+	});
+}
