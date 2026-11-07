@@ -120,15 +120,16 @@ export function fadeAfter(box: Element, duration: number, again = false) {
 }
 
 /** A list item's way to a new place where nothing may slide: it fades in where it stands, after fading out for `out` ms where
- * it stood, `up` px below. Landing at once, rows jumped 140 to 313 px at full opacity on each choice (pass 40). */
-export function fadeToPlace(up: number, out: number, duration: number) {
-	if (Math.abs(up) < 4) return { duration: 0 };
+ * it stood, `up` px below and `side` px to the right. Landing at once, rows jumped 140 to 313 px at full opacity on each choice
+ * (pass 40). */
+export function fadeToPlace(up: number, out: number, duration: number, side = 0) {
+	if (Math.abs(up) < 4 && Math.abs(side) < 4) return { duration: 0 };
 	const turn = out / (out + duration);
 	return {
 		duration: out + duration,
 		css: (t: number) =>
 			t < turn
-				? `opacity: ${1 - t / turn}; transform: translateY(${up}px)`
+				? `opacity: ${1 - t / turn}; transform: translate(${side}px, ${up}px)`
 				: `opacity: ${(t - turn) / (1 - turn)}; transform: none`
 	};
 }

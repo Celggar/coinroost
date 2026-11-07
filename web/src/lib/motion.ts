@@ -158,8 +158,8 @@ export function glide(node: Element, positions: { from: DOMRect; to: DOMRect }):
 	const leaving = [...(node.parentElement?.children ?? [])].some(
 		(e) => e !== node && e instanceof HTMLElement && e.style.position === 'absolute'
 	);
-	const wait = up > 0 && leaving ? FADED : 0;
-	if (still()) return fadeToPlace(up, leaving ? FADED : 0, DURATION.medium);
+	const wait = (up > 0 || side > 0) && leaving ? FADED : 0;
+	if (still()) return fadeToPlace(up, leaving ? FADED : 0, DURATION.medium, side);
 	return {
 		delay: wait,
 		duration: DURATION.medium,
@@ -294,18 +294,18 @@ export function shake(element: HTMLElement | undefined) {
 	);
 }
 
-/** Where an element sits inside `root`, from layout alone (transforms do not count). */
-function layoutTop(element: HTMLElement, root: HTMLElement) {
-	let top = 0;
+/** Where an element sits inside `root`, from layout alone (transforms do not count), borders included. */
+function layoutPlace(element: HTMLElement, root: HTMLElement) {
+	let [left, top] = [root.clientLeft, root.clientTop];
 	let current: Element | null = element;
 	while (current instanceof HTMLElement && current !== root) {
+		left += current.offsetLeft;
 		top += current.offsetTop;
 		current = current.offsetParent;
 	}
-	return top;
+	return { left, top };
 }
 
-/**
 /** A box's padding and borders, top and bottom: what its height holds besides its content (border-box sizing). */
 function frame(node: HTMLElement): number {
 	const style = getComputedStyle(node);
@@ -325,7 +325,7 @@ export function followContent(node: HTMLElement, held = false) {
 	const content = node.firstElementChild;
 	if (!(content instanceof HTMLElement)) return;
 	let hold = held;
-	let last = new Map<HTMLElement, number>();
+	let last = new Map<HTMLElement, ReturnType<typeof layoutPlace>>();
 	// The end of the glide, or a timer if none ran. A cancel is no end: a newer glide replaced it and is still running.
 	let settle: ReturnType<typeof setTimeout> | undefined;
 	const rest = () => delete node.dataset.moving;
@@ -337,18 +337,21 @@ export function followContent(node: HTMLElement, held = false) {
 		if (hold && height < node.offsetHeight) return;
 		const first = node.style.height === '';
 		const glide = !still() && !first;
-		const now = new Map<HTMLElement, number>();
+		const now: typeof last = new Map();
 		for (const element of node.querySelectorAll<HTMLElement>('[data-flip]')) {
-			const top = layoutTop(element, node);
-			now.set(element, top);
+			const place = layoutPlace(element, node);
+			now.set(element, place);
 			const before = last.get(element);
-			if (!glide || before === undefined || before === top) continue;
+			if (!glide || !before) continue;
+			const [x, y] = [before.left - place.left, before.top - place.top];
+			if (!x && !y) continue;
 			// Hold the old place until the animation takes over, so no frame shows the new one first.
-			element.style.transform = `translateY(${before - top}px)`;
-			const animation = element.animate(
-				[{ transform: `translateY(${before - top}px)` }, { transform: 'none' }],
-				{ duration: DURATION.medium, easing: EASE_CSS.standard }
-			);
+			const from = `translate(${x}px, ${y}px)`;
+			element.style.transform = from;
+			const animation = element.animate([{ transform: from }, { transform: 'none' }], {
+				duration: DURATION.medium,
+				easing: EASE_CSS.standard
+			});
 			animation.ready.then(() => (element.style.transform = ''));
 		}
 		last = now;

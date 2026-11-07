@@ -157,7 +157,12 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				await page.evaluate(() => scrollTo(0, 0));
 				const down = page.locator(`[data-move="${made[0]}-down"]`);
 				await press(page, `rule moved ${size}`, down, () => expect(down).toBeFocused());
-				await page.getByRole('button', { name: say('rules.delete_named', { name }) }).click();
+				const remove = page.getByRole('button', { name: say('rules.delete_named', { name }) });
+				const keep = page.getByRole('button', { name: say('rules.keep_it') });
+				await remove.scrollIntoViewIfNeeded();
+				await press(page, `delete asked ${size}`, remove, () => expect(keep).toBeFocused());
+				await press(page, `rule kept ${size}`, keep, () => expect(remove).toBeFocused());
+				await remove.click();
 				const yes = page.getByRole('button', { name: say('rules.delete_it') });
 				await press(page, `rule deleted ${size}`, yes, () => expect(row).toHaveCount(0));
 				for (const rule of made)

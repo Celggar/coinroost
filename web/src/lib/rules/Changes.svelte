@@ -147,7 +147,8 @@
 			<div class="actions">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. `data-flip`: it goes down
 				     with the card's edge as the card opens around it: alone it went 100 to 154 px down in a frame (pass 62), and with
-				     the title opening its room above it, out through that edge for 150 ms (pass 63). -->
+				     the title opening its room above it, out through that edge for 150 ms (pass 63); and sideways with the card's
+					     padding, 17 to 25 px in a frame just after the press (pass 65). -->
 				<button
 					id={opened ? undefined : 'changes-title'}
 					class="secondary"

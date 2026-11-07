@@ -249,22 +249,16 @@ export async function restTop(page: Page, selector: string) {
 
 type Press = { jumps: string[]; pops: string[]; twice: string[]; dims: number; frames: number };
 
-/** Starts recording a press: what stands in the window and takes a new place while it shows (with motion allowed, in a step of
- * over `lone` px with nothing around it), what falls from showing to not twice, how many times the page dims and, inside `block`,
+/** Starts recording a press: what stands in the window and takes a new place while it shows, up or down or sideways (with motion
+ * allowed, in a step of over `lone` px with nothing around it; sideways no glide is expected to run fast), what falls from showing to not twice, how many times the page dims and, inside `block`,
  * what comes or goes in one frame while it shows.
  * A fall is counted on each thing, its parents' opacity with it: the page's dims said once while the rows fell twice (pass 58). */
 export async function watchPress(page: Page, block = '', lone = 8) {
 	await page.evaluate(
 		({ block, frames, lone }) => {
 			const w = window as unknown as Press;
-			type Place = {
-				top: number;
-				shown: number;
-				name: string;
-				step: number;
-				before: number;
-				gap: number;
-			};
+			type Track = { at: number; step: number; before: number };
+			type Place = { top: Track; left: Track; shown: number; name: string; gap: number };
 			const places = new Map<Element, Place>();
 			const sliding = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 			const falls = new Map<Element, number>();
@@ -297,26 +291,35 @@ export async function watchPress(page: Page, block = '', lone = 8) {
 				for (const e of document.querySelectorAll(`${stands}${block ? `, ${block}` : ''}`)) {
 					if (!e.checkVisibility()) continue;
 					shown.add(e);
-					const { top, bottom } = e.getBoundingClientRect();
+					const { top, left, bottom } = e.getBoundingClientRect();
 					const name = `${e.tagName} ${(e.textContent ?? '').trim().slice(0, 28)}`;
 					const now = seen(e);
 					const was = places.get(e);
 					const inSight = bottom > 0 && top < innerHeight;
-					const step = was ? top - was.top : 0;
-					if (!sliding && was && inSight && Math.abs(step) >= 4 && Math.min(now, was.shown) > 0.4)
-						w.jumps.push(`${name}: ${Math.round(step)} px at ${now.toFixed(2)}`);
-					// With motion allowed a glide takes many frames: what moves in one alone jumped (pass 62).
-					const near = Math.abs(was?.step ?? 0) / 4;
-					const alone =
-						was &&
-						was.gap <= 25 &&
-						Math.abs(was.step) > lone &&
-						Math.abs(was.before) < near &&
-						Math.abs(step) < near;
-					if (sliding && alone && inSight && Math.min(now, was.shown) > 0.4)
-						w.jumps.push(
-							`${name}: ${Math.round(was.step)} px alone in ${Math.round(was.gap)} ms at ${now.toFixed(2)}`
-						);
+					const showing = inSight && was && Math.min(now, was.shown) > 0.4;
+					const track = (at: number, last: Track | undefined, most: number, how: string) => {
+						const step = last ? at - last.at : 0;
+						if (!sliding && showing && Math.abs(step) >= 4)
+							w.jumps.push(`${name}: ${Math.round(step)} px${how} at ${now.toFixed(2)}`);
+						// With motion allowed a glide takes many frames: what moves in one alone jumped (pass 62).
+						const near = Math.abs(last?.step ?? 0) / 4;
+						const alone =
+							last &&
+							was!.gap <= 25 &&
+							Math.abs(last.step) > most &&
+							Math.abs(last.before) < near &&
+							Math.abs(step) < near;
+						if (sliding && alone && showing)
+							w.jumps.push(
+								`${name}: ${Math.round(last.step)} px${how} alone in ${Math.round(was!.gap)} ms at ${now.toFixed(2)}`
+							);
+						return { at, step, before: last?.step ?? 0 };
+					};
+					const tracks = {
+						top: track(top, was?.top, lone, ''),
+						// The pass that found it had a button go 17 px sideways in a frame, and only the top was read (pass 65).
+						left: track(left, was?.left, 8, ' sideways')
+					};
 					if (!sliding && was && inSight && was.shown >= 0.5 && now < 0.5) {
 						falls.set(e, (falls.get(e) ?? 0) + 1);
 						if (falls.get(e) === 2) w.twice.push(name);
@@ -326,7 +329,7 @@ export async function watchPress(page: Page, block = '', lone = 8) {
 						w.pops.push(`came in a frame: ${name}`);
 					if (!was && w.frames && block && e.matches(block) && now > 0.4)
 						w.pops.push(`in ${name} at ${now.toFixed(2)}`);
-					places.set(e, { top, shown: now, name, step, before: was?.step ?? 0, gap });
+					places.set(e, { ...tracks, shown: now, name, gap });
 				}
 				for (const [e, was] of places) {
 					if (shown.has(e)) continue;

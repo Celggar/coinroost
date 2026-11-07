@@ -2,7 +2,7 @@
 	import { refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import { onMount, tick } from 'svelte';
 	import { importFile, previewFile, problem, type Schemas } from '#lib/api/client.ts';
-	import { day, money, span } from '#lib/format.ts';
+	import { day, LIST, money, span } from '#lib/format.ts';
 	import { has, plural, t } from '#lib/i18n.svelte.ts';
 	import { FADED, followContent, lift, placeholder, rise, swapIn, vanish } from '#lib/motion.ts';
 	import { follow, nextAnswer } from '#lib/ui/hold-room.ts';
@@ -58,18 +58,18 @@
 			? importable.filter((a) => preview?.candidates.includes(a.id))
 			: importable
 	);
-	const note = $derived.by(() => {
-		switch (preview?.detection) {
-			case 'found':
-				return t('file.found');
-			case 'ambiguous':
-				return t('file.ambiguous');
-			case 'not_found':
-				return importable.length ? t('file.not_found') : t('file.no_profile');
-			default:
-				return '';
-		}
-	});
+	const detection = $derived(preview?.detection);
+	const note = $derived(
+		detection === 'found'
+			? t('file.found')
+			: detection === 'ambiguous'
+				? t('file.ambiguous')
+				: detection !== 'not_found'
+					? ''
+					: t(importable.length ? 'file.not_found' : 'file.no_profile')
+	);
+	// A list cuts what does not fit its width: a long name reads whole under it, 487 px in 278 at 390 (pass 65).
+	const whole = $derived(account && account.name.length > 20 ? account.name : '');
 
 	// Each read is numbered: the answer of an earlier choice that comes back late is dropped.
 	let reads = 0;
@@ -149,14 +149,12 @@
 			     stays under the error of an account that cannot read it, or only «Quitar» was left (pass 10). -->
 			{@const wayOn = !importable.length || preview?.detection === 'not_found'}
 			{#snippet open()}<a class="target" href="/accounts">{t('file.open_accounts')}</a>{/snippet}
-			{#snippet found()}
-				{note}
-				{#if wayOn}{@render open()}{/if}
-			{/snippet}
+			{@const says = [whole, accountError ? '' : note].filter(Boolean).join(LIST)}
+			{#snippet found()}{says} {@render open()}{/snippet}
 			<Field
 				label={t('file.account')}
 				name="account"
-				hint={accountError ? (wayOn ? open : '') : note ? found : ''}
+				hint={wayOn && (accountError || note) ? found : says}
 				error={accountError}
 			>
 				{#snippet children(wiring)}

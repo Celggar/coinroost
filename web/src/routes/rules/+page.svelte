@@ -29,6 +29,21 @@
 
 	const names = $derived(nameMaps(categories, payees, accounts));
 
+	const MOVES = {
+		up: { by: -1, word: 'rules.up', named: 'rules.up_named' },
+		down: { by: 1, word: 'rules.down', named: 'rules.down_named' }
+	} as const;
+	const ways = (index: number) =>
+		(['up', 'down'] as const).filter((way) =>
+			way === 'up' ? index > 0 : index < rules.length - 1
+		);
+
+	/** A move button sideways, when the other one comes or goes beside it: 83 px in a frame as a rule left the top (pass 65
+	 * sweep). Only sideways, as its row already takes it up or down. */
+	function aside(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
+		return glide(node, { from: new DOMRect(from.left, to.top), to });
+	}
+
 	// What the next load runs once the new lists are in hand, just before they replace the old ones; once.
 	let arriving: (() => void) | undefined;
 
@@ -183,28 +198,18 @@
 							<p><strong>{t('rules.sets')}</strong> {actions(rule, names).join(LIST)}</p>
 							<div class="buttons">
 								<!-- The first rule cannot go up and the last cannot go down: those buttons are not shown. -->
-								{#if index > 0}
+								{#each ways(index) as way (way)}
 									<button
 										class="secondary"
-										data-move="{rule.id}-up"
-										onclick={() => busy || move(rule, rule.position - 1)}
+										data-move="{rule.id}-{way}"
+										onclick={() => busy || move(rule, rule.position + MOVES[way].by)}
 										aria-disabled={busy}
-										aria-label={t('rules.up_named', { name: rule.name })}
+										aria-label={t(MOVES[way].named, { name: rule.name })}
 										in:pop={{ start: 0.9 }}
-										out:vanish>{t('rules.up')}</button
+										out:vanish
+										animate:aside>{t(MOVES[way].word)}</button
 									>
-								{/if}
-								{#if index < rules.length - 1}
-									<button
-										class="secondary"
-										data-move="{rule.id}-down"
-										onclick={() => busy || move(rule, rule.position + 1)}
-										aria-disabled={busy}
-										aria-label={t('rules.down_named', { name: rule.name })}
-										in:pop={{ start: 0.9 }}
-										out:vanish>{t('rules.down')}</button
-									>
-								{/if}
+								{/each}
 								<Confirm
 									label={t('rules.delete')}
 									named={t('rules.delete_named', { name: rule.name })}
@@ -315,17 +320,23 @@
 		align-items: center;
 		gap: var(--space-sm);
 	}
+	/* A move button that goes is taken out of the flow and held in its place by a transform, which the buttons' transition
+	   eased: 83 px to the row's start and back, under reduced motion too (pass 65 sweep). */
+	.buttons > :global(button[style*='position: absolute']) {
+		transition: none;
+	}
 	/* «Borrar» keeps one place on every card, at the row's end, with one move button or two: right after «Bajar» or
-	   «Subir» it stood 23 px apart from card to card (pass 11). */
+	   «Subir» it stood 23 px apart from card to card (pass 11). `end`: its cell opens to the left for the question, and at
+	   the cell's start it went 131 px with it in a frame, under the question's words (pass 65). */
 	.buttons > :global(.swap-cell) {
 		margin-inline-start: auto;
+		justify-items: end;
 	}
 	/* Where its question does not fit beside two moves, «Borrar» keeps a line of its own: asking, the row took one more at
 	   once, 52 px in a frame for every rule under it (pass 51). */
 	@media (max-width: 479px) {
 		.buttons > :global(.swap-cell) {
 			flex-basis: 100%;
-			justify-items: end;
 		}
 	}
 </style>

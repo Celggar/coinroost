@@ -178,8 +178,9 @@
 		<!-- One span: as flex items the words and the key took a column each on a phone, and a line ended in «·» (pass 64). -->
 		<summary>
 			<span
-				>{t('accounts.advanced')} · {t('accounts.key').toLowerCase()}
-				<code>{key || '…'}</code></span
+				>{t('accounts.advanced')}<span class="between"> · </span><span class="key"
+					>{t('accounts.key').toLowerCase()} <code>{key || '…'}</code></span
+				></span
 			>
 		</summary>
 		<div class="fields advanced">
@@ -255,6 +256,16 @@
 		align-items: stretch;
 	}
 	code {
+		overflow-wrap: anywhere;
 		font-size: var(--text-sm);
+	}
+	/* On a phone the key takes a line of its own: running on, it broke at a hyphen and its last word stood alone (pass 65). */
+	@media (max-width: 479px) {
+		.between {
+			display: none;
+		}
+		.key {
+			display: block;
+		}
 	}
 </style>

@@ -112,9 +112,7 @@
 									<td data-label={t('accounts.name')}>{account.name}</td>
 									<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 									<td data-label={t('accounts.currency')}>{account.currency}</td>
-									<td class="bank-file" data-label={t('accounts.bank_file')}
-										>{profileName(account.profile)}</td
-									>
+									<td data-label={t('accounts.bank_file')}>{profileName(account.profile)}</td>
 									<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
 								</tr>
 							{/each}
@@ -152,12 +150,23 @@
 		display: flex;
 		flex-direction: column;
 	}
-	/* Where the table has the room, a bank file's name keeps to one line and the key, which breaks at its hyphens,
-	   takes the rest: «BAC · credit / card (CSV)» broke beside a 300 px key (pass 9). Narrower, it wraps, or the
-	   name column would shrink to a word per line (tried at 600 px). */
-	@media (min-width: 1100px) {
-		.bank-file {
-			white-space: nowrap;
+	/* The columns keep their widths where the rows are a table: laid out by what they hold, a longer new name moved every
+	   column at once, 8 px in a frame and more with a longer name (pass 65 sweep). The name takes what is left. */
+	@media (min-width: 900px) {
+		table {
+			table-layout: fixed;
+		}
+		th:nth-child(2) {
+			width: 11rem;
+		}
+		th:nth-child(3) {
+			width: 6rem;
+		}
+		th:nth-child(n + 4) {
+			width: 24%;
+		}
+		td {
+			overflow-wrap: anywhere;
 		}
 	}
 	code {

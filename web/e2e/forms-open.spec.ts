@@ -4,6 +4,7 @@
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { expectFadedTop, expectGlidedTop, restTop, watchTop } from './frames.ts';
 import { unfold } from './forms.ts';
+import { ownLines } from './lines.ts';
 import { say } from './messages.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
@@ -212,6 +213,18 @@ test('a rule moved under an answer leaves the block standing, the answer fading'
 	await expect(ask).toHaveText(say('changes.check'));
 	await expectGlidedTop(page, 40);
 	await forget(page, [first, second]);
+});
+
+test('on a phone the fold of a new account names its key on one line', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 360, height: 800 });
+	await page.goto('/accounts');
+	await page.locator('#new-account').click();
+	await page.getByLabel(say('accounts.name'), { exact: true }).fill('BAC Corriente');
+	// Running on after the words, it broke at its hyphen and «corriente» stood alone (pass 65).
+	const key = page.locator('form details summary code');
+	await expect(key).toHaveText('bac-corriente');
+	expect(await ownLines(key)).toBe(1);
 });
 
 test('at rest a fold cuts no ring of the fields at its edges', async ({ context }) => {

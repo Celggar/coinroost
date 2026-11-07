@@ -472,6 +472,24 @@ test('on a short phone, a file the account cannot read says why above the bottom
 	await expect(account).toBeInViewport();
 });
 
+test('on a phone, a long account name reads whole under the list that cuts it', async ({
+	context
+}) => {
+	const page = await loggedIn(context);
+	await page.setViewportSize({ width: 390, height: 844 });
+	const name = 'The family checking account, in the name of both its holders';
+	await page.route('**/api/v1/accounts', async (route) => {
+		const response = await route.fetch();
+		const json = await response.json();
+		json.items.find((a: { name: string }) => a.name === 'Checking').name = name;
+		await route.fulfill({ response, json });
+	});
+	await page.goto('/import');
+	await page.getByLabel(say('import.choose')).setInputFiles(statement);
+	const card = page.getByRole('article', { name: 'input.csv' });
+	await expect(card.locator('.form-field .hint')).toContainText(name);
+});
+
 test('a failed recovery status offers no codes to make', async ({ context }) => {
 	const page = await loggedIn(context);
 	// «Crear códigos» while the status is unknown would replace codes the person may already have.
