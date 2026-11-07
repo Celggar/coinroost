@@ -212,6 +212,25 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				await press(page, `sign-in refused ${size}`, send, refused, 32);
 			});
 
+			test(`the login's second step at ${size}`, async ({ context }) => {
+				const page = await context.newPage();
+				await page.emulateMedia({ reducedMotion: motion });
+				await page.setViewportSize({ width, height });
+				await page.goto('/login');
+				const swap = (key: 'login.use_recovery' | 'login.use_code') =>
+					page.getByRole('button', { name: say(key), exact: true });
+				await expect(swap('login.use_recovery')).toBeVisible();
+				const line = (key: 'login.subtitle' | 'login.recovery_subtitle') => () =>
+					expect(page.getByText(say(key), { exact: true })).toBeVisible();
+				await press(
+					page,
+					`login to recovery ${size}`,
+					swap('login.use_recovery'),
+					line('login.recovery_subtitle')
+				);
+				await press(page, `login to code ${size}`, swap('login.use_code'), line('login.subtitle'));
+			});
+
 			test(`a category's error at ${size}`, async ({ context }) => {
 				const page = await opened(context, width, height);
 				for (const n of [1, 2, 3, 4, 5, 6]) {

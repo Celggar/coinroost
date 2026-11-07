@@ -392,6 +392,7 @@
 	"setup.wrong_code": "The code does not match. Wait for the next one (they change every 30 seconds) and try again.",
 	"auth.tagline": "Your household's finances, on your own server.",
 	"login.subtitle": "Email, password and the code from your app.",
+	"login.recovery_subtitle": "Email, password and a saved recovery code.",
 	"password.show": "Show",
 	"password.hide": "Hide",
 	"password.shown": "The password is visible on screen",

@@ -14,6 +14,7 @@
 	import { pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh, session } from '#lib/session.svelte.ts';
 	import { check, focusFirst, single } from '#lib/ui/form.ts';
+	import { showWhole } from '#lib/ui/landing.ts';
 
 	let email = $state('');
 	let password = $state('');
@@ -76,8 +77,11 @@
 		recovering = !recovering;
 		error.clear();
 		await tick();
-		if (recovering) recoveryField?.focus();
-		else codeField?.focus();
+		// The page does not follow the focus in a frame: on a short window it went 24 px at once. It goes once the step has come.
+		if (recovering) recoveryField?.focus({ preventScroll: true });
+		else codeField?.focus({ preventScroll: true });
+		const field = document.activeElement;
+		if (field instanceof HTMLInputElement) await showWhole(field);
 	}
 
 	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
@@ -98,7 +102,12 @@
 <AuthShell>
 	<div>
 		<h1>{t('login.title')}</h1>
-		<p class="lead">{t('login.subtitle')}</p>
+		<!-- Both lines hold one cell, the hidden one keeping its room: where they wrap differently the form under them would
+		     jump a line at each switch. -->
+		<div class="leads">
+			<p class="lead" class:away={recovering}>{t('login.subtitle')}</p>
+			<p class="lead" class:away={!recovering}>{t('login.recovery_subtitle')}</p>
+		</div>
 	</div>
 	<form novalidate oninput={edited} class="stack" onsubmit={submit}>
 		<label>
@@ -160,6 +169,24 @@
 </AuthShell>
 
 <style>
+	/* A fade through, in step with the second step under it: the new line waits for the old one to leave, as `stepIn` does. */
+	.leads {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.leads > p {
+		grid-area: 1 / 1;
+		transition:
+			opacity var(--duration-medium) var(--ease-enter) 200ms,
+			visibility 0s 200ms;
+	}
+	.leads > .away {
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity var(--duration-short) var(--ease-exit),
+			visibility 0s var(--duration-short);
+	}
 	/* The two second steps take turns in one cell, sliding like the setup steps. */
 	.second {
 		display: grid;
