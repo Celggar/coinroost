@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { watchDrops } from './focus.ts';
 import { say } from './messages.ts';
-import { postLegs, unfold } from './forms.ts';
+import { checkByHand, postLegs, unfold } from './forms.ts';
 import { makeRules } from './rules.ts';
 import { still } from './scroll.ts';
 import { totp } from './totp.ts';
@@ -578,25 +578,5 @@ test('importing keeps the rows table still while each status changes', async () 
 	expect(await edges()).toEqual(before);
 });
 
-test('by hand, only what cancels a leg is offered, and one reason is said once', async () => {
-	await postLegs(page, 'Propias', 'MANO', [
-		['Corriente', -70000, '2026-03-02'],
-		['Ahorro', 70000, '2026-03-20'],
-		['Ahorro', 90000, '2026-03-02']
-	]);
-	await page.goto('/transfers');
-	await expect(page.getByText(say('legs.no_counterpart'))).toHaveCount(1);
-	const form = page.getByRole('form', { name: say('unmatched.by_hand') });
-	const one = form.getByLabel(say('unmatched.one_side'));
-	const other = form.getByLabel(say('unmatched.other_side'));
-	const odd = '2 mar 2026 · Ahorro · +$900.00 · MANO';
-	await other.selectOption({ label: odd });
-	await one.selectOption({ label: '2 mar 2026 · Corriente · −$700.00 · MANO' });
-	await expect(other).toHaveValue('');
-	await expect(other.getByRole('option', { name: odd })).toBeDisabled();
-	await expect(
-		other.getByRole('option', { name: '20 mar 2026 · Ahorro · +$700.00' })
-	).toBeEnabled();
-	await one.selectOption({ label: odd });
-	await expect(form.getByText(say('unmatched.nothing_fits'))).toBeVisible();
-});
+test('by hand, only what cancels a leg is offered, and one reason is said once', () =>
+	checkByHand(page));
