@@ -3,7 +3,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { day, LIST, money } from '#lib/format.ts';
 	import { plural, t } from '#lib/i18n.svelte.ts';
-	import { fadeThrough, followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
+	import { FADED, fadeThrough, followContent, glide, rise, swapIn, swapOut } from '#lib/motion.ts';
 	import { vanishRow } from '#lib/ui/hold-room.ts';
 	import { focusOn } from '#lib/ui/focus.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
@@ -140,8 +140,9 @@
 	<div class="stack">
 		{#if !inline}
 			{#if opened}
-				<h2 id="changes-title" in:rise|global>{t('changes.title')}</h2>
-				<p class="hint" in:rise|global>{t('changes.hint')}</p>
+				<!-- They wait for the button going down to clear them: text on text for 100 ms (pass 64). -->
+				<h2 id="changes-title" in:rise|global={{ delay: FADED }}>{t('changes.title')}</h2>
+				<p class="hint" in:rise|global={{ delay: FADED }}>{t('changes.hint')}</p>
 			{/if}
 			<div class="actions">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus to the page while it works. `data-flip`: it goes down
@@ -207,6 +208,8 @@
 	.follows {
 		position: relative;
 		overflow: clip;
+		/* Past the border: in the first frame of the card a button lost its bottom line, 1.57 px at 390 (pass 64). */
+		overflow-clip-margin: 2px;
 		align-content: start;
 	}
 	/* Inline it has no padding to keep them in, and an answer's ring stood cut to its right bar (pass 40): it lends itself

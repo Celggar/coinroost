@@ -246,10 +246,11 @@
 
 <style>
 	/* Side by side the two cards share their height and their rows: each has a title and a hint line (pass 1). */
+	/* The page's gap: with 12 px the two cards stood closer than the rest (pass 64). */
 	.rankings {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-		gap: var(--space-md);
+		gap: var(--space-lg);
 	}
 	.rankings > :global(.card) {
 		align-content: start;

@@ -175,9 +175,12 @@
 		</Field>
 	</div>
 	<details bind:open={advanced} ontoggle={follow}>
+		<!-- One span: as flex items the words and the key took a column each on a phone, and a line ended in «·» (pass 64). -->
 		<summary>
-			{t('accounts.advanced')} · {t('accounts.key').toLowerCase()}
-			<code>{key || '…'}</code>
+			<span
+				>{t('accounts.advanced')} · {t('accounts.key').toLowerCase()}
+				<code>{key || '…'}</code></span
+			>
 		</summary>
 		<div class="fields advanced">
 			<Field
