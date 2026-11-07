@@ -392,6 +392,7 @@
 	"setup.wrong_code": "El código no coincide. Espera el siguiente (cambian cada 30 segundos) y vuelve a intentarlo.",
 	"auth.tagline": "Las finanzas de tu hogar, en tu propio servidor.",
 	"login.subtitle": "Correo, contraseña y el código de tu app.",
+	"login.recovery_subtitle": "Usa uno de tus códigos de recuperación.",
 	"password.show": "Mostrar",
 	"password.hide": "Ocultar",
 	"password.shown": "La contraseña se ve en pantalla",
