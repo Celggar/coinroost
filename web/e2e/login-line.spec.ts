@@ -131,3 +131,38 @@ test('pressed back and forth at once the line ends with the mode, and a new lang
 	await expect(page.getByText(english('login.recovery_subtitle'), { exact: true })).toBeVisible();
 	await expect(page.getByText(english('login.subtitle'), { exact: true })).toBeHidden();
 });
+
+test('a press beside the switch while the steps trade places leaves the focus in the field', async ({
+	page
+}) => {
+	await page.goto('/login');
+	const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
+	await expect(swap).toBeVisible();
+	await settled(page);
+	const card = (await page.locator('.glass').boundingBox())!;
+	await swap.click();
+	await page.mouse.click(card.x + 8, card.y + 8);
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
+});
+
+test('with the field in sight the switch leaves the page where it stands', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 600 });
+	await page.goto('/login');
+	const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
+	await expect(swap).toBeVisible();
+	await settled(page);
+	await page.evaluate(() => scrollTo(0, 84));
+	await swap.dispatchEvent('click');
+	// 60 frames: the page went 36 px about 600 ms after the press, to a line no field asked for.
+	const moved = await page.evaluate(async () => {
+		const from = scrollY;
+		let most = 0;
+		for (let frame = 0; frame < 60; frame++) {
+			await new Promise(requestAnimationFrame);
+			most = Math.max(most, Math.abs(scrollY - from));
+		}
+		return most;
+	});
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeInViewport({ ratio: 1 });
+	expect(moved).toBe(0);
+});
