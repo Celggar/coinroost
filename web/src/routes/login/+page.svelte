@@ -11,16 +11,17 @@
 	import FormAlert from '#lib/auth/FormAlert.svelte';
 	import PasswordField from '#lib/auth/PasswordField.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
-	import { pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
+	import { DURATION, FADED, pop, stepIn, stepOut, vanish } from '#lib/motion.ts';
 	import { refresh, session } from '#lib/session.svelte.ts';
 	import { check, focusFirst, single } from '#lib/ui/form.ts';
-	import { showWhole } from '#lib/ui/landing.ts';
+	import { inView, showWhole } from '#lib/ui/landing.ts';
 
 	let email = $state('');
 	let password = $state('');
 	let code = $state('');
 	let recoveryCode = $state('');
 	let recovering = $state(false);
+	let switched = -Infinity;
 	let recoveryField: HTMLInputElement | undefined = $state();
 	const error = new Alert();
 
@@ -75,13 +76,22 @@
 		for (const field of form?.querySelectorAll('[aria-invalid]') ?? [])
 			field.removeAttribute('aria-invalid');
 		recovering = !recovering;
+		switched = performance.now();
 		error.clear();
 		await tick();
-		// The page does not follow the focus in a frame: on a short window it went 24 px at once. It goes once the step has come.
+		// The page does not follow the focus in a frame: on a short window it went 24 px at once. It goes once the step has come,
+		// and only for a field out of sight: with one in sight it moved for nothing (pass 68).
 		if (recovering) recoveryField?.focus({ preventScroll: true });
 		else codeField?.focus({ preventScroll: true });
 		const field = document.activeElement;
-		if (field instanceof HTMLInputElement) await showWhole(field);
+		if (field instanceof HTMLInputElement && !inView(field)) await showWhole(field);
+	}
+
+	/** A press that misses while the two steps trade places, the switch gone from under it, leaves the focus in the field: the
+	 * third of three quick presses fell on the card and dropped it to the page (pass 68). */
+	function keepField(event: MouseEvent) {
+		if (performance.now() - switched > FADED + DURATION.medium) return;
+		if (!(event.target as Element).closest('a, button, input, label')) event.preventDefault();
 	}
 
 	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
@@ -94,6 +104,8 @@
 		return true;
 	}
 </script>
+
+<svelte:window onmousedown={keepField} />
 
 <svelte:head>
 	<title>{t('app.title', { page: t('login.title') })}</title>
