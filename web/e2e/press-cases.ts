@@ -181,7 +181,9 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 				const cancel = page.getByRole('button', { name: say('accounts.cancel') });
 				const back = () => expect(add).toBeFocused();
 				await press(page, `account cancel ${size}`, cancel, back, closing(width));
-				for (const name of [`Aaa ${size}`, `Zzz ${size}`]) {
+				// The long one: a table laid out by what it holds moves every column for it.
+				const long = `Zzz ${size} with a name long enough to widen its own column`;
+				for (const name of [`Aaa ${size}`, long]) {
 					await add.click();
 					await still(page);
 					const send = page.locator('form:has(input[name="name"]) [type="submit"]');
