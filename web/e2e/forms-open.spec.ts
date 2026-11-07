@@ -225,6 +225,10 @@ test('on a phone the fold of a new account names its key on one line', async ({ 
 	const key = page.locator('form details summary code');
 	await expect(key).toHaveText('bac-corriente');
 	expect(await ownLines(key)).toBe(1);
+	// With the room it runs on, each side of its dot apart.
+	await page.setViewportSize({ width: 1280, height: 800 });
+	const words = `${say('accounts.advanced')} · ${say('accounts.key').toLowerCase()}`;
+	await expect(page.locator('form details summary')).toContainText(words);
 });
 
 test('at rest a fold cuts no ring of the fields at its edges', async ({ context }) => {

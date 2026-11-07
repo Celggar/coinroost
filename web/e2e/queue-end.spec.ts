@@ -108,3 +108,18 @@ test('«Aplicar» that empties the queue falls in confetti, as the last choice b
 	await expect(page.locator('body > div[aria-hidden="true"]')).toBeAttached();
 	await page.close();
 });
+
+test('from 900 px, with one account, a row stands on one line', async ({ context }) => {
+	await fill(context, [spend('One line', -1000)]);
+	const page = await queue(context);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	const row = rows(page).first();
+	const centre = (selector: string) =>
+		row.locator(selector).evaluate((e) => {
+			const { top, height } = e.getBoundingClientRect();
+			return top + height / 2;
+		});
+	await expect(row.locator('.account')).toHaveCount(0);
+	// The second line of the row, for an account's name, stayed open and the description stood 10 px over the rest (pass 66).
+	expect(Math.abs((await centre('.description')) - (await centre('.date')))).toBeLessThan(1);
+});

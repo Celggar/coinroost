@@ -279,3 +279,20 @@ export function vanishRow(node: HTMLElement): TransitionConfig {
 	if (list) node.style.gridTemplateColumns = getComputedStyle(list).gridTemplateColumns;
 	return vanish(node);
 }
+
+/** A table lays itself out by what it holds, so a new row can move every column in a frame: 8 px for a short name, more for a
+ * long one (pass 65 sweep); columns of fixed widths left the name 49 px at 900 (pass 66). Called before the change; what it
+ * gives, called after it, sends each cell there in a glide. Under reduced motion they fade there. */
+export function glideColumns(table: HTMLElement | undefined) {
+	const cells = [...(table?.querySelectorAll<HTMLElement>('th, td') ?? [])];
+	const lefts = cells.map((cell) => cell.getBoundingClientRect().left);
+	return () => {
+		const still = prefersReducedMotion.current;
+		cells.forEach((cell, i) => {
+			const side = lefts[i] - cell.getBoundingClientRect().left;
+			if (Math.abs(side) < 1) return;
+			const frames = still ? { opacity: [0, 1] } : { transform: [`translateX(${side}px)`, 'none'] };
+			cell.animate(frames, { duration: DURATION.medium, easing: EASE_CSS.standard });
+		});
+	};
+}

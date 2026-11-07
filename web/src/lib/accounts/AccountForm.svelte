@@ -178,7 +178,7 @@
 		<!-- One span: as flex items the words and the key took a column each on a phone, and a line ended in «·» (pass 64). -->
 		<summary>
 			<span
-				>{t('accounts.advanced')}<span class="between"> · </span><span class="key"
+				>{t('accounts.advanced')}<span class="between">{' · '}</span><span class="key"
 					>{t('accounts.key').toLowerCase()} <code>{key || '…'}</code></span
 				></span
 			>

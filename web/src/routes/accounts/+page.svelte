@@ -7,7 +7,7 @@
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
 	import { arrive, glide, placeholder, rise, vanish } from '#lib/motion.ts';
-	import { firstRoom, follow, glideRoom, openRoom } from '#lib/ui/hold-room.ts';
+	import { firstRoom, follow, glideColumns, glideRoom, openRoom } from '#lib/ui/hold-room.ts';
 	import { showWhole } from '#lib/ui/landing.ts';
 
 	let accounts = $state<Schemas['Account'][]>([]);
@@ -54,9 +54,11 @@
 	async function created(account: Schemas['Account']) {
 		const first = !accounts.length;
 		const before = list?.offsetHeight ?? 0;
+		const columns = glideColumns(list);
 		accounts = [...accounts, account].sort((a, b) => a.name.localeCompare(b.name));
 		adding = false;
 		await tick();
+		columns();
 		// What follows the table goes with its new row: a row of a table takes no height of its own, 39 px in a frame at 1280 and
 		// 191 on a phone (pass 62).
 		if (first) firstRoom(list, before);
@@ -112,7 +114,9 @@
 									<td data-label={t('accounts.name')}>{account.name}</td>
 									<td data-label={t('accounts.kind')} class="kind">{kindName(account.kind)}</td>
 									<td data-label={t('accounts.currency')}>{account.currency}</td>
-									<td data-label={t('accounts.bank_file')}>{profileName(account.profile)}</td>
+									<td class="bank-file" data-label={t('accounts.bank_file')}
+										>{profileName(account.profile)}</td
+									>
 									<td data-label={t('accounts.key')}><code>{account.namespace}</code></td>
 								</tr>
 							{/each}
@@ -150,23 +154,12 @@
 		display: flex;
 		flex-direction: column;
 	}
-	/* The columns keep their widths where the rows are a table: laid out by what they hold, a longer new name moved every
-	   column at once, 8 px in a frame and more with a longer name (pass 65 sweep). The name takes what is left. */
-	@media (min-width: 900px) {
-		table {
-			table-layout: fixed;
-		}
-		th:nth-child(2) {
-			width: 11rem;
-		}
-		th:nth-child(3) {
-			width: 6rem;
-		}
-		th:nth-child(n + 4) {
-			width: 24%;
-		}
-		td {
-			overflow-wrap: anywhere;
+	/* Where the table has the room, a bank file's name keeps to one line and the key, which breaks at its hyphens,
+	   takes the rest: «BAC · credit / card (CSV)» broke beside a 300 px key (pass 9). Narrower, it wraps, or the
+	   name column would shrink to a word per line (tried at 600 px). */
+	@media (min-width: 1100px) {
+		.bank-file {
+			white-space: nowrap;
 		}
 	}
 	code {

@@ -185,6 +185,12 @@
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
+	/* With no account under it, it stands with the rest of the row: alone on the first line, 10 px above them (pass 66). */
+	@media (min-width: 900px) {
+		.row:not(:has(.account)) .description {
+			grid-row: span 2;
+		}
+	}
 	/* The space before it opens the gap on one line and goes at a wrap, so a line that starts with the arrow starts under the
 	   text above; the drawing's own margin in its box comes back here: it stood 5 px to the right (pass 47). */
 	.description :global(.arrow) {
