@@ -6,6 +6,7 @@
 	import LanguageSwitch from '#lib/LanguageSwitch.svelte';
 	import { t } from '#lib/i18n.svelte.ts';
 	import Icon from '#lib/nav/Icon.svelte';
+	import InstallApp from '#lib/nav/InstallApp.svelte';
 	import { logOut, session } from '#lib/session.svelte.ts';
 
 	// On a wide screen the rail holds all of this, so «Más» is no page there: a wide window, or a phone window made
@@ -47,6 +48,8 @@
 		<h2 id="language-title">{t('more.language')}</h2>
 		<LanguageSwitch wide />
 	</section>
+
+	<InstallApp />
 
 	<button class="secondary leave" onclick={leave}><Icon name="logout" />{t('nav.log_out')}</button>
 	{#if session.user}
