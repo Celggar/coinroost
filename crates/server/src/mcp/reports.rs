@@ -9,7 +9,7 @@ use rmcp::{ErrorData, tool, tool_router};
 use serde_json::{Value, json};
 
 use super::Tools;
-use super::client::{Named, decimal, outcome, with_query};
+use super::client::{Named, decimal, limit, outcome, with_query};
 use super::read::{AsOf, Period, TopPayees};
 
 fn money(value: &Value, currency: &Value) -> Value {
@@ -150,13 +150,12 @@ impl Tools {
         outcome(
             async {
                 let client = self.client(&parts)?;
-                let limit = args.limit.unwrap_or(15).clamp(1, 50).to_string();
                 let uri = with_query(
                     "/api/v1/reports/payees",
                     &[
                         ("from", Some(args.from)),
                         ("to", Some(args.to)),
-                        ("limit", Some(limit)),
+                        ("limit", Some(limit(args.limit, 15))),
                     ],
                 );
                 let report = client.get(&uri).await?;

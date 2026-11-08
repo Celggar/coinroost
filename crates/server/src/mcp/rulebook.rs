@@ -1,5 +1,5 @@
-//! The tools that keep the rules: add, reorder, and apply them to existing transactions after a preview. Like every
-//! writer, they go through the API with the caller's token.
+//! The tools that keep the rules: list them a page at a time, add, reorder, and apply them to existing transactions
+//! after a preview. Like every tool, they go through the API with the caller's token.
 
 use std::collections::HashMap;
 
@@ -14,7 +14,18 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::Tools;
-use super::client::{Named, decimal, minor_of, optional, outcome};
+use super::client::{Named, decimal, limit, minor_of, optional, outcome, with_query};
+use super::read::name_of;
+
+#[derive(Deserialize, JsonSchema)]
+pub struct RuleFilter {
+    /// Only rules whose name, or the text they look for, contains this text, upper or lower case alike.
+    text: Option<String>,
+    /// At most this many, first one first (default 25, at most 50).
+    limit: Option<i64>,
+    /// The `next_cursor` of the previous answer, with the same text: the rules after it.
+    cursor: Option<String>,
+}
 
 #[derive(Deserialize, JsonSchema)]
 pub struct NewRule {
@@ -51,8 +62,70 @@ pub struct Apply {
     tag: String,
 }
 
+/// A rule as a short row with names instead of ids. Amounts follow the rule's account currency, as `create_rule`
+/// reads them; two decimals without an account.
+fn rule_row(
+    r: &Value,
+    accounts: &[Value],
+    categories: &HashMap<String, String>,
+    payees: &HashMap<String, String>,
+) -> Value {
+    let when = &r["when"];
+    let account = accounts.iter().find(|a| a["id"] == when["account_id"]);
+    let currency = account.and_then(|a| a["currency"].as_str()).unwrap_or("USD");
+    let amount = |v: &Value| v.as_i64().map(|m| decimal(m, currency));
+    json!({ "id": r["id"], "position": r["position"], "name": r["name"], "enabled": r["enabled"],
+            "when": { "text": when["description_contains"], "direction": when["direction"],
+                      "account": account.map_or(json!(""), |a| a["name"].clone()),
+                      "amount_min": amount(&when["amount_min"]), "amount_max": amount(&when["amount_max"]) },
+            "then": { "category": name_of(categories, &r["then"]["category_id"], ""),
+                      "payee": name_of(payees, &r["then"]["payee_id"], ""),
+                      "payee_from_text": r["then"]["payee_from_text"] } })
+}
+
 #[tool_router(router = rule_tools, vis = "pub(super)")]
 impl Tools {
+    #[tool(
+        description = "List the rules in order, a page at a time. The first enabled rule that matches a \
+                       transaction sets its category and payee; amounts in rules are decimal strings. `text` finds \
+                       rules by name or by the text they look for. `total` counts every match; while \
+                       `next_cursor` is not null more follow: pass it as `cursor` for the next page.",
+        annotations(read_only_hint = true, open_world_hint = false)
+    )]
+    async fn list_rules(
+        &self,
+        Parameters(args): Parameters<RuleFilter>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        outcome(
+            async {
+                let client = self.client(&parts)?;
+                let (categories, payees, accounts) = (
+                    client.names(Named::Category).await?,
+                    client.names(Named::Payee).await?,
+                    client.items(Named::Account).await?,
+                );
+                let uri = with_query(
+                    "/api/v1/rules",
+                    &[
+                        ("q", args.text),
+                        ("limit", Some(limit(args.limit, 25))),
+                        ("cursor", args.cursor),
+                    ],
+                );
+                let list = client.get(&uri).await?;
+                let rows: Vec<Value> = list["items"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|r| rule_row(r, &accounts, &categories, &payees))
+                    .collect();
+                Ok(json!({ "rules": rows, "total": list["total"], "next_cursor": list["next_cursor"] }))
+            }
+            .await,
+        )
+    }
+
     #[tool(
         description = "Add a rule at the end of the list. It sorts files imported from now on; existing \
                        transactions change only through preview_rules and apply_rules. WRITES: confirm first.",
