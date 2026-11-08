@@ -91,7 +91,10 @@
 	 * third of three quick presses fell on the card and dropped it to the page (pass 68). */
 	function keepField(event: MouseEvent) {
 		if (performance.now() - switched > FADED + DURATION.medium) return;
-		if (!(event.target as Element).closest('a, button, input, label')) event.preventDefault();
+		if ((event.target as Element).closest('a, button:enabled, input:enabled, label')) return;
+		event.preventDefault();
+		// Each press that misses holds the window open: a burst outlived it and its last press dropped the focus (pass 69).
+		switched = performance.now();
 	}
 
 	/** Stops a send the browser's checks refuse: one message in the page's language, the field marked and focused. */
