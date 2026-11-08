@@ -162,6 +162,24 @@ test('a burst of presses beside the switch leaves the focus in the field to its 
 	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
 });
 
+for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+	test(`a double press on the switch ends in the field of the step that stays (${reducedMotion})`, async ({
+		page
+	}) => {
+		await page.emulateMedia({ reducedMotion });
+		await page.goto('/login');
+		const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
+		await expect(swap).toBeVisible();
+		await settled(page);
+		const box = (await swap.boundingBox())!;
+		// The second press brings back the step that was leaving, shut for one more frame: under reduced motion its field
+		// lost the focus to the page, every time (pass 71).
+		await page.mouse.dblclick(box.x + 40, box.y + box.height / 2);
+		await page.waitForTimeout(1000);
+		await expect(page.locator('.swap:not([inert]) input:focus')).toHaveCount(1);
+	});
+}
+
 test('with the field in sight the switch leaves the page where it stands', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 600 });
 	await page.goto('/login');

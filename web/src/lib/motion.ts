@@ -225,9 +225,12 @@ function shut(node: Element) {
 		...node.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button, input')
 	].filter((control) => !control.disabled);
 	for (const control of controls) control.disabled = true;
+	// Its display too: hidden at once under reduced motion, a step brought back stayed hidden, unfocusable (pass 71).
+	const display = node.style.display;
 	const back = new MutationObserver(() => {
 		if (node.inert) return;
 		back.disconnect();
+		node.style.display = display;
 		for (const control of controls) control.disabled = false;
 	});
 	back.observe(node, { attributes: true, attributeFilter: ['inert'] });
