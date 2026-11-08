@@ -2,8 +2,9 @@ name: policy
 
 on:
   pull_request:
+  # `ci/` branches carry a commit that is about to land: their runs start while it is still under review.
   push:
-    branches: [main]
+    branches: [main, 'ci/**']
 
 permissions:
   contents: read
