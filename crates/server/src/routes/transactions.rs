@@ -19,8 +19,10 @@ use crate::validate;
 mod legs;
 #[macro_use]
 mod page;
+mod sums;
 use legs::{attach_legs, check_legs};
 use page::Cursor;
+use sums::CurrencySum;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -129,6 +131,11 @@ pub struct Transactions {
     total: i64,
     /// Present while more transactions follow this page: pass it as `cursor` to get them.
     next_cursor: Option<String>,
+    /// What every matching transaction adds up to, across every page, one entry per currency: spending counts
+    /// below zero, income and refunds above. Money moved between the household's own accounts adds nothing, as in
+    /// `/api/v1/summary`: neither a transfer (two legs, in one currency or across two) nor a one-leg transaction in a
+    /// transfer category, so the `sums` of a list of transfers are empty.
+    sums: Vec<CurrencySum>,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -136,6 +143,10 @@ pub struct Transactions {
 pub struct Filter {
     /// Only transactions with a leg on this account.
     account_id: Option<Uuid>,
+    /// Only transactions in this category.
+    category_id: Option<Uuid>,
+    /// Only transactions with this payee.
+    payee_id: Option<Uuid>,
     /// First date included.
     from: Option<Date>,
     /// Last date included.
@@ -155,9 +166,12 @@ pub struct Filter {
 }
 
 /// The household's transactions, newest first, a page at a time.
+///
+/// Besides the page, the answer counts every match (`total`) and adds up their money per currency (`sums`), so how
+/// much a category, a payee or a period comes to needs no paging.
 #[utoipa::path(get, path = "/api/v1/transactions", tag = "transactions", params(Filter),
     responses(
-        (status = OK, description = "A page of transactions with their legs, how many match, and where the next page starts", body = Transactions),
+        (status = OK, description = "A page of transactions with their legs, how many match, what they add up to, and where the next page starts", body = Transactions),
         (status = UNAUTHORIZED, description = "No valid session", body = Problem),
         (status = UNPROCESSABLE_ENTITY, description = "A filter or the cursor is not valid", body = Problem)))]
 async fn list_transactions(
@@ -165,20 +179,8 @@ async fn list_transactions(
     session: Session,
     Query(filter): Query<Filter>,
 ) -> ApiResult<Json<Transactions>> {
-    let limit = filter.limit.unwrap_or(DEFAULT_LIMIT);
-    if !(1..=MAX_LIMIT).contains(&limit) {
-        return Err(ApiError::invalid(
-            "limit_out_of_range",
-            format!("limit must be between 1 and {MAX_LIMIT}"),
-        ));
-    }
-    let text = filter.q.as_deref().map(str::trim);
-    if text.is_some_and(|q| q.is_empty() || q.chars().count() > 200) {
-        return Err(ApiError::invalid(
-            "search_length",
-            "q has 1 to 200 characters".to_owned(),
-        ));
-    }
+    let limit = validate::limit(filter.limit.unwrap_or(DEFAULT_LIMIT), MAX_LIMIT)?;
+    let text = validate::search(filter.q.as_deref())?;
     let after = filter.cursor.as_deref().map(Cursor::decode).transpose()?;
     let total: i64 = bind_filter!(
         sqlx::query_scalar(concat!("select count(*)", matching!())),
@@ -188,6 +190,7 @@ async fn list_transactions(
     )
     .fetch_one(&state.db)
     .await?;
+    let sums = sums::sums(&state.db, session.household_id, &filter, text).await?;
     // One row past the page says whether another page follows.
     let mut items: Vec<Transaction> = bind_filter!(
         sqlx::query_as(concat!(
@@ -195,9 +198,9 @@ async fn list_transactions(
             columns!("t."),
             matching!(),
             "
-           and ($8::date is null or t.date < $8
-                or (t.date = $8 and (t.created_at < $9 or (t.created_at = $9 and t.id > $10))))
-         order by t.date desc, t.created_at desc, t.id limit $11"
+           and ($10::date is null or t.date < $10
+                or (t.date = $10 and (t.created_at < $11 or (t.created_at = $11 and t.id > $12))))
+         order by t.date desc, t.created_at desc, t.id limit $13"
         )),
         session.household_id,
         filter,
@@ -215,6 +218,7 @@ async fn list_transactions(
         items,
         total,
         next_cursor,
+        sums,
     }))
 }
 
