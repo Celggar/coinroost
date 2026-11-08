@@ -11,6 +11,7 @@
 	import { crossFade } from '#lib/ui/cross-fade.ts';
 	import { foldClosed, foldCloses, foldOpens } from '#lib/ui/hold-room.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
+	import EmptyState from '#lib/ui/EmptyState.svelte';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
 	// Imported here, at the start: the browser hands its install prompt over once, early, whatever page is open.
 	import '#lib/install.svelte.ts';
@@ -75,6 +76,9 @@
 	}
 </script>
 
+<!-- Opened with no network, the app asks again as soon as the browser says it is back. -->
+<svelte:window ononline={() => session.offline && refresh()} />
+
 <svelte:document
 	onvisibilitychange={() => inApp && cameBack()}
 	onclick={foldOpens}
@@ -86,7 +90,19 @@
 	<title>{t('app.name')}</title>
 </svelte:head>
 
-{#if inApp}
+{#if session.offline}
+	<!-- In place of «Cargando…», on every page, the login too: nothing can load or log in without a network. It comes
+	     and leaves like that line, so the app fades in where it stood. -->
+	<div class="boot offline" in:arrive out:placeholder>
+		<h1>{t('offline.title')}</h1>
+		<EmptyState
+			icon="unknown"
+			text={t('offline.text')}
+			action={t('app.try_again')}
+			onclick={refresh}
+		/>
+	</div>
+{:else if inApp}
 	<a class="skip" href="#main">{t('nav.skip')}</a>
 	<!-- The app fades in once the session is known, after «Cargando…» has faded out: it appeared in one frame (P2
 	     round 11). Between pages the view transition cross-fades instead; this block stays. -->
@@ -175,6 +191,10 @@
 	}
 	.boot > p {
 		margin: 0;
+		padding: var(--space-lg);
+	}
+	/* The offline notice sits like a page: its title, then the card (the error page's layout). */
+	.offline {
 		padding: var(--space-lg);
 	}
 	/* First in the tab order, out of sight until it has the focus (WCAG 2.4.1). */

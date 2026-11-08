@@ -4,14 +4,26 @@
 	import Icon from '#lib/nav/Icon.svelte';
 	import type { IconName } from '#lib/nav/destinations.ts';
 
-	let { icon, text, href, action }: { icon: IconName; text: string; href: string; action: string } =
-		$props();
+	// The way on is a link, or a button where it is an action on this page (asking again with no network).
+	let {
+		icon,
+		text,
+		href,
+		action,
+		onclick
+	}: { icon: IconName; text: string; action: string } & (
+		{ href: string; onclick?: never } | { href?: never; onclick: () => void }
+	) = $props();
 </script>
 
 <div class="card empty">
 	<span class="icon"><Icon name={icon} size={28} /></span>
 	<p>{text}</p>
-	<a class="button" {href}>{action}</a>
+	{#if onclick}
+		<button class="button" type="button" {onclick}>{action}</button>
+	{:else}
+		<a class="button" {href}>{action}</a>
+	{/if}
 </div>
 
 <style>

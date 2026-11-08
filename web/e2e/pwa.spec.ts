@@ -76,9 +76,18 @@ test('the service worker keeps the app and never the API, and the app opens offl
 	await context.setOffline(true);
 	const offline = await page.goto('/rules');
 	expect(offline?.status()).toBe(200);
-	// The kept shell, not the browser's page for no connection.
+	// The kept shell, not the browser's page for no connection, and it says why nothing loads: the shell alone stayed on
+	// «Cargando…» for ever (pass 71), and the login showed the page that failed to load.
 	await expect(page.locator('body > .app')).toBeAttached();
+	await expect(page.getByRole('heading', { name: say('offline.title') })).toBeVisible();
+	await expect(page.getByText(say('app.loading'))).toHaveCount(0);
+	await page.goto('/login');
+	await expect(page.getByRole('heading', { name: say('offline.title') })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('error.failed_title') })).toHaveCount(0);
+	// Once the network is back the app carries on by itself, to the login here (this browser has no session).
 	await context.setOffline(false);
+	await expect(page.getByRole('heading', { name: say('login.title') })).toBeVisible();
+	await expect(page.getByRole('heading', { name: say('offline.title') })).toHaveCount(0);
 });
 
 test('«Más» offers to install where the browser hands a prompt over, and uses it once', async ({

@@ -2,9 +2,12 @@
 import { api, type Schemas } from '#lib/api/client.ts';
 import { i18n, pickedHere, setLocale, type Locale } from '#lib/i18n.svelte.ts';
 
-export const session = $state<{ user: Schemas['Me'] | null; checked: boolean }>({
+// `offline`: the check got no answer at all, the device has no network (an installed app opened without one). The
+// layout says so instead of «Cargando…», which waited for ever (pass 71), and asks again when the network is back.
+export const session = $state<{ user: Schemas['Me'] | null; checked: boolean; offline: boolean }>({
 	user: null,
-	checked: false
+	checked: false,
+	offline: false
 });
 
 // A session that ends (expired, logged out elsewhere) sends the person back to the login page: the layout
@@ -21,8 +24,13 @@ api.use({
 // does not wait for a second round trip. Each answer is used once: the next login asks again.
 let firstAccount: Promise<boolean> | undefined;
 
+// With no network the answer is «closed»: the login page then opens, under the layout's offline notice, instead of
+// failing to load.
 function askFirstAccount(): Promise<boolean> {
-	return api.GET('/api/v1/first-account').then(({ data }) => data?.open ?? false);
+	return api.GET('/api/v1/first-account').then(
+		({ data }) => data?.open ?? false,
+		() => false
+	);
 }
 
 export function firstAccountOpen(): Promise<boolean> {
@@ -33,7 +41,15 @@ export function firstAccountOpen(): Promise<boolean> {
 
 export async function refresh(): Promise<void> {
 	if (!session.checked) firstAccount ??= askFirstAccount();
-	const { data } = await api.GET('/api/v1/me');
+	let data: Schemas['Me'] | undefined;
+	try {
+		({ data } = await api.GET('/api/v1/me'));
+	} catch {
+		// No answer, not even an error status: the fetch itself failed.
+		session.offline = true;
+		return;
+	}
+	session.offline = false;
 	session.user = data ?? null;
 	// Someone is logged in, so the app has users: an answer asked before is stale.
 	if (data) {
