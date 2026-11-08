@@ -50,3 +50,26 @@ pub fn namespace(value: &str) -> ApiResult<String> {
                 .to_owned(),).at("namespace")))
     }
 }
+
+/// A search text, trimmed: 1 to 200 characters, or `None` when no search is asked for.
+pub fn search(q: Option<&str>) -> ApiResult<Option<&str>> {
+    let text = q.map(str::trim);
+    if text.is_some_and(|q| q.is_empty() || q.chars().count() > 200) {
+        return Err(ApiError::invalid(
+            "search_length",
+            "q has 1 to 200 characters".to_owned(),
+        ));
+    }
+    Ok(text)
+}
+
+/// How many items a page holds: 1 to `max`.
+pub fn limit(limit: i64, max: i64) -> ApiResult<i64> {
+    if !(1..=max).contains(&limit) {
+        return Err(ApiError::invalid(
+            "limit_out_of_range",
+            format!("limit must be between 1 and {max}"),
+        ));
+    }
+    Ok(limit)
+}

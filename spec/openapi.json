@@ -1325,11 +1325,41 @@
         "tags": [
           "rules"
         ],
-        "summary": "The household's rules, first one first.",
+        "summary": "The household's rules, first one first: every one that matches, or a page of them with `limit`.",
         "operationId": "list_rules",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Only rules whose name, or the text they look for, contains this text, upper or lower case alike.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many, first one first (1 to 200); every rule that matches when absent.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The `next_cursor` of the previous page, with the same `q`: the rules that follow it.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "The rules, first one first",
+            "description": "The rules that match, first one first, how many match, and where the next page starts",
             "content": {
               "application/json": {
                 "schema": {
@@ -1340,6 +1370,16 @@
           },
           "401": {
             "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The text, the limit or the cursor is not valid",
             "content": {
               "application/json": {
                 "schema": {
@@ -1765,12 +1805,33 @@
           "transactions"
         ],
         "summary": "The household's transactions, newest first, a page at a time.",
+        "description": "Besides the page, the answer counts every match (`total`) and adds up their money per currency (`sums`), so how\nmuch a category, a payee or a period comes to needs no paging.",
         "operationId": "list_transactions",
         "parameters": [
           {
             "name": "account_id",
             "in": "query",
             "description": "Only transactions with a leg on this account.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Only transactions in this category.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "payee_id",
+            "in": "query",
+            "description": "Only transactions with this payee.",
             "required": false,
             "schema": {
               "type": "string",
@@ -1846,7 +1907,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A page of transactions with their legs, how many match, and where the next page starts",
+            "description": "A page of transactions with their legs, how many match, what they add up to, and where the next page starts",
             "content": {
               "application/json": {
                 "schema": {
@@ -2709,6 +2770,24 @@
               "$ref": "#/components/schemas/AccountCoverage"
             },
             "description": "Every account, the most behind first."
+          }
+        }
+      },
+      "CurrencySum": {
+        "type": "object",
+        "description": "The signed total of one currency.",
+        "required": [
+          "currency",
+          "amount_minor"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minor units: below zero more money went out than came in."
           }
         }
       },
@@ -4168,7 +4247,8 @@
       "Rules": {
         "type": "object",
         "required": [
-          "items"
+          "items",
+          "total"
         ],
         "properties": {
           "items": {
@@ -4176,6 +4256,18 @@
             "items": {
               "$ref": "#/components/schemas/Rule"
             }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many rules match, across every page."
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Present while more rules follow this page: pass it as `cursor` to get them."
           }
         }
       },
@@ -4412,7 +4504,8 @@
         "type": "object",
         "required": [
           "items",
-          "total"
+          "total",
+          "sums"
         ],
         "properties": {
           "items": {
@@ -4432,6 +4525,13 @@
               "null"
             ],
             "description": "Present while more transactions follow this page: pass it as `cursor` to get them."
+          },
+          "sums": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencySum"
+            },
+            "description": "What every matching transaction adds up to, across every page, one entry per currency: spending counts\nbelow zero, income and refunds above. Money moved between the household's own accounts adds nothing, as in\n`/api/v1/summary`: neither a transfer (two legs, in one currency or across two) nor a one-leg transaction in a\ntransfer category, so the `sums` of a list of transfers are empty."
           }
         }
       },

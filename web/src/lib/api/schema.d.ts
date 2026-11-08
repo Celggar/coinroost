@@ -396,7 +396,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The household's rules, first one first. */
+        /** The household's rules, first one first: every one that matches, or a page of them with `limit`. */
         get: operations["list_rules"];
         put?: never;
         /** Adds a rule at a position. Transactions already there keep their category and payee. */
@@ -520,7 +520,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The household's transactions, newest first, a page at a time. */
+        /**
+         * The household's transactions, newest first, a page at a time.
+         * @description Besides the page, the answer counts every match (`total`) and adds up their money per currency (`sums`), so how
+         *     much a category, a payee or a period comes to needs no paging.
+         */
         get: operations["list_transactions"];
         put?: never;
         /** Records a transaction: one leg, or a transfer of two legs on different accounts that sum to zero. */
@@ -773,6 +777,15 @@ export interface components {
             today: string;
             /** @description Every account, the most behind first. */
             items: components["schemas"]["AccountCoverage"][];
+        };
+        /** @description The signed total of one currency. */
+        CurrencySum: {
+            currency: string;
+            /**
+             * Format: int64
+             * @description Minor units: below zero more money went out than came in.
+             */
+            amount_minor: number;
         };
         CurrentCode: {
             /** @description The 6-digit code the authenticator app shows now; spaces or dashes between its groups are fine. */
@@ -1296,6 +1309,13 @@ export interface components {
         };
         Rules: {
             items: components["schemas"]["Rule"][];
+            /**
+             * Format: int64
+             * @description How many rules match, across every page.
+             */
+            total: number;
+            /** @description Present while more rules follow this page: pass it as `cursor` to get them. */
+            next_cursor?: string | null;
         };
         RulesApplied: {
             applied: number;
@@ -1395,6 +1415,13 @@ export interface components {
             total: number;
             /** @description Present while more transactions follow this page: pass it as `cursor` to get them. */
             next_cursor?: string | null;
+            /**
+             * @description What every matching transaction adds up to, across every page, one entry per currency: spending counts
+             *     below zero, income and refunds above. Money moved between the household's own accounts adds nothing, as in
+             *     `/api/v1/summary`: neither a transfer (two legs, in one currency or across two) nor a one-leg transaction in a
+             *     transfer category, so the `sums` of a list of transfers are empty.
+             */
+            sums: components["schemas"]["CurrencySum"][];
         };
         /** @description One leg that may be half of a transfer, with its transaction. */
         TransferLeg: {
@@ -2514,14 +2541,21 @@ export interface operations {
     };
     list_rules: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only rules whose name, or the text they look for, contains this text, upper or lower case alike. */
+                q?: string;
+                /** @description At most this many, first one first (1 to 200); every rule that matches when absent. */
+                limit?: number;
+                /** @description The `next_cursor` of the previous page, with the same `q`: the rules that follow it. */
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The rules, first one first */
+            /** @description The rules that match, first one first, how many match, and where the next page starts */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2532,6 +2566,15 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The text, the limit or the cursor is not valid */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2874,6 +2917,10 @@ export interface operations {
             query?: {
                 /** @description Only transactions with a leg on this account. */
                 account_id?: string;
+                /** @description Only transactions in this category. */
+                category_id?: string;
+                /** @description Only transactions with this payee. */
+                payee_id?: string;
                 /** @description First date included. */
                 from?: string;
                 /** @description Last date included. */
@@ -2895,7 +2942,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of transactions with their legs, how many match, and where the next page starts */
+            /** @description A page of transactions with their legs, how many match, what they add up to, and where the next page starts */
             200: {
                 headers: {
                     [name: string]: unknown;

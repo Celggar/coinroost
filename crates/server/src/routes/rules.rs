@@ -3,7 +3,7 @@
 //! as they are, and existing transactions change only through the preview and apply in `apply.rs`.
 
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use coinroost_rules::{PayeeAction, Rule as Check};
 use serde::{Deserialize, Serialize};
@@ -108,6 +108,10 @@ pub struct Rule {
 #[derive(Serialize, ToSchema)]
 pub struct Rules {
     items: Vec<Rule>,
+    /// How many rules match, across every page.
+    total: i64,
+    /// Present while more rules follow this page: pass it as `cursor` to get them.
+    next_cursor: Option<String>,
 }
 
 macro_rules! columns {
@@ -116,6 +120,8 @@ macro_rules! columns {
          category_id, payee_id, payee_from_text, created_at"
     };
 }
+
+mod page;
 
 /// The rule must be able to work; the text it looks for is kept as written.
 fn check(when: &Conditions, then: &Actions) -> ApiResult<()> {
@@ -175,21 +181,20 @@ async fn lock(db: &mut PgConnection, household_id: Uuid) -> ApiResult<i32> {
     Ok(count)
 }
 
-/// The household's rules, first one first.
-#[utoipa::path(get, path = "/api/v1/rules", tag = "rules",
+/// The household's rules, first one first: every one that matches, or a page of them with `limit`.
+#[utoipa::path(get, path = "/api/v1/rules", tag = "rules", params(page::RuleFilter),
     responses(
-        (status = OK, description = "The rules, first one first", body = Rules),
-        (status = UNAUTHORIZED, description = "No valid session", body = Problem)))]
-async fn list_rules(State(state): State<AppState>, session: Session) -> ApiResult<Json<Rules>> {
-    let items = sqlx::query_as(concat!(
-        "select ",
-        columns!(),
-        " from rules where household_id = $1 order by position"
-    ))
-    .bind(session.household_id)
-    .fetch_all(&state.db)
-    .await?;
-    Ok(Json(Rules { items }))
+        (status = OK, description = "The rules that match, first one first, how many match, and where the next page starts", body = Rules),
+        (status = UNAUTHORIZED, description = "No valid session", body = Problem),
+        (status = UNPROCESSABLE_ENTITY, description = "The text, the limit or the cursor is not valid", body = Problem)))]
+async fn list_rules(
+    State(state): State<AppState>,
+    session: Session,
+    Query(filter): Query<page::RuleFilter>,
+) -> ApiResult<Json<Rules>> {
+    page::list(&state.db, session.household_id, &filter)
+        .await
+        .map(Json)
 }
 
 /// Adds a rule at a position. Transactions already there keep their category and payee.

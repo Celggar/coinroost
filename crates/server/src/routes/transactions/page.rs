@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::Transaction;
 use crate::error::ApiError;
 
-/// The rows that match a `Filter`: `$1` the household, `$2`–`$7` the filters, in [`bind_filter`]'s order.
+/// The rows that match a `Filter`: `$1` the household, `$2`–`$9` the filters, in [`bind_filter`]'s order.
 macro_rules! matching {
     () => {
         " from transactions t
@@ -21,11 +21,12 @@ macro_rules! matching {
            and ($3::date is null or t.date >= $3) and ($4::date is null or t.date <= $4)
            and (not $5 or t.category_id is null)
            and (not $6 or (select count(*) from legs l where l.transaction_id = t.id) = 2)
-           and ($7::text is null or strpos(lower(t.description), lower($7)) > 0)"
+           and ($7::text is null or strpos(lower(t.description), lower($7)) > 0)
+           and ($8::uuid is null or t.category_id = $8) and ($9::uuid is null or t.payee_id = $9)"
     };
 }
 
-/// Binds `$1`–`$7` of [`matching`].
+/// Binds `$1`–`$9` of [`matching`].
 macro_rules! bind_filter {
     ($query:expr, $household:expr, $filter:expr, $text:expr) => {
         $query
@@ -36,6 +37,8 @@ macro_rules! bind_filter {
             .bind($filter.uncategorized)
             .bind($filter.transfers)
             .bind($text)
+            .bind($filter.category_id)
+            .bind($filter.payee_id)
     };
 }
 
