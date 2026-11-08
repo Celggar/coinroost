@@ -90,36 +90,72 @@ test('the service worker keeps the app and never the API, and the app opens offl
 	await expect(page.getByRole('heading', { name: say('offline.title') })).toHaveCount(0);
 });
 
-test('«Más» offers to install where the browser hands a prompt over, and uses it once', async ({
-	browser
-}) => {
-	await logIn(browser);
+/** «Más» with the browser's prompt handed over: a stand-in that counts its uses and answers `outcome`. */
+async function offered(
+	browser: Browser,
+	outcome: 'accepted' | 'dismissed',
+	reducedMotion: 'reduce' | 'no-preference' = 'no-preference'
+) {
 	const context = await browser.newContext({
 		storageState: session,
+		reducedMotion,
 		locale: 'es-PA',
 		viewport: { width: 390, height: 844 }
 	});
 	const page = await context.newPage();
 	await page.goto('/more');
 	await expect(page.getByRole('heading', { name: say('more.title') })).toBeVisible();
-	// The browser's prompt, a stand-in that counts its uses and is accepted.
-	await page.evaluate(() => {
+	await page.evaluate((outcome) => {
 		const w = window as unknown as { prompted: number };
 		w.prompted = 0;
 		const prompt = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
 			prompt: async () => void (w.prompted += 1),
-			userChoice: Promise.resolve({ outcome: 'accepted' })
+			userChoice: Promise.resolve({ outcome })
 		});
 		dispatchEvent(prompt);
-	});
+	}, outcome);
 	const install = page.getByRole('button', { name: say('install.button'), exact: true });
 	await expect(install).toBeVisible();
+	return { context, page, install };
+}
+
+test('«Más» offers to install where the browser hands a prompt over, and uses it once', async ({
+	browser
+}) => {
+	await logIn(browser);
+	const { context, page, install } = await offered(browser, 'accepted');
 	await install.click();
 	expect(await page.evaluate(() => (window as unknown as { prompted: number }).prompted)).toBe(1);
 	// Installed: nothing is offered any more.
 	await expect(page.getByRole('heading', { name: say('install.title') })).toHaveCount(0);
+	// The card left with the button pressed, and the focus with it to the page (pass 72): it goes to the card above.
+	await expect(page.getByRole('heading', { name: say('more.language') })).toBeFocused();
 	await context.close();
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test(`turned down from the keyboard, or installed from the browser itself, the card hands the focus over (${reducedMotion})`, async ({
+		browser
+	}) => {
+		const turnedDown = await offered(browser, 'dismissed', reducedMotion);
+		await turnedDown.install.focus();
+		await turnedDown.page.keyboard.press('Enter');
+		await expect(turnedDown.page.getByRole('heading', { name: say('install.title') })).toHaveCount(
+			0
+		);
+		await expect(
+			turnedDown.page.getByRole('heading', { name: say('more.language') })
+		).toBeFocused();
+		await turnedDown.context.close();
+		// The browser's own menu installs it while the button has the focus: the card leaves by no press of the person's.
+		const fromMenu = await offered(browser, 'accepted', reducedMotion);
+		await fromMenu.install.focus();
+		await fromMenu.page.evaluate(() => dispatchEvent(new Event('appinstalled')));
+		await expect(fromMenu.page.getByRole('heading', { name: say('install.title') })).toHaveCount(0);
+		await expect(fromMenu.page.getByRole('heading', { name: say('more.language') })).toBeFocused();
+		await fromMenu.context.close();
+	});
+}
 
 test('on an iPhone «Más» says how to add the app from the Share menu', async ({ browser }) => {
 	const context = await browser.newContext({
