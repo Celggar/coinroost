@@ -184,6 +184,14 @@ pub async fn optional(client: &Client<'_>, kind: Named, given: Option<&str>) -> 
     }
 }
 
+/// The most rows a tool lists in one answer, so an answer stays small enough for a client to take in.
+pub const MOST_ROWS: i64 = 50;
+
+/// How many rows to ask the API for: `given`, else `default`, held to 1 to [`MOST_ROWS`].
+pub fn limit(given: Option<i64>, default: i64) -> String {
+    given.unwrap_or(default).clamp(1, MOST_ROWS).to_string()
+}
+
 /// A path with its query, the values encoded; `None` values are left out.
 pub fn with_query(path: &str, pairs: &[(&str, Option<String>)]) -> String {
     let present: Vec<(&str, &str)> = pairs

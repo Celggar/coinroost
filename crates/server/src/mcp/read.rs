@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::Tools;
-use super::client::{Client, Failure, Named, decimal, outcome, with_query};
+use super::client::{Client, Failure, Named, decimal, limit, outcome, with_query};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct AccountFilter {
@@ -28,11 +28,15 @@ pub struct TransactionFilter {
     to: Option<String>,
     /// Only this account (name or id).
     account: Option<String>,
+    /// Only this category (name or id).
+    category: Option<String>,
+    /// Only this payee (name or id).
+    payee: Option<String>,
     /// Only transactions without a category.
     uncategorized: Option<bool>,
     /// Only transfers between the household's own accounts.
     transfers: Option<bool>,
-    /// At most this many, newest first (default 25, at most 200).
+    /// At most this many, newest first (default 25, at most 50).
     limit: Option<i64>,
     /// The `next_cursor` of the previous answer, with the same filters: the transactions after it.
     cursor: Option<String>,
@@ -46,7 +50,11 @@ pub struct Search {
     from: Option<String>,
     /// Last date included, YYYY-MM-DD.
     to: Option<String>,
-    /// At most this many, newest first (default 25, at most 200).
+    /// Only this category (name or id).
+    category: Option<String>,
+    /// Only this payee (name or id).
+    payee: Option<String>,
+    /// At most this many, newest first (default 25, at most 50).
     limit: Option<i64>,
     /// The `next_cursor` of the previous answer, with the same filters: the transactions after it.
     cursor: Option<String>,
@@ -76,7 +84,7 @@ pub struct AsOf {
     pub(super) as_of: Option<String>,
 }
 
-fn name_of(names: &HashMap<String, String>, id: &Value, none: &str) -> Value {
+pub(super) fn name_of(names: &HashMap<String, String>, id: &Value, none: &str) -> Value {
     id.as_str().map_or_else(
         || json!(none),
         |id| json!(names.get(id).map_or(id, String::as_str)),
@@ -112,11 +120,25 @@ async fn rows(client: &Client<'_>, list: &Value) -> Result<Value, Failure> {
                     "payee": name_of(&payees, &t["payee_id"], ""), "legs": legs })
         })
         .collect();
-    Ok(json!({ "transactions": rows, "total": list["total"], "next_cursor": list["next_cursor"] }))
+    let sums: Vec<Value> = list["sums"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|s| {
+            let currency = s["currency"].as_str().unwrap_or("USD");
+            json!({ "currency": currency, "amount": money_of(&s["amount_minor"], currency) })
+        })
+        .collect();
+    let (total, next_cursor) = (&list["total"], &list["next_cursor"]);
+    Ok(json!({ "transactions": rows, "total": total, "next_cursor": next_cursor, "sums": sums }))
 }
 
-fn limit(given: Option<i64>, default: i64, most: i64) -> String {
-    given.unwrap_or(default).clamp(1, most).to_string()
+/// The id of the item `given` names, when one is given.
+async fn id_of(client: &Client<'_>, kind: Named, given: Option<&str>) -> Result<Option<String>, Failure> {
+    match given {
+        Some(given) => Ok(Some(client.resolve_id(kind, given).await?)),
+        None => Ok(None),
+    }
 }
 
 fn money_of(value: &Value, currency: &str) -> Value {
@@ -173,50 +195,11 @@ impl Tools {
     }
 
     #[tool(
-        description = "List the rules in order. The first enabled rule that matches a transaction sets its \
-                       category and payee; amounts in rules are decimal strings.",
-        annotations(read_only_hint = true, open_world_hint = false)
-    )]
-    async fn list_rules(&self, Extension(parts): Extension<Parts>) -> Result<CallToolResult, ErrorData> {
-        outcome(
-            async {
-                let client = self.client(&parts)?;
-                let (categories, payees, accounts) = (
-                    client.names(Named::Category).await?,
-                    client.names(Named::Payee).await?,
-                    client.items(Named::Account).await?,
-                );
-                let rows: Vec<Value> = client
-                    .items(Named::Rule)
-                    .await?
-                    .iter()
-                    .map(|r| {
-                        let when = &r["when"];
-                        // Amounts follow the rule's account currency, as create_rule reads them; two decimals
-                        // without an account.
-                        let account = accounts.iter().find(|a| a["id"] == when["account_id"]);
-                        let currency = account.and_then(|a| a["currency"].as_str()).unwrap_or("USD");
-                        let amount = |v: &Value| v.as_i64().map(|m| decimal(m, currency));
-                        json!({ "id": r["id"], "position": r["position"], "name": r["name"], "enabled": r["enabled"],
-                                "when": { "text": when["description_contains"], "direction": when["direction"],
-                                          "account": account.map_or(json!(""), |a| a["name"].clone()),
-                                          "amount_min": amount(&when["amount_min"]),
-                                          "amount_max": amount(&when["amount_max"]) },
-                                "then": { "category": name_of(&categories, &r["then"]["category_id"], ""),
-                                          "payee": name_of(&payees, &r["then"]["payee_id"], ""),
-                                          "payee_from_text": r["then"]["payee_from_text"] } })
-                    })
-                    .collect();
-                Ok(json!({ "rules": rows }))
-            }
-            .await,
-        )
-    }
-
-    #[tool(
         description = "List transactions, newest first, with names for accounts, categories and payees. A \
                        transfer has two legs; spending is a negative amount. `total` counts every match; while \
-                       `next_cursor` is not null more follow: pass it as `cursor` for the next page.",
+                       `next_cursor` is not null more follow: pass it as `cursor`. `sums` is what every match adds \
+                       up to per currency, all pages included (money moved between own accounts adds nothing): \
+                       for \"how much\", filter and read `sums` instead of paging.",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     async fn list_transactions(
@@ -227,19 +210,22 @@ impl Tools {
         outcome(
             async {
                 let client = self.client(&parts)?;
-                let account = match args.account.as_deref() {
-                    Some(given) => Some(client.resolve_id(Named::Account, given).await?),
-                    None => None,
-                };
+                let (account, category, payee) = (
+                    id_of(&client, Named::Account, args.account.as_deref()).await?,
+                    id_of(&client, Named::Category, args.category.as_deref()).await?,
+                    id_of(&client, Named::Payee, args.payee.as_deref()).await?,
+                );
                 let uri = with_query(
                     "/api/v1/transactions",
                     &[
                         ("from", args.from),
                         ("to", args.to),
                         ("account_id", account),
+                        ("category_id", category),
+                        ("payee_id", payee),
                         ("uncategorized", args.uncategorized.map(|b| b.to_string())),
                         ("transfers", args.transfers.map(|b| b.to_string())),
-                        ("limit", Some(limit(args.limit, 25, 200))),
+                        ("limit", Some(limit(args.limit, 25))),
                         ("cursor", args.cursor),
                     ],
                 );
@@ -252,7 +238,8 @@ impl Tools {
     #[tool(
         description = "Find transactions whose description contains a text, upper or lower case alike; \
                        use it to find what to categorize or delete. `total` counts every match; while \
-                       `next_cursor` is not null more follow: pass it as `cursor` for the next page.",
+                       `next_cursor` is not null more follow: pass it as `cursor`. `sums` is what every match adds \
+                       up to per currency, all pages included (money moved between own accounts adds nothing).",
         annotations(read_only_hint = true, open_world_hint = false)
     )]
     async fn search_transactions(
@@ -263,13 +250,19 @@ impl Tools {
         outcome(
             async {
                 let client = self.client(&parts)?;
+                let (category, payee) = (
+                    id_of(&client, Named::Category, args.category.as_deref()).await?,
+                    id_of(&client, Named::Payee, args.payee.as_deref()).await?,
+                );
                 let uri = with_query(
                     "/api/v1/transactions",
                     &[
                         ("q", Some(args.text)),
                         ("from", args.from),
                         ("to", args.to),
-                        ("limit", Some(limit(args.limit, 25, 200))),
+                        ("category_id", category),
+                        ("payee_id", payee),
+                        ("limit", Some(limit(args.limit, 25))),
                         ("cursor", args.cursor),
                     ],
                 );
