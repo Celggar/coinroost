@@ -145,6 +145,23 @@ test('a press beside the switch while the steps trade places leaves the focus in
 	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
 });
 
+test('a burst of presses beside the switch leaves the focus in the field to its end', async ({
+	page
+}) => {
+	await page.goto('/login');
+	const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
+	await expect(swap).toBeVisible();
+	await settled(page);
+	const card = (await page.locator('.glass').boundingBox())!;
+	await swap.click();
+	// 400 ms apart: the last two fell past the 500 ms that followed the switch, and the field lost the focus to the page.
+	for (const press of [1, 2, 3]) {
+		await page.waitForTimeout(400);
+		await page.mouse.click(card.x + 8, card.y + 8 + press);
+	}
+	await expect(page.getByLabel(say('login.recovery_code'))).toBeFocused();
+});
+
 test('with the field in sight the switch leaves the page where it stands', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 600 });
 	await page.goto('/login');
