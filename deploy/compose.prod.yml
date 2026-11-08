@@ -18,6 +18,9 @@ services:
     networks: [data]
     mem_limit: 512m
     cpus: 1.0
+    # When the host runs short of memory the kernel kills the highest score first, and containers start at 0. At -500
+    # production goes after the development and test containers that share its host; -1000 would exempt it for good.
+    oom_score_adj: -500
     security_opt: [no-new-privileges:true]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
@@ -51,6 +54,8 @@ services:
     networks: [data, edge]
     mem_limit: 256m
     cpus: 1.0
+    # Same as db: production goes after the host's other containers when memory runs short.
+    oom_score_adj: -500
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
