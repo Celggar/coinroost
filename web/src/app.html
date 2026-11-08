@@ -6,6 +6,16 @@
 		<meta name="color-scheme" content="light dark" />
 		<meta name="robots" content="noindex" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<!-- With credentials: behind an access proxy the manifest is fetched without the cookie otherwise, is turned away, and
+		     the app cannot be installed. -->
+		<link
+			rel="manifest"
+			href="%sveltekit.assets%/manifest.webmanifest"
+			crossorigin="use-credentials"
+		/>
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9fbfb" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090b0c" />
 		%sveltekit.head%
 	</head>
 	<body>

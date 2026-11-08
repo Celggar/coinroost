@@ -12,6 +12,8 @@
 	import { foldClosed, foldCloses, foldOpens } from '#lib/ui/hold-room.ts';
 	import { i18n, t } from '#lib/i18n.svelte.ts';
 	import { logOut, refresh, session } from '#lib/session.svelte.ts';
+	// Imported here, at the start: the browser hands its install prompt over once, early, whatever page is open.
+	import '#lib/install.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();

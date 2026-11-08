@@ -11,7 +11,10 @@ export default defineConfig({
 	reporter: [['list']],
 	use: {
 		baseURL: process.env.BASE_URL,
-		trace: 'retain-on-failure'
+		trace: 'retain-on-failure',
+		// The app's service worker would answer the requests the tests stub with `page.route`: it is allowed only where a
+		// test is about it (pwa.spec.ts).
+		serviceWorkers: 'block'
 	},
 	// One browser: a second project would need a second login (see above); the phone width is its own test.
 	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
