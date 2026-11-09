@@ -137,6 +137,7 @@ Then point the client at `http://127.0.0.1:8080/mcp` with the header `Authorizat
 | Reports | `spending_summary`, `monthly_trend` (with the gaps between statements), `top_payees`, `payroll_status` |
 | Write | `create_transaction`, `update_transaction`, `categorize_transaction`, `delete_transaction`, `create_category` |
 | Rules | `create_rule`, `move_rule`, `preview_rules`, `apply_rules` |
+| Transfers | `transfers_waiting` (with why each leg waits and what could be its other side), `pair_waiting_transfers`, `pair_transfer`, `split_transfer` |
 
 Amounts go in and out as decimal strings in the account's currency (`"45.50"`), never rounded; accounts,
 categories, payees and rules are named by name or id. A category set through a tool counts as set by hand, so

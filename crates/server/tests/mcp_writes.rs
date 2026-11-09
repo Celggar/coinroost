@@ -4,7 +4,7 @@ mod common;
 
 use common::Api;
 use common::assistant::{Book, Mcp, book, find};
-use common::sorting::transactions;
+use common::sorting::{post, transactions};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -212,4 +212,76 @@ async fn a_category_set_through_the_tools_survives_the_rules(db: PgPool) {
             .await
             .is_err()
     );
+}
+
+#[sqlx::test]
+async fn transfers_wait_pair_and_split_through_the_api(db: PgPool) {
+    let api = Api::new(db.clone());
+    let book = book(&api).await;
+    let (mcp, t) = (Mcp::new(&db), book.token.as_str());
+    let leg = |date: &str, account: &str, minor: i64, description: &str| {
+        json!({ "date": date, "description": description, "category_id": book.own,
+                "legs": [{ "account_id": account, "amount_minor": minor }] })
+    };
+    let made = |body: Value| {
+        let (api, user) = (&api, &book.user);
+        async move { post(api, user, "/api/v1/transactions", body).await["id"].clone() }
+    };
+    // A pair the app is sure of (the only match within two days), and an ACH that lands ten days later.
+    made(leg("2026-05-02", &book.checking, -10000, "TO SAVINGS")).await;
+    made(leg("2026-05-03", &book.savings, 10000, "FROM CHECKING")).await;
+    let ach_out = made(leg("2026-05-10", &book.checking, -25000, "ACH TO SAVINGS")).await;
+    let ach_in = made(leg("2026-05-20", &book.savings, 25000, "ACH FROM CHECKING")).await;
+
+    let waiting = mcp.ok(t, "transfers_waiting", json!({})).await;
+    assert_eq!(
+        (&waiting["pairs_ready"], &waiting["unpaired"]),
+        (&json!(1), &json!(2))
+    );
+    assert_eq!(waiting["by_reason"], json!({ "no_counterpart": 2 }));
+    let pair = &waiting["pairs"][0];
+    assert_eq!(
+        (
+            &pair["outflow"]["account"],
+            &pair["outflow"]["amount"],
+            &pair["inflow"]["account"]
+        ),
+        (&json!("Checking"), &json!("-100.00"), &json!("Savings"))
+    );
+    let newest = &waiting["legs"][0];
+    assert_eq!(
+        (&newest["leg"]["transaction"], &newest["leg"]["amount"]),
+        (&ach_in, &json!("250.00"))
+    );
+    assert_eq!(newest["candidates"][0]["transaction"], ach_out);
+
+    // Only the pairs the person saw: a tag that is not the preview's pairs nothing.
+    let stale = mcp
+        .refused(t, "pair_waiting_transfers", json!({ "tag": "\"stale\"" }))
+        .await;
+    assert!(stale.contains("412"), "{stale}");
+    let tag = waiting["tag"].clone();
+    let done = mcp.ok(t, "pair_waiting_transfers", json!({ "tag": tag })).await;
+    assert_eq!(done["paired"], 1);
+
+    let paired = mcp
+        .ok(t, "pair_transfer", json!({ "transactions": [ach_out, ach_in] }))
+        .await;
+    assert_eq!(paired["transfer"], ach_out);
+    assert_eq!(
+        legs(&api, &book, &ach_out).await,
+        json!([[book.checking, -25000], [book.savings, 25000]])
+    );
+    assert!(stored(&api, &book, &ach_in).await.is_none());
+    let left = mcp.ok(t, "transfers_waiting", json!({})).await;
+    assert_eq!((&left["pairs_ready"], &left["unpaired"]), (&json!(0), &json!(0)));
+
+    let split = mcp.ok(t, "split_transfer", json!({ "id": ach_out })).await;
+    let parts = split["transactions"].as_array().unwrap();
+    assert_eq!(parts[0], ach_out);
+    assert_eq!(
+        legs(&api, &book, &ach_out).await,
+        json!([[book.checking, -25000]])
+    );
+    assert_eq!(legs(&api, &book, &parts[1]).await, json!([[book.savings, 25000]]));
 }

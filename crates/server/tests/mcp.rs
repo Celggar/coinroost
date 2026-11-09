@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 /// Every tool of the M7 table, sorted.
-const TOOLS: [&str; 19] = [
+const TOOLS: [&str; 23] = [
     "about",
     "apply_rules",
     "categorize_transaction",
@@ -25,11 +25,15 @@ const TOOLS: [&str; 19] = [
     "list_transactions",
     "monthly_trend",
     "move_rule",
+    "pair_transfer",
+    "pair_waiting_transfers",
     "payroll_status",
     "preview_rules",
     "search_transactions",
     "spending_summary",
+    "split_transfer",
     "top_payees",
+    "transfers_waiting",
     "update_transaction",
 ];
 

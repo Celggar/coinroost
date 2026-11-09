@@ -12,6 +12,7 @@ mod client;
 mod read;
 mod reports;
 mod rulebook;
+mod transfers;
 mod write;
 
 use std::sync::Arc;
@@ -52,7 +53,8 @@ impl Tools {
             tool_router: Tools::read_tools()
                 + Tools::report_tools()
                 + Tools::write_tools()
-                + Tools::rule_tools(),
+                + Tools::rule_tools()
+                + Tools::transfer_tools(),
         }
     }
 
