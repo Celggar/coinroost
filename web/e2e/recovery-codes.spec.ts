@@ -7,7 +7,7 @@ import { expectGlidedTop, watchTop } from './frames.ts';
 import { endsAlone } from './lines.ts';
 import { say, type Key } from './messages.ts';
 import { logOut } from './account.ts';
-import { still } from './scroll.ts';
+import { settled, still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 const invite = process.env.E2E_RECOVERY_INVITE ?? '';
@@ -282,12 +282,8 @@ test('the login swaps its second step by a fade through, the two never at once',
 	await page.goto('/login');
 	const swap = page.getByRole('button', { name: say('login.use_recovery'), exact: true });
 	await expect(swap).toBeVisible();
-	// Once the login's entrance has played (the glows run for ever and do not count).
-	await page.waitForFunction(() =>
-		document
-			.getAnimations()
-			.every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)
-	);
+	// Once the login's entrance has played.
+	await settled(page);
 	// Every frame: how many of the second step's blocks show in its one cell. Crossing, the code's hint and the
 	// recovery code's were drawn over each other halfway (pass 19).
 	await page.evaluate(() => {

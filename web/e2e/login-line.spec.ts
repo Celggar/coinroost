@@ -2,20 +2,11 @@
 // step asks for, and trading places moves nothing under it.
 import { expect, test, type Page } from '@playwright/test';
 import { catalogs, english, say, type Key } from './messages.ts';
-import { still } from './scroll.ts';
+import { settled, still } from './scroll.ts';
 
 test.use({ locale: 'es-PA' });
 
 const WIDTHS = [...Array.from({ length: 81 }, (_, i) => 320 + i), 600, 899, 900, 1280];
-
-/** Once the login's entrance has played (the glows run for ever and do not count). */
-async function settled(page: Page) {
-	await page.waitForFunction(() =>
-		document
-			.getAnimations()
-			.every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)
-	);
-}
 
 /** At each width, the form's distance from the title and the height of each line's text, whichever shows. The text's: the
  * cell stretches both boxes to the taller. */

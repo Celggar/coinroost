@@ -9,7 +9,7 @@ import { expectNotCut, expectPress, watchCut, watchPress } from './frames.ts';
 import { unfold } from './forms.ts';
 import { say } from './messages.ts';
 import { makeRules } from './rules.ts';
-import { still } from './scroll.ts';
+import { settled, still } from './scroll.ts';
 import { totp } from './totp.ts';
 
 export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | 'GLIDE') {
@@ -349,7 +349,9 @@ export function pressCases(motion: 'reduce' | 'no-preference', user: 'PRESS' | '
 			const next = 'article.card[aria-label="next.csv"]';
 			await expect(page.locator(next)).toBeVisible();
 			const once = async (label: string, shows: () => Promise<void>) => {
-				await still(page);
+				// The next card may still be fading in: that rise was its arrival's, and the swap's drop after it read as a second
+				// fade (D77, from 0.56 to 0.83). Watching starts once it has arrived.
+				await Promise.all([still(page), settled(page)]);
 				await page.evaluate(() => ((window as unknown as Shown).shown = {}));
 				await watchShown(page, '.reading');
 				await watchShown(page, next);

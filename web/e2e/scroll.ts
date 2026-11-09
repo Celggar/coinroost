@@ -9,3 +9,12 @@ export async function still(page: Page, every = 300): Promise<number> {
 		.toBe(true);
 	return last;
 }
+
+/** Once every animation with an end has played: what runs for ever (the login's glows) does not count. */
+export async function settled(page: Page) {
+	await page.waitForFunction(() =>
+		document
+			.getAnimations()
+			.every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)
+	);
+}
