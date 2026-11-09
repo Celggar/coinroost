@@ -607,5 +607,7 @@
 	"problem.too_many_shots": "Son hasta 10 capturas: quita alguna.",
 	"problem.image_too_large": "Una captura pesa más de lo permitido: quítala y vuelve a agregarla.",
 	"problem.image_type": "Una captura no es JPEG ni PNG: quítala y vuelve a agregarla.",
-	"problem.image_encoding": "Una captura llegó dañada: quítala y vuelve a agregarla."
+	"problem.image_encoding": "Una captura llegó dañada: quítala y vuelve a agregarla.",
+	"feedback.dropped_one": "Solo caben 10 capturas: 1 imagen no se agregó.",
+	"feedback.dropped_other": "Solo caben 10 capturas: {count} imágenes no se agregaron."
 }

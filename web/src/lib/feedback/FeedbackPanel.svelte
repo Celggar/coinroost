@@ -2,11 +2,12 @@
 	// The feedback panel: what kind of report, a message, and screenshots, each with its own note. A full-screen dialog on
 	// a phone, a side sheet on a wide screen. «Capturar esta pantalla» draws the screen under the panel; the draft
 	// outlives the panel, so a person can close it, go to another screen and capture that one into the same report.
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { api, problem } from '#lib/api/client.ts';
-	import { t } from '#lib/i18n.svelte.ts';
+	import { plural, t } from '#lib/i18n.svelte.ts';
 	import Icon from '#lib/nav/Icon.svelte';
-	import { glide, grow, vanish } from '#lib/motion.ts';
+	import { fadeThrough, glide, grow, vanish } from '#lib/motion.ts';
+	import { focusShown } from '#lib/ui/landing.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
@@ -25,10 +26,50 @@
 
 	let sheet = $state<Sheet>();
 	let picker = $state<HTMLInputElement>();
-	let error = $state('');
+	// Each error next to what it answers: a send's under the header that holds «Enviar», an added image's under the add
+	// buttons. Both at the form's end, a failed send said why 90 px below the screen, and «Enviar» seemed to do nothing
+	// (pass 77).
+	let sendError = $state('');
+	let addError = $state('');
+	let sendSlot = $state<HTMLElement>();
+	let addSlot = $state<HTMLElement>();
 	let busy = $state(false);
 	let capturing = $state(false);
 	const full = $derived(draft.shots.length >= MAX_SHOTS);
+	// Under the add buttons, what they take or why both are off; one replacing the other fades through, as a field's hint.
+	const addHint = $derived(full ? t('feedback.full') : t('feedback.shots_hint'));
+	let hintShown = $state(untrack(() => addHint));
+	let hintLine = $state<HTMLElement>();
+	let swapping = Promise.resolve();
+	$effect(() => {
+		const next = addHint;
+		untrack(() => {
+			if (next !== hintShown)
+				swapping = swapping.then(() => fadeThrough(hintLine, () => void (hintShown = addHint)));
+		});
+	});
+
+	/** Brings a message just said into sight inside the panel, the focus where it was, once the rows that came with it
+	 * have opened their room: measured while they grew, the message stood 700 px below the screen. */
+	async function show(slot: HTMLElement | undefined) {
+		await tick();
+		const said = slot?.querySelector<HTMLElement>('.alert');
+		const box = said?.closest('dialog');
+		if (!said || !box) return;
+		for (let wave = 0; wave < 4; wave++) {
+			await new Promise(requestAnimationFrame);
+			const running = box
+				.getAnimations({ subtree: true })
+				.filter(
+					(a) =>
+						a.effect?.getTiming().iterations !== Infinity &&
+						!said.contains((a.effect as KeyframeEffect | null)?.target ?? null)
+				);
+			if (!running.length) break;
+			await Promise.all(running.map((a) => a.finished.catch(() => undefined)));
+		}
+		if (said.isConnected) focusShown(said, said, false);
+	}
 
 	/** Before the panel goes: it lets the page have the focus back as it starts to leave. */
 	function close() {
@@ -41,31 +82,45 @@
 		document.querySelector<HTMLTextAreaElement>(`[data-note="${key}"]`)?.focus();
 	}
 
+	// aria-disabled while it draws, not disabled: a disabled button drops the focus to the page while it works (pass 17).
 	async function capture() {
-		error = '';
+		if (capturing || full) return;
+		addError = '';
 		capturing = true;
 		try {
 			const shot = await addShot(await captureScreen('dialog'));
 			await focusNote(shot.key);
 		} catch {
-			error = t('feedback.capture_failed');
+			addError = t('feedback.capture_failed');
+			await show(addSlot);
 		} finally {
 			capturing = false;
 		}
 	}
 
+	/** Every image that fits; what did not, and why, said under the buttons, the focus left on «Adjuntar». A file that is
+	 * no image takes no place. */
 	async function attach(files: FileList | null) {
-		error = '';
+		addError = '';
+		const said: string[] = [];
 		let last = 0;
-		for (const file of [...(files ?? [])].slice(0, MAX_SHOTS - draft.shots.length)) {
+		let dropped = 0;
+		for (const file of files ?? []) {
+			if (draft.shots.length >= MAX_SHOTS) {
+				dropped += 1;
+				continue;
+			}
 			try {
 				last = (await addShot(await fromFile(file))).key;
 			} catch {
-				error = t('feedback.not_image', { name: file.name });
+				said.push(t('feedback.not_image', { name: file.name }));
 			}
 		}
+		if (dropped) said.push(plural(dropped, 'feedback.dropped_one', 'feedback.dropped_other'));
 		if (picker) picker.value = '';
-		if (last) await focusNote(last);
+		addError = said.join(' ');
+		if (addError) await show(addSlot);
+		else if (last) await focusNote(last);
 	}
 
 	function remove(key: number, index: number) {
@@ -79,9 +134,10 @@
 	async function send(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy) return;
-		error = '';
+		sendError = '';
 		if (!draft.message.trim() && draft.shots.length === 0) {
-			error = t('feedback.empty');
+			sendError = t('feedback.empty');
+			await show(sendSlot);
 			return;
 		}
 		busy = true;
@@ -106,17 +162,18 @@
 				}
 			});
 			if (failed) {
-				error = problem(failed, response?.status, t('feedback.what'));
-				return;
+				sendError = problem(failed, response?.status, t('feedback.what'));
+			} else {
+				startOver();
+				notify(t('feedback.sent'));
+				close();
 			}
-			startOver();
-			notify(t('feedback.sent'));
-			close();
 		} catch {
-			error = problem(undefined, undefined, t('feedback.what'));
+			sendError = problem(undefined, undefined, t('feedback.what'));
 		} finally {
 			busy = false;
 		}
+		if (sendError) await show(sendSlot);
 	}
 </script>
 
@@ -129,6 +186,7 @@
 	onclose={close}
 >
 	<form id="feedback-form" class="panel" novalidate onsubmit={send}>
+		<div class="said" bind:this={sendSlot}><FormError text={sendError} /></div>
 		<Field label={t('feedback.kind')} name="kind">
 			{#snippet children(wiring)}
 				<select {...wiring} bind:value={draft.kind}>
@@ -146,7 +204,6 @@
 
 		<section class="shots" aria-labelledby="feedback-shots">
 			<h3 id="feedback-shots">{t('feedback.shots')}</h3>
-			<p class="hint">{full ? t('feedback.full') : t('feedback.shots_hint')}</p>
 			<!-- Always here, empty or not, so the first row comes into a list that is already there and plays its own transition. -->
 			<ol>
 				{#each draft.shots as shot, i (shot.key)}
@@ -178,13 +235,20 @@
 					type="button"
 					class="secondary"
 					data-capture
-					disabled={full || capturing}
+					disabled={full}
+					aria-disabled={capturing}
+					aria-describedby="feedback-add-hint"
 					onclick={capture}
 					><Icon name="camera" size={20} />{capturing
 						? t('feedback.capturing')
 						: t('feedback.capture')}</button
 				>
-				<button type="button" class="secondary" disabled={full} onclick={() => picker?.click()}
+				<button
+					type="button"
+					class="secondary"
+					disabled={full}
+					aria-describedby="feedback-add-hint"
+					onclick={() => picker?.click()}
 					><Icon name="image" size={20} />{t('feedback.attach')}</button
 				>
 				<input
@@ -196,9 +260,12 @@
 					onchange={(event) => attach(event.currentTarget.files)}
 				/>
 			</div>
+			<!-- What the two take, or why both are off, next to them: above the list, the reason stood far from the
+			     disabled buttons (pass 77). -->
+			<p class="hint" id="feedback-add-hint" bind:this={hintLine}>{hintShown}</p>
+			<div class="said" bind:this={addSlot}><FormError text={addError} /></div>
 		</section>
 
-		<FormError text={error} />
 		<p class="hint">{t('feedback.private')}</p>
 		<a href="/feedback" onclick={close}>{t('feedback.see_sent')}</a>
 	</form>
@@ -241,10 +308,15 @@
 		gap: var(--space-md);
 		align-items: start;
 	}
+	/* A message's slot takes no room of its own while it is empty: the form's gap stays where the message would be. */
+	.said {
+		display: contents;
+	}
+	/* The whole screen, whatever its shape: a wide one cut to a phone's would no longer tell which screen it was (pass 77). */
 	img {
 		width: 96px;
 		max-height: 192px;
-		object-fit: cover;
+		object-fit: contain;
 		object-position: top;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-field);
