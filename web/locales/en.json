@@ -575,7 +575,7 @@
 	"feedback.kind_problem": "Something is wrong",
 	"feedback.kind_idea": "An idea",
 	"feedback.message": "Message",
-	"feedback.message_hint": "Optional when you add screenshots. Up to 4,000 characters.",
+	"feedback.message_hint": "Optional when you add screenshots. Up to 4,000\u00a0characters.",
 	"feedback.shots": "Screenshots",
 	"feedback.shots_hint": "Each with its own note, up to 10. You can close this, go to another screen and capture it too.",
 	"feedback.capture": "Capture this screen",
