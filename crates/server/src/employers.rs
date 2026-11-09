@@ -179,8 +179,10 @@ pub async fn owing(db: &PgPool, household_id: Uuid, as_of: Date) -> ApiResult<Ve
         let paid: Vec<Paid> = sqlx::query_as(
             "select t.id as transaction_id, l.posted_on as date, l.amount_minor, t.description
              from transactions t join legs l on l.transaction_id = t.id
+                  left join categories c on c.id = t.category_id
              where t.household_id = $1 and l.account_id = $2 and l.amount_minor > 0
                and (select count(*) from legs o where o.transaction_id = t.id) = 1
+               and c.kind is distinct from 'opening_balance'
              order by l.posted_on, t.id",
         )
         .bind(household_id)
@@ -188,7 +190,12 @@ pub async fn owing(db: &PgPool, household_id: Uuid, as_of: Date) -> ApiResult<Ve
         .fetch_all(db)
         .await?;
         let (latest,): (Option<Date>,) =
-            sqlx::query_as("select max(posted_on) from legs where account_id = $1")
+            // An opening balance is what the account held, not data from a statement: the fortnights run to the last.
+            sqlx::query_as(
+                "select max(l.posted_on) from legs l join transactions t on t.id = l.transaction_id
+                 left join categories c on c.id = t.category_id
+                 where l.account_id = $1 and c.kind is distinct from 'opening_balance'",
+            )
                 .bind(employer.account_id)
                 .fetch_one(db)
                 .await?;

@@ -106,7 +106,9 @@ async fn coverage(
 ) -> ApiResult<Json<Coverage>> {
     let today = query.today.unwrap_or_else(|| OffsetDateTime::now_utc().date());
     let accounts: Vec<(Uuid, String, Option<Date>)> = sqlx::query_as(
-        "select a.id, a.name, (select max(l.posted_on) from legs l where l.account_id = a.id)
+        "select a.id, a.name, (select max(l.posted_on) from legs l join transactions t on t.id = l.transaction_id
+                                left join categories c on c.id = t.category_id
+                                where l.account_id = a.id and c.kind is distinct from 'opening_balance')
          from accounts a where a.household_id = $1 order by a.name",
     )
     .bind(session.household_id)

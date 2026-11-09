@@ -23,6 +23,9 @@ async fn counted(api: &Api, book: &Book) -> Vec<Value> {
         seen.push(book.rest(api, &format!("/api/v1/{path}?{period}")).await);
     }
     seen.push(book.rest(api, &format!("/api/v1/transactions?{period}")).await["sums"].clone());
+    // What statements cover, and what payroll owes from it: an opening is not statement data (pass 75).
+    seen.push(book.rest(api, "/api/v1/coverage?today=2026-10-01").await);
+    seen.push(book.rest(api, "/api/v1/payroll?as_of=2026-10-01").await);
     seen
 }
 
@@ -86,9 +89,14 @@ async fn an_opening_balance_counts_in_its_account_only(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 
-    // In the period, one each way: what checking held, and a debt savings started with.
-    for (account, minor) in [(&book.checking, 50000), (&book.savings, -7500)] {
-        let body = json!({ "date": "2026-04-01", "description": "Balance inicial", "category_id": id(&made),
+    // In the period, one each way: what checking held, and a debt savings started with. And one on checking, where the
+    // employer pays, after its last movement, as an account opened before its first statement is imported.
+    for (account, minor, date) in [
+        (&book.checking, 50000, "2026-04-01"),
+        (&book.savings, -7500, "2026-04-01"),
+        (&book.checking, 1000, "2026-09-10"),
+    ] {
+        let body = json!({ "date": date, "description": "Balance inicial", "category_id": id(&made),
                            "legs": [{ "account_id": account, "amount_minor": minor }] });
         post(&api, &book.user, "/api/v1/transactions", body).await;
     }
@@ -107,7 +115,7 @@ async fn an_opening_balance_counts_in_its_account_only(db: PgPool) {
         .iter()
         .map(|(name, minor)| {
             let opening = match name.as_str() {
-                "Checking" => 50000,
+                "Checking" => 51000,
                 "Savings" => -7500,
                 _ => 0,
             };
