@@ -29,8 +29,7 @@
 			'M3 9.5a12.8 12.8 0 0 1 18 0',
 			'M6 12.8a8.5 8.5 0 0 1 12 0',
 			'M9 16a4.2 4.2 0 0 1 6 0',
-			'M12 19h.01',
-			'M4 4l16 16'
+			'M12 19h.01'
 		],
 		tag: [
 			'M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l7.9 7.9a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0z',
@@ -43,6 +42,11 @@
 			'M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'
 		]
 	};
+
+	// A strike cuts a gap through what it crosses: drawn straight over the arcs, it read as a knot at 28 px (pass 74).
+	// The gap is a mask, so it shows the surface under the icon, glass included.
+	const strikes: Partial<Record<IconName, string>> = { offline: 'M4 4l16 16' };
+	const id = $props.id();
 </script>
 
 <svg
@@ -53,7 +57,18 @@
 	height={size}
 	viewBox="0 0 24 24"
 >
-	{#each paths[name] as d (d)}<path {d} />{/each}
+	{#if strikes[name]}
+		<mask id="{id}-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+			<rect width="24" height="24" fill="white" stroke="none" />
+			<path d={strikes[name]} stroke="black" stroke-width="5" />
+		</mask>
+		<g mask="url(#{id}-cut)"
+			>{#each paths[name] as d (d)}<path {d} />{/each}</g
+		>
+		<path d={strikes[name]} />
+	{:else}
+		{#each paths[name] as d (d)}<path {d} />{/each}
+	{/if}
 </svg>
 
 <style>
