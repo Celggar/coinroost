@@ -113,6 +113,30 @@ impl<'a> Client<'a> {
         self.send(Method::GET, uri, None, None).await
     }
 
+    /// A `GET` whose answer is not JSON (a screenshot): its type and bytes.
+    pub async fn bytes(&self, uri: &str) -> Result<(String, Vec<u8>), Failure> {
+        let request = Request::builder()
+            .uri(uri)
+            .header(header::AUTHORIZATION, format!("Bearer {}", self.bearer))
+            .body(Body::empty())
+            .map_err(|e| Failure(e.to_string()))?;
+        let Ok(response) = self.api.clone().oneshot(request).await;
+        let status = response.status();
+        let kind = response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_owned();
+        let bytes = to_bytes(response.into_body(), 16 << 20)
+            .await
+            .map_err(|e| Failure(e.to_string()))?;
+        if !status.is_success() {
+            return Err(Failure(format!("the API answered {}", status.as_u16())));
+        }
+        Ok((kind, bytes.to_vec()))
+    }
+
     /// The household's items of a kind, as the API lists them.
     pub async fn items(&self, kind: Named) -> Result<Vec<Value>, Failure> {
         let list = self.get(kind.path()).await?;

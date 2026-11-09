@@ -316,6 +316,343 @@
         }
       }
     },
+    "/api/v1/feedback": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "The household's reports, newest first, with each screenshot's note and where its image is.",
+        "operationId": "list_feedback",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Only the open or only the resolved ones; both when absent.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many, newest first (50 when absent, 200 at most).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The reports, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reports"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The limit is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Keeps a problem or an idea with its screenshots, each with its note. Sending the same `report_id` again answers\nthe report already kept (200) and keeps nothing more.",
+        "operationId": "send_feedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewFeedback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "This draft was already sent: the report kept then",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Kept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A read-only token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Empty, over a cap, or an image that is not a JPEG or a PNG",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/{feedback_id}": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "One report.",
+        "operationId": "get_feedback",
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "description": "The report",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such report in the household",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Marks a report resolved, or open again.",
+        "operationId": "resolve_feedback",
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "description": "The report",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Resolution"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The report as it is now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A read-only token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such report in the household",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/{feedback_id}/shots/{position}": {
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "A screenshot's image, with the type read from its bytes when it was kept.",
+        "operationId": "shot_image",
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "description": "The report",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "position",
+            "in": "path",
+            "description": "The screenshot's place, from 0",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such report or screenshot in the household",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/first-account": {
       "get": {
         "tags": [
@@ -2754,6 +3091,45 @@
         },
         "additionalProperties": false
       },
+      "Context": {
+        "type": "object",
+        "description": "Where the report was sent from, as the browser said it.",
+        "required": [
+          "path",
+          "viewport_width",
+          "viewport_height",
+          "color_scheme",
+          "language",
+          "user_agent"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The screen's path, with its query: `/accounts`."
+          },
+          "viewport_width": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "viewport_height": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "color_scheme": {
+            "$ref": "#/components/schemas/Scheme"
+          },
+          "language": {
+            "type": "string",
+            "description": "The app's language, a BCP 47 tag: `es`."
+          },
+          "user_agent": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "Coverage": {
         "type": "object",
         "required": [
@@ -3376,6 +3752,14 @@
         },
         "additionalProperties": false
       },
+      "Kind": {
+        "type": "string",
+        "description": "What the person is telling: something that does not work, or an idea.",
+        "enum": [
+          "problem",
+          "idea"
+        ]
+      },
       "Leg": {
         "type": "object",
         "required": [
@@ -3616,6 +4000,39 @@
         },
         "additionalProperties": false
       },
+      "NewFeedback": {
+        "type": "object",
+        "required": [
+          "report_id",
+          "kind",
+          "context"
+        ],
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Made by the client once per draft: sending the same report again makes no second one."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "message": {
+            "type": "string",
+            "description": "At most 4,000 characters; it may be empty when there is a screenshot."
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "shots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewShot"
+            },
+            "description": "At most ten, in the order they were taken."
+          }
+        },
+        "additionalProperties": false
+      },
       "NewLeg": {
         "type": "object",
         "required": [
@@ -3705,6 +4122,23 @@
             "format": "date-time"
           }
         }
+      },
+      "NewShot": {
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "The image in base64 (RFC 4648, with padding): a JPEG or a PNG of at most 600,000 bytes."
+          },
+          "note": {
+            "type": "string",
+            "description": "What this screenshot shows, at most 500 characters."
+          }
+        },
+        "additionalProperties": false
       },
       "NewTransaction": {
         "type": "object",
@@ -4071,6 +4505,85 @@
           }
         }
       },
+      "Report": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "message",
+          "context",
+          "created_at",
+          "shots"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "message": {
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The email of who sent it, while that user exists."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When it was marked resolved; null while it is open."
+          },
+          "shots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShotInfo"
+            }
+          }
+        }
+      },
+      "Reports": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Report"
+            },
+            "description": "Newest first."
+          }
+        }
+      },
+      "Resolution": {
+        "type": "object",
+        "required": [
+          "resolved"
+        ],
+        "properties": {
+          "resolved": {
+            "type": "boolean",
+            "description": "True marks it resolved; false opens it again."
+          }
+        },
+        "additionalProperties": false
+      },
       "RowFailure": {
         "type": "object",
         "required": [
@@ -4284,6 +4797,13 @@
           }
         }
       },
+      "Scheme": {
+        "type": "string",
+        "enum": [
+          "light",
+          "dark"
+        ]
+      },
       "SetBy": {
         "type": "string",
         "description": "Who set a category or a payee.",
@@ -4291,6 +4811,38 @@
           "rule",
           "manual"
         ]
+      },
+      "ShotInfo": {
+        "type": "object",
+        "required": [
+          "position",
+          "note",
+          "media_type",
+          "bytes"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Its place in the report, from 0, in the order it was taken."
+          },
+          "note": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string",
+            "description": "Read from the image's bytes: `image/jpeg` or `image/png`."
+          },
+          "bytes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The image's size in bytes."
+          },
+          "url": {
+            "type": "string",
+            "description": "Where the image is: `GET` it with the same session."
+          }
+        }
       },
       "Sorting": {
         "type": "object",

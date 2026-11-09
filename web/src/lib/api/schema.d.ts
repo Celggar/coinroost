@@ -77,6 +77,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The household's reports, newest first, with each screenshot's note and where its image is. */
+        get: operations["list_feedback"];
+        put?: never;
+        /**
+         * Keeps a problem or an idea with its screenshots, each with its note. Sending the same `report_id` again answers
+         *     the report already kept (200) and keeps nothing more.
+         */
+        post: operations["send_feedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feedback/{feedback_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One report. */
+        get: operations["get_feedback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Marks a report resolved, or open again. */
+        patch: operations["resolve_feedback"];
+        trace?: never;
+    };
+    "/api/v1/feedback/{feedback_id}/shots/{position}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A screenshot's image, with the type read from its bytes when it was kept. */
+        get: operations["shot_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/first-account": {
         parameters: {
             query?: never;
@@ -773,6 +829,19 @@ export interface components {
             /** Format: int64 */
             amount_max?: number | null;
         };
+        /** @description Where the report was sent from, as the browser said it. */
+        Context: {
+            /** @description The screen's path, with its query: `/accounts`. */
+            path: string;
+            /** Format: int32 */
+            viewport_width: number;
+            /** Format: int32 */
+            viewport_height: number;
+            color_scheme: components["schemas"]["Scheme"];
+            /** @description The app's language, a BCP 47 tag: `es`. */
+            language: string;
+            user_agent: string;
+        };
         Coverage: {
             /** Format: date */
             today: string;
@@ -998,6 +1067,11 @@ export interface components {
             /** @description The token from the link's fragment (after `#`). */
             token: string;
         };
+        /**
+         * @description What the person is telling: something that does not work, or an idea.
+         * @enum {string}
+         */
+        Kind: "problem" | "idea";
         Leg: {
             /** Format: uuid */
             id: string;
@@ -1087,6 +1161,19 @@ export interface components {
             /** @description `expense` when absent. */
             kind?: components["schemas"]["CategoryKind"];
         };
+        NewFeedback: {
+            /**
+             * Format: uuid
+             * @description Made by the client once per draft: sending the same report again makes no second one.
+             */
+            report_id: string;
+            kind: components["schemas"]["Kind"];
+            /** @description At most 4,000 characters; it may be empty when there is a screenshot. */
+            message?: string;
+            context: components["schemas"]["Context"];
+            /** @description At most ten, in the order they were taken. */
+            shots?: components["schemas"]["NewShot"][];
+        };
         NewLeg: {
             /** Format: uuid */
             account_id: string;
@@ -1121,6 +1208,12 @@ export interface components {
             token: string;
             /** Format: date-time */
             expires_at: string;
+        };
+        NewShot: {
+            /** @description The image in base64 (RFC 4648, with padding): a JPEG or a PNG of at most 600,000 bytes. */
+            image: string;
+            /** @description What this screenshot shows, at most 500 characters. */
+            note?: string;
         };
         NewTransaction: {
             /** Format: date */
@@ -1253,6 +1346,31 @@ export interface components {
              */
             created_at?: string | null;
         };
+        Report: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["Kind"];
+            message: string;
+            context: components["schemas"]["Context"];
+            /** @description The email of who sent it, while that user exists. */
+            author?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When it was marked resolved; null while it is open.
+             */
+            resolved_at?: string | null;
+            shots: components["schemas"]["ShotInfo"][];
+        };
+        Reports: {
+            /** @description Newest first. */
+            items: components["schemas"]["Report"][];
+        };
+        Resolution: {
+            /** @description True marks it resolved; false opens it again. */
+            resolved: boolean;
+        };
         RowFailure: {
             /** @description Row number in the file, 1 being the header. */
             row: number;
@@ -1321,11 +1439,30 @@ export interface components {
         RulesApplied: {
             applied: number;
         };
+        /** @enum {string} */
+        Scheme: "light" | "dark";
         /**
          * @description Who set a category or a payee.
          * @enum {string}
          */
         SetBy: "rule" | "manual";
+        ShotInfo: {
+            /**
+             * Format: int32
+             * @description Its place in the report, from 0, in the order it was taken.
+             */
+            position: number;
+            note: string;
+            /** @description Read from the image's bytes: `image/jpeg` or `image/png`. */
+            media_type: string;
+            /**
+             * Format: int32
+             * @description The image's size in bytes.
+             */
+            bytes: number;
+            /** @description Where the image is: `GET` it with the same session. */
+            url?: string;
+        };
         /** @description A transaction's category and payee, and the rule that set them. */
         Sorting: {
             /** Format: uuid */
@@ -1722,6 +1859,248 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_feedback: {
+        parameters: {
+            query?: {
+                /** @description Only the open or only the resolved ones; both when absent. */
+                state?: "open" | "resolved";
+                /** @description At most this many, newest first (50 when absent, 200 at most). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reports, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reports"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The limit is not valid */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    send_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewFeedback"];
+            };
+        };
+        responses: {
+            /** @description This draft was already sent: the report kept then */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description Kept */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A read-only token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Empty, over a cap, or an image that is not a JPEG or a PNG */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The report */
+                feedback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such report in the household */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resolve_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The report */
+                feedback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Resolution"];
+            };
+        };
+        responses: {
+            /** @description The report as it is now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A read-only token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such report in the household */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    shot_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The report */
+                feedback_id: string;
+                /** @description The screenshot's place, from 0 */
+                position: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": number[];
+                    "image/png": number[];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No such report or screenshot in the household */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
