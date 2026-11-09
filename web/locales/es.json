@@ -575,7 +575,7 @@
 	"feedback.kind_problem": "Algo falla",
 	"feedback.kind_idea": "Una idea",
 	"feedback.message": "Mensaje",
-	"feedback.message_hint": "Opcional si agregas capturas. Hasta 4000 caracteres.",
+	"feedback.message_hint": "Opcional si agregas capturas. Hasta 4000\u00a0caracteres.",
 	"feedback.shots": "Capturas",
 	"feedback.shots_hint": "Cada una con su propia nota, hasta 10. Puedes cerrar, ir a otra pantalla y capturarla también.",
 	"feedback.capture": "Capturar esta pantalla",
