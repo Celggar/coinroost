@@ -57,6 +57,9 @@
 		notify(t('categoryform.created', { name: data.name }));
 		made = true;
 		name = '';
+		// The kind starts again from spending too: kept, the next name sent with Enter took the last kind, and nothing in
+		// the app changes a category's kind afterwards (an opening balance's money then left every report).
+		kind = 'expense';
 		// Back to the form for the next one once the page has reloaded and settled (as the rule form does).
 		const field = form.elements.namedItem('name') as HTMLInputElement | null;
 		const left = document.activeElement;

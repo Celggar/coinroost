@@ -260,6 +260,21 @@ test('a manual category survives applying the rules', async ({ context }) => {
 	expect(by).toEqual(['manual', 'rule']);
 });
 
+// Once a category is made, the form starts again from spending: it kept the last kind, so the next name sent with Enter
+// was made of that kind, and the app cannot change a category's kind afterwards.
+test('a new category leaves the form on spending again', async ({ context }) => {
+	const page = await loggedIn(context);
+	await page.goto('/categories');
+	const kind = page.getByLabel(say('categoryform.holds'));
+	await page.getByLabel(say('categoryform.name')).fill('Opening');
+	await kind.selectOption('opening_balance');
+	await page.getByRole('button', { name: say('categoryform.create') }).click();
+	await expect(page.getByRole('status')).toHaveText(
+		say('categoryform.created', { name: 'Opening' })
+	);
+	await expect(kind).toHaveValue('expense');
+});
+
 test('pairs two legs and splits them', async ({ context }) => {
 	const page = await loggedIn(context);
 	const post = async (url: string, data: object) => {
