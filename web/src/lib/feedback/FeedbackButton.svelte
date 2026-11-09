@@ -65,6 +65,15 @@
 		padding: 0;
 		border-radius: 999px;
 		color: var(--text);
+		/* The bar is always on screen, but it stands inside the page's scroll padding, so a browser that focuses the button
+		   takes it for hidden and moves the page: 386 px up at each Tab, and on every close of the panel (pass 77), as
+		   the bottom bar's links did (pass 35). */
+		scroll-margin-top: -100vh;
+	}
+	/* The bar's 56 px leave 4 px over the 48 px button: the ring goes inside its edge, or half its top stroke stood off
+	   the screen (pass 77). */
+	.bar:focus-visible {
+		outline-offset: -3px;
 	}
 	.corner {
 		position: absolute;

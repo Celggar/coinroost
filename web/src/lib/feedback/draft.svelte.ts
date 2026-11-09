@@ -61,8 +61,9 @@ export function openPanel(from: HTMLElement | null) {
 	panel.open = true;
 }
 
+/** The opener was on screen when it was pressed: the focus goes back without the browser scrolling to it. */
 export function closePanel() {
 	panel.open = false;
-	opener?.focus();
+	opener?.focus({ preventScroll: true });
 	opener = null;
 }
