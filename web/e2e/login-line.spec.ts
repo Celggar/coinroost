@@ -2,6 +2,7 @@
 // step asks for, and trading places moves nothing under it.
 import { expect, test, type Page } from '@playwright/test';
 import { catalogs, english, say, type Key } from './messages.ts';
+import { still } from './scroll.ts';
 
 test.use({ locale: 'es-PA' });
 
@@ -201,3 +202,63 @@ test('with the field in sight the switch leaves the page where it stands', async
 	await expect(page.getByLabel(say('login.recovery_code'))).toBeInViewport({ ratio: 1 });
 	expect(moved).toBe(0);
 });
+
+/** The most the page moved, frame by frame, over 60 frames from now. */
+async function mostMoved(page: Page) {
+	return page.evaluate(async () => {
+		const from = scrollY;
+		let most = 0;
+		for (let frame = 0; frame < 60; frame++) {
+			await new Promise(requestAnimationFrame);
+			most = Math.max(most, Math.abs(scrollY - from));
+		}
+		return most;
+	});
+}
+
+// After a wrong code the message had brought the page down to it; when it left, the shorter page came back up, though the
+// field stood in sight: 24 px in two frames at 390 x 844, 90 px at 390 x 600 (pass 73). Under reduced motion the room already
+// stayed.
+for (const [width, height] of [
+	[390, 844],
+	[390, 600]
+] as const) {
+	for (const leaves of ['switch', 'key'] as const) {
+		test(`after a wrong code the message leaves by a ${leaves} and the page stands (${width}x${height})`, async ({
+			page
+		}) => {
+			await page.setViewportSize({ width, height });
+			await page.goto('/login');
+			await settled(page);
+			await page.getByLabel(say('login.email')).fill('nobody@example.com');
+			await page.getByLabel(say('login.password'), { exact: true }).fill('not the password');
+			await page.getByLabel(say('login.code')).fill('000000');
+			await page.getByLabel(say('login.code')).press('Enter');
+			await expect(page.getByRole('alert')).toHaveText(say('login.wrong'));
+			await settled(page);
+			await still(page);
+			expect(
+				await page.evaluate(() => scrollY),
+				'the message brought the page down'
+			).toBeGreaterThan(0);
+			if (leaves === 'switch')
+				await page
+					.getByRole('button', { name: say('login.use_recovery'), exact: true })
+					.dispatchEvent('click');
+			else await page.keyboard.press('1');
+			const moved = await mostMoved(page);
+			await expect(page.getByRole('alert')).toHaveText('');
+			const field = leaves === 'switch' ? say('login.recovery_code') : say('login.code');
+			await expect(page.getByLabel(field)).toBeInViewport({ ratio: 1 });
+			expect(moved).toBe(0);
+			// The shell, whose background is the page's, still reaches the page's end: a page held taller than it showed a band of
+			// bare page under the backdrop.
+			const bare = await page.evaluate(
+				() =>
+					document.documentElement.scrollHeight -
+					(document.querySelector('.shell')!.getBoundingClientRect().bottom + scrollY)
+			);
+			expect(bare).toBeLessThan(1);
+		});
+	}
+}

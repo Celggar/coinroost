@@ -36,6 +36,21 @@
 		reveal(event.currentTarget as HTMLElement);
 	}
 
+	// The message leaves with its room, and the button slides up into it. At the page's end that made the page shorter, and the
+	// browser brought the page back up though the field stood in sight: 24 px in two frames at 390 × 844 when the login switched
+	// to a recovery code after a wrong one (pass 73). There the page keeps its height until it is left: the card still closes
+	// up, and the room it gives back shows under it, as the page's end. Kept inside the card, it read as a part gone missing.
+	// The height is held on the shell, whose background is the page's: held on the document, a band of bare page showed.
+	let held: HTMLElement | null = null;
+	function keepPage() {
+		if (!region || prefersReducedMotion.current) return;
+		const below = document.documentElement.scrollHeight - scrollY - innerHeight;
+		if (scrollY <= 0 || below >= region.offsetHeight) return;
+		held = region.closest<HTMLElement>('.shell') ?? document.documentElement;
+		held.style.minHeight = `${held.offsetHeight}px`;
+	}
+	$effect(() => () => held?.style.removeProperty('min-height'));
+
 	// The message lands under the field that keeps the focus; on a short screen it and the button after it could sit
 	// below the fold (setup at 390 × 844: the message at 763–859). Once it is in, the page moves just enough to show
 	// both: the form's send button when there is one, else the message.
@@ -53,6 +68,7 @@
 				in:rise|global={{ delay: DURATION.medium }}
 				out:lift|global
 				onintrostart={makeRoom}
+				onoutrostart={keepPage}
 				onintroend={(event) => prefersReducedMotion.current || reveal(event.currentTarget)}
 			>
 				{text}
