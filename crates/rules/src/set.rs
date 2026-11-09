@@ -17,13 +17,15 @@ pub struct RuleSet {
     pub rules: Vec<NewRule>,
 }
 
-/// What a category holds: spending, income, or money moved between the household's own accounts.
+/// What a category holds: spending, income, money moved between the household's own accounts, or what an account held
+/// when its history starts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum CategoryKind {
     Expense,
     Income,
     Transfer,
+    OpeningBalance,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -135,6 +137,10 @@ mod tests {
                     "rules":[{"name":"a","when":{"contains":"MARKET"},"then":{"category":"Food"}}]}"#)
             .is_ok()
         );
+        let opening = RuleSet::from_json(
+            r#"{"categories":[{"name":"Saldo inicial","kind":"opening_balance"}],"rules":[]}"#,
+        );
+        assert_eq!(opening.unwrap().categories[0].kind, CategoryKind::OpeningBalance);
         for bad in [
             r#"{"rules":[{"name":"a","when":{"contains":"X"},"then":{"category":"Missing"}}]}"#,
             r#"{"categories":[],"rules":[{"name":"a","when":{"contains":"X"},"then":{"payee":"P"}},

@@ -2670,11 +2670,12 @@
       },
       "CategoryKind": {
         "type": "string",
-        "description": "What a category holds: spending, income, or money moved between the household's own accounts.",
+        "description": "What a category holds: spending, income, money moved between the household's own accounts, or what an account held\nwhen its history starts (counted in its balance only: no income, spending or pairing).",
         "enum": [
           "expense",
           "income",
-          "transfer"
+          "transfer",
+          "opening_balance"
         ]
       },
       "CategorySpending": {

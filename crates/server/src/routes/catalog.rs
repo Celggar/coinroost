@@ -22,7 +22,8 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_payees, create_payee))
 }
 
-/// What a category holds: spending, income, or money moved between the household's own accounts.
+/// What a category holds: spending, income, money moved between the household's own accounts, or what an account held
+/// when its history starts (counted in its balance only: no income, spending or pairing).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "text", rename_all = "snake_case")]
@@ -31,6 +32,7 @@ pub enum CategoryKind {
     Expense,
     Income,
     Transfer,
+    OpeningBalance,
 }
 
 #[derive(Deserialize, ToSchema)]

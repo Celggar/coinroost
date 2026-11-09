@@ -2,11 +2,12 @@
 	import type { Schemas } from '#lib/api/client.ts';
 	import type { Key } from '#lib/i18n.svelte.ts';
 
-	/** What a category holds, in words, spending first. */
+	/** What a category holds, in words, spending first: the form's choices and the selects' groups, in this order. */
 	export const holds = {
 		expense: 'categoryform.expense',
 		income: 'categoryform.income',
-		transfer: 'categoryform.transfer'
+		transfer: 'categoryform.transfer',
+		opening_balance: 'categoryform.opening_balance'
 	} satisfies Record<Schemas['CategoryKind'], Key>;
 </script>
 

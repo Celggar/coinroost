@@ -165,6 +165,7 @@ async fn load_categories(
             coinroost_rules::CategoryKind::Expense => "expense",
             coinroost_rules::CategoryKind::Income => "income",
             coinroost_rules::CategoryKind::Transfer => "transfer",
+            coinroost_rules::CategoryKind::OpeningBalance => "opening_balance",
         };
         let row: Option<(bool,)> = sqlx::query_as(
             "insert into categories (household_id, name, kind) values ($1, $2, $3)

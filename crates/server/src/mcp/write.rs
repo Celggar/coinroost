@@ -60,7 +60,9 @@ pub struct Id {
 #[derive(Deserialize, JsonSchema)]
 pub struct NewCategory {
     name: String,
-    /// expense (the default), income, or transfer (money moved between the household's own accounts).
+    /// expense (the default), income, transfer (money moved between the household's own accounts), or
+    /// `opening_balance` (what an account held when its history starts: in its balance, never in income, spending or
+    /// pairing).
     kind: Option<String>,
 }
 

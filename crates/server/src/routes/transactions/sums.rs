@@ -34,7 +34,7 @@ pub(super) async fn sums(
             ") t
              join legs l on l.transaction_id = t.id
              left join categories c on c.id = t.category_id
-             where c.kind is distinct from 'transfer'
+             where coalesce(c.kind, 'expense') not in ('transfer', 'opening_balance')
                and (select count(*) from legs o where o.transaction_id = t.id) = 1
              group by l.currency
              order by l.currency"

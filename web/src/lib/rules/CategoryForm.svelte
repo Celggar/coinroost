@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import { api, failure, type Schemas } from '#lib/api/client.ts';
 	import { t } from '#lib/i18n.svelte.ts';
+	import { holds } from '#lib/ui/CategoryOptions.svelte';
 	import Field from '#lib/ui/Field.svelte';
 	import FormError from '#lib/ui/FormError.svelte';
 	import { check, focusFirst, without, type Errors } from '#lib/ui/form.ts';
@@ -85,9 +86,9 @@
 		<Field label={t('categoryform.holds')} name="kind" error={errors.kind}>
 			{#snippet children(wiring)}
 				<select {...wiring} bind:value={kind}>
-					<option value="expense">{t('categoryform.expense')}</option>
-					<option value="income">{t('categoryform.income')}</option>
-					<option value="transfer">{t('categoryform.transfer')}</option>
+					{#each Object.entries(holds) as [value, key] (value)}
+						<option {value}>{t(key)}</option>
+					{/each}
 				</select>
 			{/snippet}
 		</Field>

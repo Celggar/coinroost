@@ -242,6 +242,7 @@
 	"categoryform.expense": "Gastos",
 	"categoryform.income": "Ingresos",
 	"categoryform.transfer": "Movimientos entre mis cuentas",
+	"categoryform.opening_balance": "Saldos iniciales",
 	"categoryform.failed": "No se pudo crear la categoría",
 	"categoryform.created": "Se creó {name}.",
 	"categoryform.create": "Crear categoría",

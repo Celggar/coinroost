@@ -242,6 +242,7 @@
 	"categoryform.expense": "Spending",
 	"categoryform.income": "Income",
 	"categoryform.transfer": "Moves between my accounts",
+	"categoryform.opening_balance": "Opening balances",
 	"categoryform.failed": "The category could not be created",
 	"categoryform.created": "Created {name}.",
 	"categoryform.create": "Create category",

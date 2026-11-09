@@ -76,7 +76,8 @@ async fn summary(
          from (select t.id, coalesce(c.kind = 'transfer', false) as transfer
                from transactions t left join categories c on c.id = t.category_id
                where t.household_id = $1 and t.date between $2 and $3
-                 and (select count(*) from legs o where o.transaction_id = t.id) = 1) t
+                 and (select count(*) from legs o where o.transaction_id = t.id) = 1
+                 and c.kind is distinct from 'opening_balance') t
          join legs l on l.transaction_id = t.id
          group by l.currency
          order by l.currency",

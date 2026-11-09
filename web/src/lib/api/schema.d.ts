@@ -739,10 +739,11 @@ export interface components {
             created_at: string;
         };
         /**
-         * @description What a category holds: spending, income, or money moved between the household's own accounts.
+         * @description What a category holds: spending, income, money moved between the household's own accounts, or what an account held
+         *     when its history starts (counted in its balance only: no income, spending or pairing).
          * @enum {string}
          */
-        CategoryKind: "expense" | "income" | "transfer";
+        CategoryKind: "expense" | "income" | "transfer" | "opening_balance";
         CategorySpending: {
             /**
              * Format: uuid

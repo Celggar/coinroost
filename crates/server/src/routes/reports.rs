@@ -31,7 +31,7 @@ macro_rules! moving {
                   left join categories c on c.id = t.category_id
              where t.household_id = $1 and t.date between $2 and $3
                and (select count(*) from legs o where o.transaction_id = t.id) = 1
-               and c.kind is distinct from 'transfer')
+               and coalesce(c.kind, 'expense') not in ('transfer', 'opening_balance'))
          "
     };
 }
