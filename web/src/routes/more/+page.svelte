@@ -1,5 +1,5 @@
 <script lang="ts">
-	// «Más» on a phone (P1): what is used rarely — Reglas, Seguridad, the language and logging out — one tap from
+	// «Más» on a phone (P1): what is used rarely — Reglas, Seguridad, Comentarios, the language and logging out — one tap from
 	// the bar, never an overflow of hidden destinations.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -41,6 +41,10 @@
 		<span class="divider" aria-hidden="true"></span>
 		<a href="/security"
 			><Icon name="shield" /><span>{t('nav.security')}</span><Icon name="chev" size={20} /></a
+		>
+		<span class="divider" aria-hidden="true"></span>
+		<a href="/feedback"
+			><Icon name="feedback" /><span>{t('feedback.title')}</span><Icon name="chev" size={20} /></a
 		>
 	</nav>
 

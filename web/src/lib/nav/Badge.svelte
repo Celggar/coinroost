@@ -3,7 +3,7 @@
 	// the number changes, each in 150 ms (N8). It is drawn only; the link it sits on is described by the sentence in `NavCounts`.
 	import { DURATION, pop, vanish } from '#lib/motion.ts';
 
-	let { count, tone = 'bad' }: { count: number; tone?: 'bad' | 'warn' } = $props();
+	let { count, tone = 'bad' }: { count: number; tone?: 'bad' | 'warn' | 'accent' } = $props();
 </script>
 
 {#if count > 0}
@@ -41,6 +41,11 @@
 	.bad {
 		background: var(--danger);
 		color: var(--danger-text);
+	}
+	/* A count of the person's own things waiting (the feedback draft's screenshots): no alarm, the app's green. */
+	.accent {
+		background: var(--accent);
+		color: var(--accent-text);
 	}
 	.warn {
 		background: var(--warn-bg);

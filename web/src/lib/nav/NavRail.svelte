@@ -1,8 +1,9 @@
 <script lang="ts">
 	// The wide screen's navigation (P1, N4): an expanded rail on the left (Material 3) with the login's mark, the
-	// five destinations with a neutral pill on the current one, and Security and the account's button (P2) pinned to
-	// its foot.
+	// five destinations with a neutral pill on the current one, and the feedback button, Security and the account's
+	// button (P2) pinned to its foot.
 	import { t } from '#lib/i18n.svelte.ts';
+	import FeedbackButton from '#lib/feedback/FeedbackButton.svelte';
 	import AccountMenu from './AccountMenu.svelte';
 	import Badge from './Badge.svelte';
 	import Icon from './Icon.svelte';
@@ -43,6 +44,7 @@
 		</ul>
 	</nav>
 	<div class="foot">
+		<FeedbackButton place="rail" />
 		<a href="/security" aria-current={path === '/security' ? 'page' : undefined}>
 			<span class="pill" aria-hidden="true"></span>
 			<Icon name="shield" />

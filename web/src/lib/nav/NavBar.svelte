@@ -3,6 +3,7 @@
 	// (sticky, last in the page's column) with the five destinations as labelled icons (Material 3 navigation bar), always on screen and in reach of the thumb.
 	import { page } from '$app/state';
 	import { t } from '#lib/i18n.svelte.ts';
+	import FeedbackButton from '#lib/feedback/FeedbackButton.svelte';
 	import Badge from './Badge.svelte';
 	import Icon from './Icon.svelte';
 	import Mark from './Mark.svelte';
@@ -24,6 +25,7 @@
 <header class="appbar" bind:offsetHeight={top}>
 	{#if path === '/'}<Mark />{/if}
 	<span class="title">{t(title)}</span>
+	<FeedbackButton place="bar" />
 </header>
 
 <nav class="bar" aria-label={t('nav.main')} bind:offsetHeight={bottom}>

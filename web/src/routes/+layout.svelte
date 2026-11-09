@@ -7,6 +7,8 @@
 	import Tabs from '#lib/nav/Tabs.svelte';
 	import { cameBack, refreshCounts } from '#lib/nav/counts.svelte.ts';
 	import Notices from '#lib/ui/Notices.svelte';
+	import FeedbackPanel from '#lib/feedback/FeedbackPanel.svelte';
+	import { panel } from '#lib/feedback/draft.svelte.ts';
 	import { arrive, placeholder } from '#lib/motion.ts';
 	import { crossFade } from '#lib/ui/cross-fade.ts';
 	import { foldClosed, foldCloses, foldOpens } from '#lib/ui/hold-room.ts';
@@ -120,6 +122,7 @@
 			</main>
 		</div>
 	</div>
+	{#if panel.open}<FeedbackPanel />{/if}
 {:else if onPublic || (session.user && limited === onAuthenticator)}
 	<main class:public={onPublic || onAuthenticator}>{@render children()}</main>
 {:else}
