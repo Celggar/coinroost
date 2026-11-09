@@ -24,6 +24,14 @@
 			'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6',
 			'M12 17h.01'
 		],
+		// The wireless mark struck through: a question mark read as help, not as no connection (pass 73).
+		offline: [
+			'M3 9.5a12.8 12.8 0 0 1 18 0',
+			'M6 12.8a8.5 8.5 0 0 1 12 0',
+			'M9 16a4.2 4.2 0 0 1 6 0',
+			'M12 19h.01',
+			'M4 4l16 16'
+		],
 		tag: [
 			'M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l7.9 7.9a1.5 1.5 0 0 1 0 2.1l-6.9 6.9a1.5 1.5 0 0 1-2.1 0z',
 			'M8 8h.01'

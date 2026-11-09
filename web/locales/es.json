@@ -38,7 +38,7 @@
 	"error.failed": "Algo falló al abrirla. Intenta de nuevo en un momento.",
 	"error.to_summary": "Ir al resumen",
 	"offline.title": "Sin conexión",
-	"offline.text": "Coinroost necesita conexión para mostrar tus cuentas. Cuando vuelva, la app sigue sola.",
+	"offline.text": "Coinroost necesita conexión a internet. Cuando vuelva, la app sigue sola.",
 	"login.title": "Iniciar sesión",
 	"login.email": "Correo",
 	"login.password": "Contraseña",

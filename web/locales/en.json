@@ -38,7 +38,7 @@
 	"error.failed": "Something failed while opening it. Try again in a moment.",
 	"error.to_summary": "Go to the summary",
 	"offline.title": "No connection",
-	"offline.text": "Coinroost needs a connection to show your accounts. When it is back, the app carries on by itself.",
+	"offline.text": "Coinroost needs an internet connection. When it is back, the app carries on by itself.",
 	"login.title": "Log in",
 	"login.email": "Email",
 	"login.password": "Password",

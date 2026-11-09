@@ -15,6 +15,7 @@ export type IconName =
 	| 'chev'
 	| 'check'
 	| 'unknown'
+	| 'offline'
 	| 'tag'
 	| 'clock'
 	| 'transfer'

@@ -96,7 +96,7 @@
 	<div class="boot offline" in:arrive out:placeholder>
 		<h1>{t('offline.title')}</h1>
 		<EmptyState
-			icon="unknown"
+			icon="offline"
 			text={t('offline.text')}
 			action={t('app.try_again')}
 			onclick={refresh}
