@@ -253,38 +253,35 @@ export function stepOut(node: HTMLElement, { direction = 1 } = {}): TransitionCo
 	});
 }
 
+const THROUGH_OUT = { duration: 105, easing: EASE_CSS.exit, fill: 'forwards' } as const;
+const THROUGH_IN = { duration: 195, easing: EASE_CSS.enter };
+
 /** Material 3's fade through, for content replaced in place by a new answer (a new period's figures): the old fades
  * out (35 % of 300 ms), `change` swaps it while nothing shows, and the new fades in, growing a little (65 %). The
  * fade out starts from the element's current opacity, so a dimmed «loading» state does not flash back first. With
- * reduced motion it only fades. */
+ * reduced motion it only fades. Several elements that one change swaps (a state's chip and its button's words) go
+ * through it together. */
 export async function fadeThrough(
-	element: HTMLElement | undefined,
+	element: HTMLElement | HTMLElement[] | undefined,
 	change: () => void | Promise<void>
 ): Promise<void> {
-	if (!element) {
-		await change();
-		return;
-	}
+	const elements = element === undefined ? [] : [element].flat();
+	if (elements.length === 0) return change();
 	// From the opacity on screen: a lone end keyframe starts from the style's value, so a dim still on its way (0.97)
 	// went to its end (0.6) in one frame before fading (pass 15).
-	const out = element.animate([{ opacity: getComputedStyle(element).opacity }, { opacity: 0 }], {
-		duration: 105,
-		easing: EASE_CSS.exit,
-		fill: 'forwards'
-	});
-	await out.finished.catch(() => {});
+	const outs = elements.map((e) =>
+		e.animate([{ opacity: getComputedStyle(e).opacity }, { opacity: 0 }], THROUGH_OUT)
+	);
+	await Promise.all(outs.map((out) => out.finished.catch(() => {})));
 	await change();
 	await tick();
-	const enter = element.animate(
-		[
-			{ opacity: 0, transform: still() ? 'none' : 'scale(0.98)' },
-			{ opacity: 1, transform: 'none' }
-		],
-		{ duration: 195, easing: EASE_CSS.enter }
+	const from = { opacity: 0, transform: still() ? 'none' : 'scale(0.98)' };
+	const enters = elements.map((e) =>
+		e.animate([from, { opacity: 1, transform: 'none' }], THROUGH_IN)
 	);
 	// The held end of the fade out would hide the element again once the fade in is over.
-	out.cancel();
-	await enter.finished.catch(() => {});
+	for (const out of outs) out.cancel();
+	await Promise.all(enters.map((enter) => enter.finished.catch(() => {})));
 }
 
 /** A short shake that says "not this one"; never alone, always next to the message that says why. */
