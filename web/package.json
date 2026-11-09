@@ -16,6 +16,7 @@
 		"api-types:check": "openapi-typescript ../spec/openapi.json --output src/lib/api/schema.d.ts --check"
 	},
 	"dependencies": {
+		"@zumer/snapdom": "3.4.0",
 		"openapi-fetch": "0.17.0"
 	},
 	"devDependencies": {

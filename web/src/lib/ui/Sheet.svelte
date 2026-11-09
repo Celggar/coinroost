@@ -1,7 +1,8 @@
 <script lang="ts">
 	// A form opened on demand, on a phone: a full-screen dialog (Material 3) with its close button, its title and the
 	// send button at the top, so the keyboard never covers them. It slides up and back down; with reduced motion it only
-	// fades. A native `<dialog>`: the rest of the page is inert while it is open and Esc closes it.
+	// fades. A native `<dialog>`: the rest of the page is inert while it is open and Esc closes it. With `side`, on a wide
+	// screen it is a side sheet instead (Material 3): 440 px on the right, sliding in from that edge.
 	import { onMount, type Snippet } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade, fly } from 'svelte/transition';
@@ -13,6 +14,7 @@
 		form,
 		action,
 		onclose,
+		side = false,
 		children
 	}: {
 		title: string;
@@ -20,6 +22,7 @@
 		form: string;
 		action: string;
 		onclose: () => void;
+		side?: boolean;
 		children: Snippet;
 	} = $props();
 
@@ -34,11 +37,12 @@
 		dialog?.show();
 	}
 
+	const beside = () => side && matchMedia('(min-width: 900px)').matches;
 	const slide = (node: Element, { out = false } = {}) =>
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
 			: fly(node, {
-					y: innerHeight,
+					...(beside() ? { x: (node as HTMLElement).offsetWidth } : { y: innerHeight }),
 					opacity: 1,
 					duration: out ? DURATION.exit : DURATION.medium,
 					easing: out ? EASE.exit : EASE.enter
@@ -47,6 +51,7 @@
 
 <dialog
 	bind:this={dialog}
+	class:side
 	aria-label={title}
 	oncancel={(event) => {
 		event.preventDefault();
@@ -86,6 +91,14 @@
 	}
 	dialog::backdrop {
 		background: transparent;
+	}
+	@media (min-width: 900px) {
+		dialog.side {
+			inset: 0 0 0 auto;
+			width: min(440px, 100%);
+			border-left: 1px solid var(--raised-edge);
+			box-shadow: var(--raised-shadow);
+		}
 	}
 	header {
 		position: sticky;

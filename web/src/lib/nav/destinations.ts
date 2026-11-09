@@ -19,7 +19,10 @@ export type IconName =
 	| 'tag'
 	| 'clock'
 	| 'transfer'
-	| 'cash';
+	| 'cash'
+	| 'feedback'
+	| 'camera'
+	| 'image';
 
 export type Destination = {
 	href: string;
@@ -62,7 +65,7 @@ const more: Destination = {
 	href: '/more',
 	label: 'nav.more',
 	icon: 'more',
-	pages: ['/more', '/rules', '/categories', '/security']
+	pages: ['/more', '/rules', '/categories', '/security', '/feedback']
 };
 
 /** The rail on a wide screen. */
@@ -105,6 +108,7 @@ export const groups: { label: Key; tabs: Tab[] }[] = [
 /** The page's title for the phone's top bar: its destination's name. */
 export function titleOf(path: string): Key {
 	if (path === '/security') return 'nav.security';
+	if (path === '/feedback') return 'feedback.title';
 	if (path === '/rules' || path === '/categories') return 'nav.rules';
 	return [...narrow].find((d) => d.pages.includes(path))?.label ?? 'app.name';
 }

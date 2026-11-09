@@ -48,6 +48,7 @@ add_user open
 add_user press
 add_user glide
 add_user pwa
+add_user feedback
 # Setup links for the web enrollment, recovery-code and language tests, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -111,4 +112,5 @@ BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2
   E2E_PRESS_EMAIL="$press_email" E2E_PRESS_PASSWORD="$press_password" E2E_PRESS_SECRET="$press_secret" \
   E2E_GLIDE_EMAIL="$glide_email" E2E_GLIDE_PASSWORD="$glide_password" E2E_GLIDE_SECRET="$glide_secret" \
   E2E_PWA_EMAIL="$pwa_email" E2E_PWA_PASSWORD="$pwa_password" E2E_PWA_SECRET="$pwa_secret" \
+  E2E_FEEDBACK_EMAIL="$feedback_email" E2E_FEEDBACK_PASSWORD="$feedback_password" E2E_FEEDBACK_SECRET="$feedback_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" E2E_LANGUAGE_INVITE="$language_invite" npx playwright test "$@"
