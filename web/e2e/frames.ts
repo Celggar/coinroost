@@ -151,6 +151,10 @@ export async function watchCard(page: Page) {
 		};
 		requestAnimationFrame(step);
 	}, FRAMES);
+	await page.waitForFunction(
+		(frames) => (window as unknown as { left: number }).left < frames,
+		FRAMES
+	);
 }
 
 /** Such a height tracks the content while it runs: on a quick answer a card went 130 to 523 px in a frame, on a slower one
@@ -160,7 +164,9 @@ export async function expectCardGlides(page: Page) {
 	expect(await page.evaluate(() => (window as unknown as { fromAuto: number }).fromAuto)).toBe(0);
 }
 
-/** Starts recording where `selector` stands in the window, and how much of the page shows. */
+/** Starts recording where `selector` stands in the window, and how much of the page shows. Like `started`, it returns once
+ * it has seen a frame: a press that came first dimmed and moved the sheet before the first sample, and the move went
+ * uncounted (GitHub, 2026-11-09: «104@0.30» from the first frame, no move). */
 export async function watchTop(page: Page, selector: string, shade = 'main') {
 	await page.evaluate(
 		({ selector, shade, frames }) => {
@@ -176,6 +182,7 @@ export async function watchTop(page: Page, selector: string, shade = 'main') {
 		},
 		{ selector, shade, frames: FRAMES }
 	);
+	await page.waitForFunction(() => (window as unknown as { tops: unknown[] }).tops.length > 0);
 }
 
 /** It moved in a glide: no frame took it `limit` px. What left reads 0, and counts no more. */
@@ -208,6 +215,10 @@ export async function watchCut(page: Page, inner: string, box: string) {
 			requestAnimationFrame(step);
 		},
 		{ inner, box, frames: FRAMES }
+	);
+	await page.waitForFunction(
+		(frames) => (window as unknown as { cutting: number }).cutting < frames,
+		FRAMES
 	);
 }
 
