@@ -49,6 +49,9 @@ add_user press
 add_user glide
 add_user pwa
 add_user feedback
+# The feedback page from its empty state, once per motion setting (feedback-page.spec.ts).
+add_user feedback_motion
+add_user feedback_still
 # Setup links for the web enrollment, recovery-code and language tests, each of which makes its own user in a new
 # household.
 invite=$("$server" invite add 2>/dev/null | sed -n 's/^invite .*#//p')
@@ -113,4 +116,6 @@ BASE_URL="http://$address" E2E_FIRST_URL="http://$first" E2E_SERVER="$server" E2
   E2E_GLIDE_EMAIL="$glide_email" E2E_GLIDE_PASSWORD="$glide_password" E2E_GLIDE_SECRET="$glide_secret" \
   E2E_PWA_EMAIL="$pwa_email" E2E_PWA_PASSWORD="$pwa_password" E2E_PWA_SECRET="$pwa_secret" \
   E2E_FEEDBACK_EMAIL="$feedback_email" E2E_FEEDBACK_PASSWORD="$feedback_password" E2E_FEEDBACK_SECRET="$feedback_secret" \
+  E2E_FEEDBACK_MOTION_EMAIL="$feedback_motion_email" E2E_FEEDBACK_MOTION_PASSWORD="$feedback_motion_password" E2E_FEEDBACK_MOTION_SECRET="$feedback_motion_secret" \
+  E2E_FEEDBACK_STILL_EMAIL="$feedback_still_email" E2E_FEEDBACK_STILL_PASSWORD="$feedback_still_password" E2E_FEEDBACK_STILL_SECRET="$feedback_still_secret" \
   E2E_RECOVERY_INVITE="$recovery_invite" E2E_LANGUAGE_INVITE="$language_invite" npx playwright test "$@"
