@@ -607,5 +607,7 @@
 	"problem.too_many_shots": "Up to 10 screenshots: remove some.",
 	"problem.image_too_large": "A screenshot is larger than allowed: remove it and add it again.",
 	"problem.image_type": "A screenshot is not a JPEG or a PNG: remove it and add it again.",
-	"problem.image_encoding": "A screenshot arrived damaged: remove it and add it again."
+	"problem.image_encoding": "A screenshot arrived damaged: remove it and add it again.",
+	"feedback.dropped_one": "Only 10 screenshots fit: 1 image was not added.",
+	"feedback.dropped_other": "Only 10 screenshots fit: {count} images were not added."
 }
