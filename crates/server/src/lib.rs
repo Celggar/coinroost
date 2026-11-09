@@ -7,6 +7,7 @@ pub mod account_rules;
 pub mod auth;
 pub mod employers;
 pub mod error;
+mod feedback;
 pub mod firefly;
 mod import;
 pub mod invites;
@@ -91,6 +92,7 @@ fn api() -> OpenApiRouter<AppState> {
         .merge(routes::summary::router())
         .merge(routes::payroll::router())
         .merge(routes::reports::router())
+        .merge(routes::feedback::router())
 }
 
 /// The HTTP API. A path under `/api/` that is not in the contract answers a problem+json 404.

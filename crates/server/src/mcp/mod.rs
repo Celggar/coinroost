@@ -9,6 +9,7 @@
 //! - Stateless: nothing is kept between requests, so a restart or a proxy loses nothing.
 
 mod client;
+mod feedback;
 mod read;
 mod reports;
 mod rulebook;
@@ -38,7 +39,8 @@ use crate::{AppState, auth};
 const INSTRUCTIONS: &str = "Coinroost keeps one household's accounts and transactions. Read tools answer from the \
 ledger. Write tools change it: before calling one, show the person exactly what will change and wait for their \
 explicit yes. Amounts are decimal strings in the account's currency, such as \"45.50\". Spending excludes money moved \
-between the household's own accounts; a month that looks cheap usually lacks a statement (see monthly_trend).";
+between the household's own accounts; a month that looks cheap usually lacks a statement (see monthly_trend). What the person told about the app itself, \
+with screenshots, is read with feedback_list and feedback_get.";
 
 #[derive(Clone)]
 pub struct Tools {
@@ -54,7 +56,8 @@ impl Tools {
                 + Tools::report_tools()
                 + Tools::write_tools()
                 + Tools::rule_tools()
-                + Tools::transfer_tools(),
+                + Tools::transfer_tools()
+                + Tools::feedback_tools(),
         }
     }
 
