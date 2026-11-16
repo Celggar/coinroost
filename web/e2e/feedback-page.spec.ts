@@ -136,10 +136,14 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			.click();
 		await expect(panel).toBeVisible();
 		await panel.getByLabel(say('feedback.message')).fill('El primero');
-		await record(page, `() => [(${SHOWN})('main .empty'), (${SHOWN})('main article')]`, 60);
+		await record(
+			page,
+			`() => [(${SHOWN})('main .empty'), (${SHOWN})('main article'), document.activeElement === document.body]`,
+			60
+		);
 		await panel.getByRole('button', { name: say('feedback.send'), exact: true }).click();
 		await expect(page.getByRole('article')).toHaveCount(1);
-		const swap = await samples<[number, number]>(page);
+		const swap = await samples<[number, number, boolean]>(page);
 		const came = swap.findIndex(([, card]) => card >= 0);
 		expect(came, 'the first report came').toBeGreaterThan(0);
 		expect(swap[came][1], 'its first frame').toBeLessThan(0.5);
@@ -147,6 +151,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			swap.filter(([gone, card], i) => i && gone < 0 && swap[i - 1][0] > 0.5).length,
 			'the empty state left at full opacity'
 		).toBe(0);
+		// The button that opened the panel leaves with the empty state: the focus goes to the report just made, never to the
+		// page in between (pass 78: on <body> from +100 ms to +3 s).
+		expect(
+			swap.map(([, , lost]) => lost),
+			'frames with the focus on the page'
+		).not.toContain(true);
+		await expect(page.getByRole('article').first()).toBeFocused();
 
 		// Resolved and opened again: the chip and the button's words change while nothing shows; the button keeps the focus.
 		const card = page.getByRole('article').first();
@@ -175,7 +186,9 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			route.request().method() === 'PATCH' ? route.abort() : route.continue()
 		);
 		await toggle.click();
-		await expect(page.getByText(say('feedback.what'), { exact: false }).first()).toBeVisible();
+		await expect(
+			page.getByText(say('feedback.resolve_failed'), { exact: false }).first()
+		).toBeVisible();
 		await expect(card.getByText(say('feedback.state_open'))).toBeVisible();
 		await expect(toggle).toBeFocused();
 		await page.unroute('**/api/v1/feedback/*');
@@ -208,8 +221,45 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 
 		// The screenshots of a wide screen are shown whole (cut to fill a box of a phone's shape, the rail was gone).
 		await page.setViewportSize({ width: 1280, height: 800 });
+		// The side sheet comes in from the right edge, never in one frame; with reduced motion it fades in place (pass 78:
+		// its slide read the width before the dialog was laid out, so it went 0 px).
+		await record(
+			page,
+			`() => { const d = document.querySelector('dialog'); return d && [Math.round(d.getBoundingClientRect().left), Number(getComputedStyle(d).opacity)]; }`,
+			40
+		);
 		await page.getByRole('button', { name: say('feedback.button'), exact: true }).click();
 		await expect(panel).toBeVisible();
+		const opening = (await samples<[number, number] | null>(page, 40)).filter(
+			(s): s is [number, number] => !!s
+		);
+		expect(opening.length, 'frames with the sheet').toBeGreaterThan(5);
+		expect(opening.at(-1)![0], 'where it ends').toBe(840);
+		if (reducedMotion === 'reduce') {
+			expect(new Set(opening.map(([left]) => left)), 'it stays in place').toEqual(new Set([840]));
+			expect(opening[0][1], 'its first frame').toBeLessThan(0.5);
+		} else {
+			expect(opening[0][0], 'its first frame').toBeGreaterThan(1000);
+			expect(new Set(opening.map(([left]) => left)).size, 'in a glide').toBeGreaterThan(3);
+		}
+		const close = panel.getByRole('button', { name: say('app.close') });
+		await page.keyboard.press('Tab');
+		await page.keyboard.press('Shift+Tab');
+		await expect(close).toBeFocused();
+		const edge = await close.evaluate((button) => {
+			const style = getComputedStyle(button);
+			const sheet = button.closest('dialog')!;
+			return {
+				ring: parseFloat(style.outlineWidth),
+				left:
+					button.getBoundingClientRect().left -
+					parseFloat(style.outlineWidth) -
+					parseFloat(style.outlineOffset),
+				inside: sheet.getBoundingClientRect().left + sheet.clientLeft
+			};
+		});
+		expect(edge.ring, 'the ring shows').toBeGreaterThan(0);
+		expect(edge.left, 'the ring inside the sheet').toBeGreaterThanOrEqual(edge.inside);
 		const shot = { name: 'ancha.png', mimeType: 'image/png', buffer: await wide(page) };
 		// One row at a time: a row on its way out still holds its label for the length of its fade.
 		const removeDownTo = async (left: number) => {
@@ -236,7 +286,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			await panel.evaluate((box) => (box.scrollTop = box.scrollHeight));
 			const send = panel.getByRole('button', { name: say('feedback.send'), exact: true });
 			await send.click();
-			await expect(panel.getByRole('alert').first()).toContainText(say('feedback.what'));
+			await expect(panel.getByRole('alert').first()).toContainText(say('feedback.send_failed'));
 			await expect(send).toBeFocused();
 			await expect
 				.poll(async () => {
@@ -258,8 +308,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			await removeDownTo(2);
 			const many = Array.from({ length: 10 }, (_, i) => ({ ...shot, name: `m${i}.png` }));
 			const text = { name: 'notas.txt', mimeType: 'text/plain', buffer: Buffer.from('hola') };
+			// Picked from «Adjuntar», which turns off once ten are in: the focus goes to the last note (pass 78: to <body>).
+			await panel.getByRole('button', { name: say('feedback.attach') }).focus();
 			await panel.locator('input[type=file]').setInputFiles([text, ...many]);
 			await expect(panel.locator('li')).toHaveCount(10);
+			await expect(
+				panel.getByLabel(say('feedback.note', { n: 10 }), { exact: true })
+			).toBeFocused();
 			const said = panel.locator('section .alert');
 			await expect(said).toContainText(say('feedback.not_image', { name: 'notas.txt' }));
 			await expect(said).toContainText(say('feedback.dropped_other', { count: 2 }));
@@ -300,6 +355,14 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 			await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
 			'no sideways scroll'
 		).toBe(true);
+
+		// A page that cannot load names what failed, as every other page does.
+		await page.route('**/api/v1/feedback', (route) =>
+			route.request().method() === 'GET' ? route.abort() : route.continue()
+		);
+		await page.reload();
+		await expect(page.locator('main p.alert')).toContainText(english('feedback.load_failed'));
+		await page.unroute('**/api/v1/feedback');
 		await context.close();
 	});
 }

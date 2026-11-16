@@ -37,12 +37,15 @@
 		dialog?.show();
 	}
 
+	/** The side sheet's width, which it slides in by. Read from the dialog, it was 0 on the way in, before `showModal()`
+	 * had laid it out, so the sheet came in one frame (pass 78). */
+	const SIDE_WIDTH = 440;
 	const beside = () => side && matchMedia('(min-width: 900px)').matches;
 	const slide = (node: Element, { out = false } = {}) =>
 		prefersReducedMotion.current
 			? fade(node, { duration: DURATION.short })
 			: fly(node, {
-					...(beside() ? { x: (node as HTMLElement).offsetWidth } : { y: innerHeight }),
+					...(beside() ? { x: SIDE_WIDTH } : { y: innerHeight }),
 					opacity: 1,
 					duration: out ? DURATION.exit : DURATION.medium,
 					easing: out ? EASE.exit : EASE.enter
@@ -52,6 +55,7 @@
 <dialog
 	bind:this={dialog}
 	class:side
+	style:--side-width="{SIDE_WIDTH}px"
 	aria-label={title}
 	oncancel={(event) => {
 		event.preventDefault();
@@ -95,9 +99,14 @@
 	@media (min-width: 900px) {
 		dialog.side {
 			inset: 0 0 0 auto;
-			width: min(440px, 100%);
+			width: min(var(--side-width), 100%);
 			border-left: 1px solid var(--raised-edge);
 			box-shadow: var(--raised-shadow);
+		}
+		/* Room for «Cerrar»'s whole ring (3 px and its 2 px offset) inside the sheet's edge, which cut it by 1 px (pass 78).
+		   The phone's full-screen form keeps its 4 px, as the reference does (D84). */
+		dialog.side header {
+			padding-left: var(--space-sm);
 		}
 	}
 	header {

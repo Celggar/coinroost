@@ -1,13 +1,13 @@
 <script lang="ts">
 	// «Comentarios»: what the household told about the app, newest first, each report with its screenshots and their
 	// notes, and whether it is open or resolved.
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { api, problem, type Schemas } from '#lib/api/client.ts';
 	import { t, tag } from '#lib/i18n.svelte.ts';
 	import { openPanel, panel } from '#lib/feedback/draft.svelte.ts';
 	import { arrive, fadeThrough, grow, placeholder, swapIn, vanish } from '#lib/motion.ts';
 	import EmptyState from '#lib/ui/EmptyState.svelte';
-	import { retry } from '#lib/ui/focus.ts';
+	import { focusMade, retry } from '#lib/ui/focus.ts';
 	import { follow } from '#lib/ui/hold-room.ts';
 	import { notify } from '#lib/ui/notices.svelte.ts';
 
@@ -22,13 +22,21 @@
 
 	async function load() {
 		error = '';
+		const wasEmpty = reports?.length === 0;
 		const { data, error: failed, response } = await answer(api.GET('/api/v1/feedback'));
 		if (!data) {
 			reports = null;
-			error = problem(failed, response?.status, t('feedback.what'));
+			error = problem(failed, response?.status, t('feedback.load_failed'));
 			return;
 		}
 		reports = data.items;
+		// The first report takes the empty state's place, and the button there, which opened the panel and had the focus
+		// back, leaves with it: the focus dropped to the page (pass 78). It goes to the report just made.
+		if (wasEmpty && reports.length) {
+			await tick();
+			const had = document.activeElement;
+			if (!had || had === document.body || had.closest('[inert]')) focusMade('main article.report');
+		}
 	}
 
 	/** Its state's chip and the button's words fade through to the new state, the button keeping the focus: swapped
@@ -48,7 +56,14 @@
 		);
 		if (!data) {
 			busy = null;
-			notify(problem(failed, response?.status, t('feedback.what')), 'bad');
+			notify(
+				problem(
+					failed,
+					response?.status,
+					t(resolved ? 'feedback.resolve_failed' : 'feedback.reopen_failed')
+				),
+				'bad'
+			);
 			return;
 		}
 		const card = button.closest('article');

@@ -99,7 +99,8 @@
 	}
 
 	/** Every image that fits; what did not, and why, said under the buttons, the focus left on «Adjuntar». A file that is
-	 * no image takes no place. */
+	 * no image takes no place. Once ten are in, both add buttons are off and «Adjuntar» cannot keep the focus, which
+	 * dropped to the page (pass 78): it goes to the last note, as when the pick ends at exactly ten. */
 	async function attach(files: FileList | null) {
 		addError = '';
 		const said: string[] = [];
@@ -119,8 +120,8 @@
 		if (dropped) said.push(plural(dropped, 'feedback.dropped_one', 'feedback.dropped_other'));
 		if (picker) picker.value = '';
 		addError = said.join(' ');
+		if (last && (full || !addError)) await focusNote(last);
 		if (addError) await show(addSlot);
-		else if (last) await focusNote(last);
 	}
 
 	function remove(key: number, index: number) {
@@ -162,14 +163,14 @@
 				}
 			});
 			if (failed) {
-				sendError = problem(failed, response?.status, t('feedback.what'));
+				sendError = problem(failed, response?.status, t('feedback.send_failed'));
 			} else {
 				startOver();
 				notify(t('feedback.sent'));
 				close();
 			}
 		} catch {
-			sendError = problem(undefined, undefined, t('feedback.what'));
+			sendError = problem(undefined, undefined, t('feedback.send_failed'));
 		} finally {
 			busy = false;
 		}
