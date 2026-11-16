@@ -275,18 +275,27 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 		await expect(panel.locator('li')).toHaveCount(2);
 
 		// A failed send, the panel scrolled to its end: why, under the header that holds «Enviar», in sight; the draft kept.
+		// No answer at 1280, the server's error at 390: each says what could not be done.
 		for (const [width, height] of [
 			[1280, 800],
 			[390, 844]
 		]) {
 			await page.setViewportSize({ width, height });
 			await page.route('**/api/v1/feedback', (route) =>
-				route.request().method() === 'POST' ? route.abort() : route.continue()
+				route.request().method() !== 'POST'
+					? route.continue()
+					: width > 900
+						? route.abort()
+						: route.fulfill({ status: 500, contentType: 'application/problem+json', body: '{}' })
 			);
 			await panel.evaluate((box) => (box.scrollTop = box.scrollHeight));
 			const send = panel.getByRole('button', { name: say('feedback.send'), exact: true });
 			await send.click();
-			await expect(panel.getByRole('alert').first()).toContainText(say('feedback.send_failed'));
+			// The whole sentence of this answer: the last one's message may still be on its way out.
+			const why = say(width > 900 ? 'error.no_answer' : 'problem.status_5xx', {
+				what: say('feedback.send_failed')
+			});
+			await expect(panel.getByRole('alert').first()).toHaveText(why);
 			await expect(send).toBeFocused();
 			await expect
 				.poll(async () => {
